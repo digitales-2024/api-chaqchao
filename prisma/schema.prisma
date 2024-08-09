@@ -21,6 +21,12 @@ model User {
   phone String?
   lastLogin DateTime
   isActive Boolean @default(true)
+  createdUser User? @relation("CreatedUsers", fields: [createdBy], references: [id])
+  createdBy String?
+  updatedUser User? @relation("UpdatedUsers", fields: [updatedBy], references: [id])
+  updatedBy String?
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
+  createdUsers User[] @relation("CreatedUsers")
+  updatedUsers User[] @relation("UpdatedUsers")
 }
