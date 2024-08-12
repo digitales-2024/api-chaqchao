@@ -2,14 +2,19 @@ import { Injectable, Logger, NotFoundException, UnauthorizedException } from '@n
 import { LoginAuthDto } from './dto';
 import { UsersService } from '../users/users.service';
 import * as bcrypt from 'bcrypt';
-import { User } from '../users/types/user.type';
+import { User } from '../users/interfaces/user.interface';
 import { handleException } from 'src/utils';
+import { JwtPayload } from './interfaces/jwt-payload.interface';
+import { JwtService } from '@nestjs/jwt';
 
 @Injectable()
 export class AuthService {
   private readonly logger = new Logger(AuthService.name);
 
-  constructor(private readonly userService: UsersService) {}
+  constructor(
+    private readonly userService: UsersService,
+    private readonly jwtService: JwtService
+  ) {}
 
   async login(loginAuthDto: LoginAuthDto): Promise<User> {
     try {
@@ -20,25 +25,30 @@ export class AuthService {
 
       // Comparamos la contraseña ingresada con la contraseña encriptada
       if (!bcrypt.compareSync(password, user.password)) {
-        throw new UnauthorizedException('password incorrect');
+        throw new UnauthorizedException('Password incorrect');
       }
 
-      // TODO: Implement JWT
       return {
         id: user.id,
         name: user.name,
         email: user.email,
-        phone: user.phone
+        phone: user.phone,
+        token: this.getJwtToken({ id: user.id })
       };
     } catch (error) {
-      this.logger.error(`error logging in for email: ${loginAuthDto.email}`, error.stack);
+      this.logger.error(`Error logging in for email: ${loginAuthDto.email}`, error.stack);
       if (error instanceof UnauthorizedException) {
         throw error;
       }
       if (error instanceof NotFoundException) {
         throw error;
       }
-      handleException(error, 'error logging in');
+      handleException(error, 'Error logging in');
     }
+  }
+
+  private getJwtToken(payload: JwtPayload) {
+    const token = this.jwtService.sign(payload);
+    return token;
   }
 }
