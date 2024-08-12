@@ -22,11 +22,46 @@ model User {
   lastLogin DateTime @default(now()) @db.Timestamptz(6)
   isActive Boolean @default(true)
   createdUser User? @relation("CreatedUsers", fields: [createdBy], references: [id])
-  createdBy String?
+  createdBy String
   updatedUser User? @relation("UpdatedUsers", fields: [updatedBy], references: [id])
-  updatedBy String?
+  updatedBy String
   createdAt DateTime @default(now()) @db.Timestamptz(6)
   updatedAt DateTime @updatedAt
   createdUsers User[] @relation("CreatedUsers")
   updatedUsers User[] @relation("UpdatedUsers")
+  createdRols Rol[] @relation("CreatedRols")
+  updatedRols Rol[] @relation("UpdatedRols")
+  createdUserRols UserRol[] @relation("CreatedUserRols")
+  updatedUserRols UserRol[] @relation("UpdatedUserRols")
+  userRols UserRol[] @relation("UserId")
+}
+
+model Rol {
+  id String @id @default(uuid()) @unique
+  name String @unique
+  description String?
+  isActive Boolean @default(true)
+  createdRol User? @relation("CreatedRols", fields: [createdBy], references: [id])
+  createdBy String?
+  updatedRol User? @relation("UpdatedRols", fields: [updatedBy], references: [id])
+  updatedBy String?
+  createdAt DateTime @default(now()) @db.Timestamptz(6)
+  updatedAt DateTime @updatedAt
+
+  rolUsers UserRol[] @relation("RolId")
+}
+
+model UserRol {
+  id String @id @default(uuid()) @unique
+  user User @relation("UserId", fields: [userId], references: [id])
+  userId String
+  rol Rol @relation("RolId",fields: [rolId], references: [id])
+  rolId String
+  isActive Boolean @default(true)
+  createdUser User? @relation("CreatedUserRols", fields: [createdBy], references: [id])
+  createdBy String?
+  updatedUser User? @relation("UpdatedUserRols", fields: [updatedBy], references: [id])
+  updatedBy String?
+  createdAt DateTime @default(now()) @db.Timestamptz(6)
+  updatedAt DateTime @updatedAt
 }
