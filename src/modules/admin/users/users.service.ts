@@ -2,7 +2,7 @@ import { BadRequestException, Injectable, Logger, NotFoundException } from '@nes
 import { PrismaService } from 'src/prisma/prisma.service';
 import * as bcrypt from 'bcrypt';
 import { CreateUserDto } from './dto';
-import { User as UserCreate } from './types/user.type';
+import { User as UserInterface } from './interfaces/user.interface';
 import { User } from '@prisma/client';
 import { handleException } from 'src/utils';
 
@@ -11,7 +11,7 @@ export class UsersService {
   private readonly logger = new Logger(UsersService.name);
   constructor(private readonly prisma: PrismaService) {}
 
-  async create(createUserDto: CreateUserDto): Promise<UserCreate> {
+  async create(createUserDto: CreateUserDto, user: UserInterface): Promise<UserInterface> {
     try {
       const { email, password } = createUserDto;
       await this.checkEmailExists(email);
@@ -20,7 +20,9 @@ export class UsersService {
       const newUser = await this.prisma.user.create({
         data: {
           ...createUserDto,
-          password: hashedPassword
+          password: hashedPassword,
+          createdBy: user.id,
+          updatedBy: user.id
         },
         select: {
           id: true,
@@ -35,7 +37,7 @@ export class UsersService {
       if (error instanceof BadRequestException) {
         throw error;
       }
-      handleException(error, 'error creating a user');
+      handleException(error, 'Error creating a user');
     }
   }
 
@@ -44,7 +46,7 @@ export class UsersService {
       where: { email }
     });
     if (!clientDB) {
-      throw new NotFoundException('email not found');
+      throw new NotFoundException('Email not found');
     }
     return clientDB;
   }
@@ -54,7 +56,25 @@ export class UsersService {
       where: { email }
     });
     if (clientDB) {
-      throw new BadRequestException('email already exists');
+      throw new BadRequestException('Email already exists');
     }
+  }
+
+  async findById(id: string): Promise<UserInterface> {
+    const clientDB = await this.prisma.user.findUnique({
+      where: { id },
+      select: {
+        id: true,
+        name: true,
+        email: true,
+        phone: true,
+        lastLogin: true,
+        isActive: true
+      }
+    });
+    if (!clientDB) {
+      throw new NotFoundException('User not found');
+    }
+    return clientDB;
   }
 }
