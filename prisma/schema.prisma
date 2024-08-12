@@ -19,13 +19,13 @@ model User {
   email String @unique
   password String
   phone String?
-  lastLogin DateTime
+  lastLogin DateTime @default(now()) @db.Timestamptz(6)
   isActive Boolean @default(true)
   createdUser User? @relation("CreatedUsers", fields: [createdBy], references: [id])
   createdBy String?
   updatedUser User? @relation("UpdatedUsers", fields: [updatedBy], references: [id])
   updatedBy String?
-  createdAt DateTime @default(now())
+  createdAt DateTime @default(now()) @db.Timestamptz(6)
   updatedAt DateTime @updatedAt
   createdUsers User[] @relation("CreatedUsers")
   updatedUsers User[] @relation("UpdatedUsers")
