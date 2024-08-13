@@ -1,13 +1,11 @@
-import { Controller, Get, Post, Body, Patch, Param, Delete } from '@nestjs/common';
+import { Controller, Get, Post, Body, Patch, Delete, Param } from '@nestjs/common';
 import { RoleService } from './role.service';
 import { CreateRoleDto } from './dto/create-role.dto';
-import { UpdateRoleDto } from './dto/update-role.dto';
 import { Auth, GetUser } from '../auth/decorators';
-import { ValidRoles } from '../auth/interfaces';
 import { User } from '../users/interfaces/user.interface';
 
-@Controller({ path: 'role', version: '1' })
-@Auth(ValidRoles.ADMIN)
+@Controller({ path: 'rol', version: '1' })
+@Auth()
 export class RoleController {
   constructor(private readonly roleService: RoleService) {}
 
@@ -22,17 +20,17 @@ export class RoleController {
   }
 
   @Get(':id')
-  findOne(@Param('id') id: string) {
-    return this.roleService.findOne(+id);
+  findById(@GetUser() user: User) {
+    return this.roleService.findById(user.id);
   }
 
   @Patch(':id')
-  update(@Param('id') id: string, @Body() updateRoleDto: UpdateRoleDto) {
-    return this.roleService.update(+id, updateRoleDto);
+  update(@Param('id') id: string, @Body() createRoleDto: CreateRoleDto, @GetUser() user: User) {
+    return this.roleService.update(id, createRoleDto, user);
   }
 
   @Delete(':id')
   remove(@Param('id') id: string) {
-    return this.roleService.remove(+id);
+    return this.roleService.remove(id);
   }
 }
