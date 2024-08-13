@@ -1,4 +1,10 @@
-import { Injectable, Logger, NotFoundException, UnauthorizedException } from '@nestjs/common';
+import {
+  ForbiddenException,
+  Injectable,
+  Logger,
+  NotFoundException,
+  UnauthorizedException
+} from '@nestjs/common';
 import { LoginAuthDto } from './dto';
 import { UsersService } from '../users/users.service';
 import * as bcrypt from 'bcrypt';
@@ -7,6 +13,7 @@ import { handleException } from 'src/utils';
 import { JwtPayload } from './interfaces/jwt-payload.interface';
 import { JwtService } from '@nestjs/jwt';
 import { RoleService } from '../role/role.service';
+import { UpdatePasswordDto } from './dto/update-password.dto';
 
 @Injectable()
 export class AuthService {
@@ -36,6 +43,9 @@ export class AuthService {
       // Actualizamos el ultimo login del usuario
       await this.userService.updateLastLogin(user.id);
 
+      // Indicar que el usuario debe cambiar la contraseña si es la primera vez que inicia sesión
+      await this.validateUser(email, password);
+
       return {
         id: user.id,
         name: user.name,
@@ -54,6 +64,68 @@ export class AuthService {
       }
       handleException(error, 'Error logging in');
     }
+  }
+
+  async updatePassword(updatePasswordDto: UpdatePasswordDto): Promise<User> {
+    try {
+      const { email, passwordTemp, newPassword, confirmPassword } = updatePasswordDto;
+
+      const user = await this.userService.findByEmail(email);
+
+      if (!user.mustChangePassword) {
+        throw new ForbiddenException('You do not need to change your password');
+      }
+
+      const isPasswordMatching = await bcrypt.compare(passwordTemp, user.password);
+
+      if (!isPasswordMatching) {
+        throw new UnauthorizedException('Password temporal do not match');
+      }
+
+      if (newPassword === passwordTemp) {
+        throw new ForbiddenException('The new password must be different from the current one');
+      }
+
+      if (newPassword !== confirmPassword) {
+        throw new ForbiddenException('Passwords do not match');
+      }
+
+      await this.userService.updatePassword(user.id, newPassword);
+
+      await this.userService.updateMustChangePassword(user.id, false);
+
+      const rol = await this.getRol(user);
+
+      return {
+        id: user.id,
+        name: user.name,
+        email: user.email,
+        phone: user.phone,
+        token: this.getJwtToken({ id: user.id }),
+        rol: rol.id
+      };
+    } catch (error) {
+      this.logger.error('Error updating password', error.stack);
+      handleException(error, 'Error updating password');
+    }
+  }
+
+  private async validateUser(email: string, pass: string): Promise<any> {
+    const user = await this.userService.findByEmail(email);
+    if (!user) {
+      throw new UnauthorizedException('Email do not match');
+    }
+
+    const isPasswordMatching = await bcrypt.compare(pass, user.password);
+    if (!isPasswordMatching) {
+      throw new UnauthorizedException('Password do not match');
+    }
+
+    if (user.mustChangePassword) {
+      throw new ForbiddenException('You must change your password');
+    }
+
+    return user;
   }
 
   private getJwtToken(payload: JwtPayload) {
