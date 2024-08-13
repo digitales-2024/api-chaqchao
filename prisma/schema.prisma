@@ -38,7 +38,7 @@ model User {
 
 model Rol {
   id String @id @default(uuid()) @unique
-  name String @unique
+  name String
   description String?
   isActive Boolean @default(true)
   createdRol User? @relation("CreatedRols", fields: [createdBy], references: [id])
@@ -49,6 +49,8 @@ model Rol {
   updatedAt DateTime @updatedAt
 
   rolUsers UserRol[] @relation("RolId")
+
+  @@unique([name, isActive])
 }
 
 model UserRol {
