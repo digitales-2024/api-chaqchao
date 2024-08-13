@@ -255,4 +255,42 @@ export class UsersService {
 
     return userRolDB;
   }
+
+  async updatePassword(userId: string, password: string): Promise<void> {
+    try {
+      const user = await this.prisma.user.findUnique({
+        where: { id: userId }
+      });
+
+      if (!user) {
+        throw new NotFoundException('User not found');
+      }
+
+      const newPassword = bcrypt.hashSync(password, 10);
+
+      await this.prisma.user.update({
+        where: { id: userId },
+        data: {
+          password: newPassword
+        }
+      });
+    } catch (error) {
+      this.logger.error(`Error updating password for user: ${userId}`, error.stack);
+      handleException(error, 'Error updating password');
+    }
+  }
+
+  async updateMustChangePassword(userId: string, mustChangePassword: boolean): Promise<void> {
+    try {
+      await this.prisma.user.update({
+        where: { id: userId },
+        data: {
+          mustChangePassword
+        }
+      });
+    } catch (error) {
+      this.logger.error(`Error updating must change password for user: ${userId}`, error.stack);
+      handleException(error, 'Error updating must change password');
+    }
+  }
 }
