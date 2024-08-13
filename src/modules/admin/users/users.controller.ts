@@ -27,4 +27,9 @@ export class UsersController {
   profile(@GetUser() user: User) {
     return user;
   }
+
+  @Get('generate-password')
+  generatePassword() {
+    return this.usersService.generatePassword();
+  }
 }

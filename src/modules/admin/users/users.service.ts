@@ -6,6 +6,7 @@ import { User as UserInterface } from './interfaces/user.interface';
 import { handleException } from 'src/utils';
 import { RoleService } from '../role/role.service';
 import { User } from '@prisma/client';
+import { generate } from 'generate-password';
 
 @Injectable()
 export class UsersService {
@@ -292,5 +293,14 @@ export class UsersService {
       this.logger.error(`Error updating must change password for user: ${userId}`, error.stack);
       handleException(error, 'Error updating must change password');
     }
+  }
+
+  generatePassword(): string {
+    const password = generate({
+      length: 10,
+      numbers: true
+    });
+
+    return password;
   }
 }
