@@ -6,6 +6,7 @@ import { User } from '../users/interfaces/user.interface';
 import { handleException } from 'src/utils';
 import { JwtPayload } from './interfaces/jwt-payload.interface';
 import { JwtService } from '@nestjs/jwt';
+import { RoleService } from '../role/role.service';
 
 @Injectable()
 export class AuthService {
@@ -13,6 +14,7 @@ export class AuthService {
 
   constructor(
     private readonly userService: UsersService,
+    private readonly rolService: RoleService,
     private readonly jwtService: JwtService
   ) {}
 
@@ -28,12 +30,19 @@ export class AuthService {
         throw new UnauthorizedException('Password incorrect');
       }
 
+      // Obtenemos el rol del usuario
+      const rol = await this.getRol(user);
+
+      // Actualizamos el ultimo login del usuario
+      await this.userService.updateLastLogin(user.id);
+
       return {
         id: user.id,
         name: user.name,
         email: user.email,
         phone: user.phone,
-        token: this.getJwtToken({ id: user.id })
+        token: this.getJwtToken({ id: user.id }),
+        rol: rol.id
       };
     } catch (error) {
       this.logger.error(`Error logging in for email: ${loginAuthDto.email}`, error.stack);
@@ -50,5 +59,9 @@ export class AuthService {
   private getJwtToken(payload: JwtPayload) {
     const token = this.jwtService.sign(payload);
     return token;
+  }
+
+  private getRol(user: User) {
+    return this.rolService.findUserRol(user.id);
   }
 }
