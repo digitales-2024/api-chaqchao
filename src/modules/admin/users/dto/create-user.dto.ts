@@ -35,4 +35,8 @@ export class CreateUserDto {
   @IsMobilePhone()
   @Transform(({ value }) => value.trim())
   phone?: string;
+
+  @IsString()
+  @IsNotEmpty()
+  rolId: string;
 }

@@ -10,8 +10,4 @@ export class CreateRoleDto {
   @IsString()
   @Transform(({ value }) => value.trim().toLowerCase())
   description?: string;
-
-  createdBy: string;
-
-  updatedBy: string;
 }
