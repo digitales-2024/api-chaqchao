@@ -34,6 +34,8 @@ model User {
   createdUserRols UserRol[] @relation("CreatedUserRols")
   updatedUserRols UserRol[] @relation("UpdatedUserRols")
   userRols UserRol[] @relation("UserId")
+  
+  mustChangePassword Boolean  @default(true)
 }
 
 model Rol {
