@@ -3,35 +3,67 @@ import { PrismaService } from 'src/prisma/prisma.service';
 import * as bcrypt from 'bcrypt';
 import { CreateUserDto } from './dto';
 import { User as UserInterface } from './interfaces/user.interface';
-import { User } from '@prisma/client';
 import { handleException } from 'src/utils';
+import { RoleService } from '../role/role.service';
+import { User } from '@prisma/client';
 
 @Injectable()
 export class UsersService {
   private readonly logger = new Logger(UsersService.name);
-  constructor(private readonly prisma: PrismaService) {}
+  constructor(
+    private readonly prisma: PrismaService,
+    private readonly rol: RoleService
+  ) {}
 
   async create(createUserDto: CreateUserDto, user: UserInterface): Promise<UserInterface> {
     try {
-      const { email, password } = createUserDto;
-      await this.checkEmailExists(email);
-      const hashedPassword = await bcrypt.hash(password, 10);
+      const [newUser, rol] = await this.prisma.$transaction(async (prisma) => {
+        const { rolId, email, password, ...dataUser } = createUserDto;
 
-      const newUser = await this.prisma.user.create({
-        data: {
-          ...createUserDto,
-          password: hashedPassword,
-          createdBy: user.id,
-          updatedBy: user.id
-        },
-        select: {
-          id: true,
-          name: true,
-          email: true,
-          phone: true
-        }
+        // Verificamos si el email ya existe
+        await this.checkEmailExists(email);
+
+        // Buscamos el rol
+        await this.rol.findById(rolId);
+
+        // Encriptamos la contraseña
+        const hashedPassword = await bcrypt.hash(password, 10);
+
+        // Creamos el usuario
+        const newUser = await prisma.user.create({
+          data: {
+            email,
+            ...dataUser,
+            password: hashedPassword,
+            createdBy: user.id,
+            updatedBy: user.id
+          },
+          select: {
+            id: true,
+            name: true,
+            email: true,
+            phone: true
+          }
+        });
+
+        // Creamos la asignacion de un rol a un usuario
+        await prisma.userRol.create({
+          data: {
+            userId: newUser.id,
+            rolId,
+            createdBy: user.id,
+            updatedBy: user.id
+          }
+        });
+
+        return [newUser, rolId];
       });
-      return newUser;
+
+      if (!user) {
+        throw new BadRequestException('User not created');
+      }
+
+      return { ...newUser, rol };
     } catch (error) {
       this.logger.error(`Error creating a user for email: ${createUserDto.email}`, error.stack);
       if (error instanceof BadRequestException) {
@@ -41,13 +73,98 @@ export class UsersService {
     }
   }
 
+  async update(
+    id: string,
+    createUserDto: CreateUserDto,
+    user: UserInterface
+  ): Promise<UserInterface> {
+    try {
+      const [newUser, rol] = await this.prisma.$transaction(async (prisma) => {
+        const { rolId, email, password, ...dataUser } = createUserDto;
+
+        // Buscamos el usuario
+        const userDB = await prisma.user.findUnique({
+          where: { id }
+        });
+
+        if (!userDB) {
+          throw new NotFoundException('User not found');
+        }
+
+        // Verificamos si el email ya existe
+        if (userDB.email !== email) {
+          await this.checkEmailExists(email);
+        }
+
+        // Buscamos el rol
+        await this.rol.findById(rolId);
+
+        // Encriptamos la contraseña
+        const hashedPassword = await bcrypt.hash(password, 10);
+
+        // Actualizamos el usuario
+        const newUser = await prisma.user.update({
+          where: { id },
+          data: {
+            email,
+            ...dataUser,
+            password: hashedPassword,
+            updatedBy: user.id
+          },
+          select: {
+            id: true,
+            name: true,
+            email: true,
+            phone: true
+          }
+        });
+
+        // Actualizamos la asignacion de un rol a un usuario
+        await prisma.userRol.updateMany({
+          where: {
+            userId: newUser.id
+          },
+          data: {
+            rolId,
+            updatedBy: user.id
+          }
+        });
+
+        return [newUser, rolId];
+      });
+
+      if (!newUser) {
+        throw new BadRequestException('User not updated');
+      }
+
+      return { ...newUser, rol };
+    } catch (error) {
+      this.logger.error(`Error updating a user for id: ${id}`, error.stack);
+      if (error instanceof BadRequestException) {
+        throw error;
+      }
+      handleException(error, 'Error updating a user');
+    }
+  }
+
+  async updateLastLogin(id: string): Promise<void> {
+    await this.prisma.user.update({
+      where: { id },
+      data: {
+        lastLogin: new Date()
+      }
+    });
+  }
+
   async findByEmail(email: string): Promise<User> {
     const clientDB = await this.prisma.user.findUnique({
       where: { email }
     });
+
     if (!clientDB) {
       throw new NotFoundException('Email not found');
     }
+
     return clientDB;
   }
 
@@ -69,12 +186,73 @@ export class UsersService {
         email: true,
         phone: true,
         lastLogin: true,
-        isActive: true
+        isActive: true,
+        userRols: {
+          select: {
+            rolId: true
+          }
+        }
       }
     });
     if (!clientDB) {
       throw new NotFoundException('User not found');
     }
     return clientDB;
+  }
+
+  async findAll(): Promise<UserInterface[]> {
+    return this.prisma.user.findMany({
+      select: {
+        id: true,
+        name: true,
+        email: true,
+        phone: true,
+        lastLogin: true,
+        isActive: true,
+        userRols: {
+          select: {
+            rolId: true
+          }
+        }
+      }
+    });
+  }
+
+  async findUserRoles(userId: string) {
+    const userRolDB = await this.prisma.userRol.findMany({
+      where: {
+        userId
+      },
+      select: {
+        rol: {
+          select: {
+            name: true
+          }
+        }
+      }
+    });
+
+    if (!userRolDB) {
+      throw new BadRequestException('User roles not found');
+    }
+
+    return userRolDB;
+  }
+
+  async createUserRol(userId: string, rolId: string, user: UserInterface) {
+    const userRolDB = await this.prisma.userRol.create({
+      data: {
+        userId,
+        rolId,
+        createdBy: user.id,
+        updatedBy: user.id
+      }
+    });
+
+    if (!userRolDB) {
+      throw new BadRequestException('User roles not created');
+    }
+
+    return userRolDB;
   }
 }
