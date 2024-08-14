@@ -6,6 +6,7 @@ import { PrismaModule } from './prisma/prisma.module';
 import { AdminModule } from './modules/admin/admin.module';
 import { ShopModule } from './modules/shop/shop.module';
 import { SharedModule } from './modules/shared/shared.module';
+import { SeedsModule } from './modules/seeds/seeds.module';
 
 @Module({
   imports: [
@@ -15,7 +16,8 @@ import { SharedModule } from './modules/shared/shared.module';
     PrismaModule,
     AdminModule,
     ShopModule,
-    SharedModule
+    SharedModule,
+    SeedsModule
   ],
   controllers: [AppController],
   providers: [AppService]
