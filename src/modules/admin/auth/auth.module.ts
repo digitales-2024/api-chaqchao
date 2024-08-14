@@ -21,7 +21,7 @@ import { RoleModule } from '../role/role.module';
       inject: [ConfigService],
       useFactory: (configService: ConfigService) => ({
         secret: configService.get('JWT_SECRET'),
-        signOptions: { expiresIn: '1d' }
+        signOptions: { expiresIn: configService.get('JWT_EXPIRES_IN') }
       })
     })
   ],
