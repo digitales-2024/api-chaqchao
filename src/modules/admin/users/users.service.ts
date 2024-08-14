@@ -1,4 +1,10 @@
-import { BadRequestException, Injectable, Logger, NotFoundException } from '@nestjs/common';
+import {
+  BadRequestException,
+  HttpStatus,
+  Injectable,
+  Logger,
+  NotFoundException
+} from '@nestjs/common';
 import { PrismaService } from 'src/prisma/prisma.service';
 import * as bcrypt from 'bcrypt';
 import { CreateUserDto } from './dto';
@@ -7,6 +13,7 @@ import { handleException } from 'src/utils';
 import { RoleService } from '../role/role.service';
 import { User } from '@prisma/client';
 import { generate } from 'generate-password';
+import { HttpsSucess } from 'src/interfaces';
 
 @Injectable()
 export class UsersService {
@@ -20,6 +27,9 @@ export class UsersService {
     try {
       const [newUser, rol] = await this.prisma.$transaction(async (prisma) => {
         const { rolId, email, password, ...dataUser } = createUserDto;
+
+        // Verificar que no se pueda crear un usuario con el rol superadmin
+        await this.rol.isRolSuperAdmin(rolId);
 
         // Verificamos si el email ya existe
         await this.checkEmailExists(email);
@@ -148,6 +158,59 @@ export class UsersService {
     }
   }
 
+  async remove(user: UserInterface, id: string): Promise<HttpsSucess> {
+    try {
+      const userRemove = await this.prisma.$transaction(async (prisma) => {
+        const userDB = await this.findById(id);
+
+        if (userDB.id === user.id) {
+          throw new BadRequestException('You cannot delete yourself');
+        }
+
+        await prisma.user.update({
+          where: { id },
+          data: {
+            isActive: false,
+            updatedAt: new Date(),
+            updatedBy: user.id
+          }
+        });
+
+        const userRolDB = await prisma.userRol.findFirst({
+          where: {
+            userId: id
+          }
+        });
+
+        if (!userRolDB) {
+          throw new NotFoundException('User rol not found');
+        }
+
+        await prisma.userRol.update({
+          where: {
+            id: userRolDB.id
+          },
+          data: {
+            isActive: false,
+            updatedAt: new Date(),
+            updatedBy: user.id
+          }
+        });
+
+        return userDB;
+      });
+
+      return {
+        statusCode: HttpStatus.OK,
+        message: 'User deleted',
+        data: userRemove.email
+      };
+    } catch (error) {
+      this.logger.error(`Error deleting a user for id: ${id}`, error.stack);
+      handleException(error, 'Error deleting a user');
+    }
+  }
+
   async updateLastLogin(id: string): Promise<void> {
     await this.prisma.user.update({
       where: { id },
@@ -159,7 +222,12 @@ export class UsersService {
 
   async findByEmail(email: string): Promise<User> {
     const clientDB = await this.prisma.user.findUnique({
-      where: { email }
+      where: {
+        email_isActive: {
+          email,
+          isActive: true
+        }
+      }
     });
 
     if (!clientDB) {
@@ -171,16 +239,27 @@ export class UsersService {
 
   async checkEmailExists(email: string): Promise<void> {
     const clientDB = await this.prisma.user.findUnique({
-      where: { email }
+      where: {
+        email_isActive: {
+          email,
+          isActive: true
+        }
+      }
     });
+    console.log(clientDB);
+
     if (clientDB) {
       throw new BadRequestException('Email already exists');
+    }
+
+    if (clientDB.isActive === false) {
+      throw new BadRequestException('Email already exists but is inactive');
     }
   }
 
   async findById(id: string): Promise<UserInterface> {
     const clientDB = await this.prisma.user.findUnique({
-      where: { id },
+      where: { id, isActive: true },
       select: {
         id: true,
         name: true,

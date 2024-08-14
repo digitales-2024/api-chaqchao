@@ -149,4 +149,20 @@ export class RoleService {
 
     return userRolDB.rol;
   }
+
+  async isRolSuperAdmin(rolId: string): Promise<void> {
+    const userRolDB = await this.prisma.rol.findFirst({
+      where: {
+        id: rolId
+      },
+      select: {
+        name: true
+      }
+    });
+
+    if (!userRolDB) throw new BadRequestException('User roles not found');
+
+    if (userRolDB.name === ValidRoles.SUPER_ADMIN)
+      throw new BadRequestException('User role is superadmin');
+  }
 }
