@@ -16,7 +16,7 @@ datasource db {
 model User {
   id String @id @default(uuid()) @unique
   name String
-  email String @unique
+  email String
   password String
   phone String?
   lastLogin DateTime @default(now()) @db.Timestamptz(6)
@@ -34,6 +34,8 @@ model User {
   createdUserRols UserRol[] @relation("CreatedUserRols")
   updatedUserRols UserRol[] @relation("UpdatedUserRols")
   userRols UserRol[] @relation("UserId")
+
+  @@unique([email, isActive])
   
   mustChangePassword Boolean  @default(true)
 }
