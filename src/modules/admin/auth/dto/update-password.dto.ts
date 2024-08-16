@@ -6,7 +6,7 @@ import { Transform } from 'class-transformer';
 export class UpdatePasswordDto extends PartialType(CreateUserDto) {
   @IsString()
   @IsNotEmpty()
-  passwordTemp: string;
+  password: string;
 
   @IsString()
   @IsNotEmpty()

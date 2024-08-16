@@ -68,7 +68,7 @@ export class AuthService {
 
   async updatePassword(updatePasswordDto: UpdatePasswordDto): Promise<User> {
     try {
-      const { email, passwordTemp, newPassword, confirmPassword } = updatePasswordDto;
+      const { email, password, newPassword, confirmPassword } = updatePasswordDto;
 
       const user = await this.userService.findByEmail(email);
 
@@ -76,13 +76,13 @@ export class AuthService {
         throw new ForbiddenException('You do not need to change your password');
       }
 
-      const isPasswordMatching = await bcrypt.compare(passwordTemp, user.password);
+      const isPasswordMatching = await bcrypt.compare(password, user.password);
 
       if (!isPasswordMatching) {
-        throw new UnauthorizedException('Password temporal do not match');
+        throw new UnauthorizedException('Password current do not match');
       }
 
-      if (newPassword === passwordTemp) {
+      if (newPassword === password) {
         throw new ForbiddenException('The new password must be different from the current one');
       }
 
