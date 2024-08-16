@@ -70,4 +70,6 @@ model UserRol {
   updatedBy String?
   createdAt DateTime @default(now()) @db.Timestamptz(6)
   updatedAt DateTime @updatedAt
+
+  @@unique([userId, rolId, isActive])
 }
