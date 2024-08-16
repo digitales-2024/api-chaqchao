@@ -1,9 +1,10 @@
-import { Controller, Post, Body, Get, Patch, Param } from '@nestjs/common';
+import { Controller, Post, Body, Get, Patch, Param, Delete } from '@nestjs/common';
 import { UsersService } from './users.service';
 import { CreateUserDto } from './dto/create-user.dto';
 import { GetUser } from '../auth/decorators/get-user.decorator';
 import { User } from './interfaces/user.interface';
 import { Auth } from '../auth/decorators';
+import { UpdateUserDto } from './dto';
 
 @Controller({
   path: 'users',
@@ -24,13 +25,18 @@ export class UsersController {
   }
 
   @Patch(':id')
+  update(@Body() updateUserDto: UpdateUserDto, @Param('id') id: string, @GetUser() user: User) {
+    return this.usersService.update(updateUserDto, id, user);
+  }
+
+  @Delete(':id')
   remove(@GetUser() user: User, @Param('id') id: string) {
     return this.usersService.remove(user, id);
   }
 
   @Get('profile')
   profile(@GetUser() user: User) {
-    return user;
+    return this.usersService.profile(user);
   }
 
   @Get('generate-password')

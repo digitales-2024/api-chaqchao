@@ -7,7 +7,7 @@ import {
 } from '@nestjs/common';
 import { PrismaService } from 'src/prisma/prisma.service';
 import * as bcrypt from 'bcrypt';
-import { CreateUserDto } from './dto';
+import { CreateUserDto, UpdateUserDto } from './dto';
 import { User as UserInterface } from './interfaces/user.interface';
 import { handleException } from 'src/utils';
 import { RolService } from '../rol/rol.service';
@@ -26,16 +26,16 @@ export class UsersService {
   async create(createUserDto: CreateUserDto, user: UserInterface): Promise<UserInterface> {
     try {
       const [newUser, rol] = await this.prisma.$transaction(async (prisma) => {
-        const { rolId, email, password, ...dataUser } = createUserDto;
+        const { rol, email, password, ...dataUser } = createUserDto;
 
         // Verificar que no se pueda crear un usuario con el rol superadmin
-        await this.rol.isRolSuperAdmin(rolId);
+        await this.rol.isRolSuperAdmin(rol);
 
         // Verificamos si el email ya existe
         await this.checkEmailExists(email);
 
         // Buscamos el rol
-        await this.rol.findById(rolId);
+        await this.rol.findById(rol);
 
         // Encriptamos la contraseña
         const hashedPassword = await bcrypt.hash(password, 10);
@@ -61,13 +61,13 @@ export class UsersService {
         await prisma.userRol.create({
           data: {
             userId: newUser.id,
-            rolId,
+            rolId: rol,
             createdBy: user.id,
             updatedBy: user.id
           }
         });
 
-        return [newUser, rolId];
+        return [newUser, rol];
       });
 
       if (!user) {
@@ -85,42 +85,29 @@ export class UsersService {
   }
 
   async update(
+    updateUserDto: UpdateUserDto,
     id: string,
-    createUserDto: CreateUserDto,
     user: UserInterface
   ): Promise<UserInterface> {
     try {
-      const [newUser, rol] = await this.prisma.$transaction(async (prisma) => {
-        const { rolId, email, password, ...dataUser } = createUserDto;
+      const [userUpdate, rol] = await this.prisma.$transaction(async (prisma) => {
+        const { rol, ...dataUser } = updateUserDto;
 
-        // Buscamos el usuario
-        const userDB = await prisma.user.findUnique({
-          where: { id }
-        });
+        await this.findById(id);
 
-        if (!userDB) {
-          throw new NotFoundException('User not found');
-        }
-
-        // Verificamos si el email ya existe
-        if (userDB.email !== email) {
-          await this.checkEmailExists(email);
-        }
+        // Verificar que no se pueda actualizar un usuario con el rol superadmin
+        await this.rol.isRolSuperAdmin(rol);
 
         // Buscamos el rol
-        await this.rol.findById(rolId);
+        await this.rol.findById(rol);
 
-        // Encriptamos la contraseña
-        const hashedPassword = await bcrypt.hash(password, 10);
-
-        // Actualizamos el usuario
-        const newUser = await prisma.user.update({
+        // Creamos el usuario
+        const updateUser = await prisma.user.update({
           where: { id },
           data: {
-            email,
             ...dataUser,
-            password: hashedPassword,
-            updatedBy: user.id
+            updatedBy: user.id,
+            updatedAt: new Date()
           },
           select: {
             id: true,
@@ -130,25 +117,26 @@ export class UsersService {
           }
         });
 
-        // Actualizamos la asignacion de un rol a un usuario
-        await prisma.userRol.updateMany({
+        // Creamos la asignacion de un rol a un usuario
+        await prisma.userRol.update({
           where: {
-            userId: newUser.id
+            userId_rolId_isActive: {
+              userId: id,
+              rolId: rol,
+              isActive: true
+            }
           },
           data: {
-            rolId,
-            updatedBy: user.id
+            rolId: rol,
+            updatedBy: user.id,
+            updatedAt: new Date()
           }
         });
 
-        return [newUser, rolId];
+        return [updateUser, rol];
       });
 
-      if (!newUser) {
-        throw new BadRequestException('User not updated');
-      }
-
-      return { ...newUser, rol };
+      return { ...userUpdate, rol };
     } catch (error) {
       this.logger.error(`Error updating a user for id: ${id}`, error.stack);
       if (error instanceof BadRequestException) {
@@ -246,13 +234,12 @@ export class UsersService {
         }
       }
     });
-    console.log(clientDB);
 
     if (clientDB) {
       throw new BadRequestException('Email already exists');
     }
 
-    if (clientDB.isActive === false) {
+    if (clientDB?.isActive === false) {
       throw new BadRequestException('Email already exists but is inactive');
     }
   }
@@ -277,11 +264,14 @@ export class UsersService {
     if (!clientDB) {
       throw new NotFoundException('User not found');
     }
-    return clientDB;
+    return { ...clientDB, rol: clientDB.userRols[0].rolId };
   }
 
   async findAll(): Promise<UserInterface[]> {
-    return this.prisma.user.findMany({
+    const usersDB = await this.prisma.user.findMany({
+      where: {
+        isActive: true
+      },
       select: {
         id: true,
         name: true,
@@ -295,6 +285,18 @@ export class UsersService {
           }
         }
       }
+    });
+
+    return usersDB.map((user) => {
+      return {
+        id: user.id,
+        name: user.name,
+        email: user.email,
+        phone: user.phone,
+        lastLogin: user.lastLogin,
+        isActive: user.isActive,
+        rol: user.userRols[0].rolId
+      };
     });
   }
 
@@ -372,6 +374,10 @@ export class UsersService {
       this.logger.error(`Error updating must change password for user: ${userId}`, error.stack);
       handleException(error, 'Error updating must change password');
     }
+  }
+
+  async profile(user: UserInterface): Promise<UserInterface> {
+    return { ...user, rol: user.rol };
   }
 
   generatePassword(): string {
