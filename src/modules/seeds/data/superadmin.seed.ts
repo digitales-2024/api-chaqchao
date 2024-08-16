@@ -1,4 +1,4 @@
-import { ValidRoles } from 'src/modules/admin/auth/interfaces';
+import { ValidRols } from 'src/modules/admin/auth/interfaces';
 
 export const superAdminSeed = {
   name: 'Super Admin',
@@ -9,6 +9,6 @@ export const superAdminSeed = {
 };
 
 export const rolSuperAdminSeed = {
-  name: ValidRoles.SUPER_ADMIN,
+  name: ValidRols.SUPER_ADMIN,
   description: 'Super Administrador'
 };

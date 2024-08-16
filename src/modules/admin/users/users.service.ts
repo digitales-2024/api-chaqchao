@@ -10,7 +10,7 @@ import * as bcrypt from 'bcrypt';
 import { CreateUserDto } from './dto';
 import { User as UserInterface } from './interfaces/user.interface';
 import { handleException } from 'src/utils';
-import { RoleService } from '../role/role.service';
+import { RolService } from '../rol/rol.service';
 import { User } from '@prisma/client';
 import { generate } from 'generate-password';
 import { HttpsSucess } from 'src/interfaces';
@@ -20,7 +20,7 @@ export class UsersService {
   private readonly logger = new Logger(UsersService.name);
   constructor(
     private readonly prisma: PrismaService,
-    private readonly rol: RoleService
+    private readonly rol: RolService
   ) {}
 
   async create(createUserDto: CreateUserDto, user: UserInterface): Promise<UserInterface> {
@@ -298,7 +298,7 @@ export class UsersService {
     });
   }
 
-  async findUserRoles(userId: string) {
+  async findUserRols(userId: string) {
     const userRolDB = await this.prisma.userRol.findMany({
       where: {
         userId
@@ -313,7 +313,7 @@ export class UsersService {
     });
 
     if (!userRolDB) {
-      throw new BadRequestException('User roles not found');
+      throw new BadRequestException('User rols not found');
     }
 
     return userRolDB;
@@ -330,7 +330,7 @@ export class UsersService {
     });
 
     if (!userRolDB) {
-      throw new BadRequestException('User roles not created');
+      throw new BadRequestException('User rols not created');
     }
 
     return userRolDB;

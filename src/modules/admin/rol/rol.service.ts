@@ -1,29 +1,29 @@
 import { BadRequestException, Injectable, Logger } from '@nestjs/common';
-import { CreateRoleDto } from './dto/create-role.dto';
+import { CreateRolDto } from './dto/create-rol.dto';
 import { PrismaService } from 'src/prisma/prisma.service';
 import { User } from '../users/interfaces/user.interface';
 import { handleException } from 'src/utils';
-import { ValidRoles } from '../auth/interfaces';
+import { ValidRols } from '../auth/interfaces';
 
 @Injectable()
-export class RoleService {
-  private readonly logger = new Logger(RoleService.name);
+export class RolService {
+  private readonly logger = new Logger(RolService.name);
   constructor(private readonly prisma: PrismaService) {}
 
   async ensureAdminUser(): Promise<void> {
-    const adminRole = await this.prisma.rol.findUnique({
+    const adminRol = await this.prisma.rol.findUnique({
       where: {
         name_isActive: {
-          name: ValidRoles.ADMIN,
+          name: ValidRols.ADMIN,
           isActive: true
         }
       }
     });
 
-    if (!adminRole) {
+    if (!adminRol) {
       await this.create(
         {
-          name: ValidRoles.ADMIN,
+          name: ValidRols.ADMIN,
           description: 'Administrator'
         },
         { id: 'admin' } as User
@@ -31,29 +31,29 @@ export class RoleService {
     }
   }
 
-  async create(createRoleDto: CreateRoleDto, user: User): Promise<CreateRoleDto> {
+  async create(createRolDto: CreateRolDto, user: User): Promise<CreateRolDto> {
     try {
-      const { name } = createRoleDto;
+      const { name } = createRolDto;
 
       await this.checkExitByName(name);
 
       const newRol = await this.prisma.rol.create({
-        data: { ...createRoleDto, createdBy: user.id, updatedBy: user.id },
+        data: { ...createRolDto, createdBy: user.id, updatedBy: user.id },
         select: { id: true, name: true, description: true }
       });
 
       return newRol;
     } catch (error) {
-      this.logger.error(`Error creating a role for name: ${createRoleDto.name}`, error.stack);
+      this.logger.error(`Error creating a rol for name: ${createRolDto.name}`, error.stack);
       if (error instanceof BadRequestException) {
         throw error;
       }
-      handleException(error, 'Error creating a role');
+      handleException(error, 'Error creating a rol');
     }
   }
 
   async checkExitByName(name: string) {
-    const roleDB = await this.prisma.rol.findUnique({
+    const rolDB = await this.prisma.rol.findUnique({
       where: {
         name_isActive: {
           name,
@@ -62,8 +62,8 @@ export class RoleService {
       }
     });
 
-    if (roleDB) {
-      throw new BadRequestException('Role already exists');
+    if (rolDB) {
+      throw new BadRequestException('Rol already exists');
     }
   }
 
@@ -84,17 +84,17 @@ export class RoleService {
     });
 
     if (!rolDB) {
-      throw new BadRequestException('Role not found');
+      throw new BadRequestException('Rol not found');
     }
 
     return rolDB;
   }
 
-  async update(id: string, createRoleDto: CreateRoleDto, user: User) {
-    const roleDB = await this.findById(id);
+  async update(id: string, createRolDto: CreateRolDto, user: User) {
+    const rolDB = await this.findById(id);
 
-    if (!roleDB) {
-      throw new BadRequestException('Role not found');
+    if (!rolDB) {
+      throw new BadRequestException('Rol not found');
     }
 
     return this.prisma.rol.update({
@@ -102,17 +102,17 @@ export class RoleService {
         id
       },
       data: {
-        ...createRoleDto,
+        ...createRolDto,
         updatedBy: user.id
       }
     });
   }
 
   async remove(id: string) {
-    const roleDB = await this.findById(id);
+    const rolDB = await this.findById(id);
 
-    if (!roleDB) {
-      throw new BadRequestException('Role not found');
+    if (!rolDB) {
+      throw new BadRequestException('Rol not found');
     }
 
     return this.prisma.rol.update({
@@ -144,7 +144,7 @@ export class RoleService {
     });
 
     if (!userRolDB) {
-      throw new BadRequestException('User roles not found');
+      throw new BadRequestException('User rols not found');
     }
 
     return userRolDB.rol;
@@ -160,9 +160,9 @@ export class RoleService {
       }
     });
 
-    if (!userRolDB) throw new BadRequestException('User roles not found');
+    if (!userRolDB) throw new BadRequestException('User rols not found');
 
-    if (userRolDB.name === ValidRoles.SUPER_ADMIN)
-      throw new BadRequestException('User role is superadmin');
+    if (userRolDB.name === ValidRols.SUPER_ADMIN)
+      throw new BadRequestException('User rol is superadmin');
   }
 }

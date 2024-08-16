@@ -12,8 +12,8 @@ import { User } from '../users/interfaces/user.interface';
 import { handleException } from 'src/utils';
 import { JwtPayload } from './interfaces/jwt-payload.interface';
 import { JwtService } from '@nestjs/jwt';
-import { RoleService } from '../role/role.service';
 import { UpdatePasswordDto } from './dto/update-password.dto';
+import { RolService } from '../rol/rol.service';
 
 @Injectable()
 export class AuthService {
@@ -21,7 +21,7 @@ export class AuthService {
 
   constructor(
     private readonly userService: UsersService,
-    private readonly rolService: RoleService,
+    private readonly rolService: RolService,
     private readonly jwtService: JwtService
   ) {}
 

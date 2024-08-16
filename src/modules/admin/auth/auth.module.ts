@@ -6,7 +6,7 @@ import { PassportModule } from '@nestjs/passport';
 import { JwtModule } from '@nestjs/jwt';
 import { ConfigModule, ConfigService } from '@nestjs/config';
 import { JwtStrategy } from './strategies/jwt.strategy';
-import { RoleModule } from '../role/role.module';
+import { RolModule } from '../rol/rol.module';
 
 @Module({
   controllers: [AuthController],
@@ -14,7 +14,7 @@ import { RoleModule } from '../role/role.module';
   imports: [
     ConfigModule,
     UsersModule,
-    RoleModule,
+    RolModule,
     PassportModule.register({ defaultStrategy: 'jwt' }),
     JwtModule.registerAsync({
       imports: [ConfigModule],
