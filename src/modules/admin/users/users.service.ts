@@ -377,7 +377,15 @@ export class UsersService {
   }
 
   async profile(user: UserInterface): Promise<UserInterface> {
-    return { ...user, rol: user.rol };
+    return {
+      id: user.id,
+      name: user.name,
+      email: user.email,
+      phone: user.phone,
+      lastLogin: user.lastLogin,
+      isActive: user.isActive,
+      rol: user.rol
+    };
   }
 
   generatePassword(): string {
