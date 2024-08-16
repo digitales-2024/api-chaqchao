@@ -4,6 +4,7 @@ import { PrismaService } from 'src/prisma/prisma.service';
 import { User } from '../users/interfaces/user.interface';
 import { handleException } from 'src/utils';
 import { ValidRols } from '../auth/interfaces';
+import { UpdateRolDto } from './dto/update-rol.dto';
 
 @Injectable()
 export class RolService {
@@ -68,18 +69,38 @@ export class RolService {
   }
 
   async findAll() {
-    return this.prisma.rol.findMany({
+    const rolsDB = await this.prisma.rol.findMany({
       where: {
-        isActive: true
+        isActive: true,
+        name: {
+          not: ValidRols.SUPER_ADMIN
+        }
+      },
+      select: {
+        id: true,
+        name: true,
+        description: true
       }
     });
+
+    if (!rolsDB) throw new BadRequestException('Rols not found');
+
+    return rolsDB;
   }
 
   async findById(id: string) {
     const rolDB = await this.prisma.rol.findUnique({
       where: {
         id,
-        isActive: true
+        isActive: true,
+        name: {
+          not: ValidRols.SUPER_ADMIN
+        }
+      },
+      select: {
+        id: true,
+        name: true,
+        description: true
       }
     });
 
@@ -90,7 +111,7 @@ export class RolService {
     return rolDB;
   }
 
-  async update(id: string, createRolDto: CreateRolDto, user: User) {
+  async update(id: string, updateRolDto: UpdateRolDto, user: User) {
     const rolDB = await this.findById(id);
 
     if (!rolDB) {
@@ -102,25 +123,27 @@ export class RolService {
         id
       },
       data: {
-        ...createRolDto,
+        ...updateRolDto,
         updatedBy: user.id
       }
     });
   }
 
   async remove(id: string) {
-    const rolDB = await this.findById(id);
+    await this.isRolSuperAdmin(id);
 
-    if (!rolDB) {
-      throw new BadRequestException('Rol not found');
-    }
+    await this.rolIsUsed(id);
 
-    return this.prisma.rol.update({
+    await this.findById(id);
+
+    return this.prisma.rol.delete({
       where: {
         id
       },
-      data: {
-        isActive: false
+      select: {
+        id: true,
+        name: true,
+        description: true
       }
     });
   }
@@ -151,7 +174,7 @@ export class RolService {
   }
 
   async isRolSuperAdmin(rolId: string): Promise<void> {
-    const userRolDB = await this.prisma.rol.findFirst({
+    const userRolDB = await this.prisma.rol.findUnique({
       where: {
         id: rolId
       },
@@ -162,7 +185,32 @@ export class RolService {
 
     if (!userRolDB) throw new BadRequestException('User rols not found');
 
-    if (userRolDB.name === ValidRols.SUPER_ADMIN)
+    if (userRolDB.name === ValidRols.SUPER_ADMIN) {
       throw new BadRequestException('User rol is superadmin');
+    }
+  }
+
+  async rolIsUsed(rolId: string) {
+    const userRolDB = await this.prisma.userRol.findFirst({
+      where: {
+        rolId,
+        isActive: true
+      }
+    });
+
+    if (userRolDB) {
+      throw new BadRequestException('Rol is used');
+    }
+  }
+
+  async isRolDesactive(rolId: string): Promise<boolean> {
+    const userRolDB = await this.prisma.rol.findFirst({
+      where: {
+        id: rolId,
+        isActive: false
+      }
+    });
+
+    return userRolDB ? true : false;
   }
 }
