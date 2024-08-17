@@ -14,13 +14,16 @@ import { RolService } from '../rol/rol.service';
 import { User } from '@prisma/client';
 import { generate } from 'generate-password';
 import { HttpsSucess } from 'src/interfaces';
+import { TypedEventEmitter } from 'src/event-emitter/typed-event-emitter.class';
+import { SendEmailDto } from './dto/send-email.dto';
 
 @Injectable()
 export class UsersService {
   private readonly logger = new Logger(UsersService.name);
   constructor(
     private readonly prisma: PrismaService,
-    private readonly rol: RolService
+    private readonly rol: RolService,
+    private readonly eventEmitter: TypedEventEmitter
   ) {}
 
   async create(createUserDto: CreateUserDto, user: UserInterface): Promise<UserInterface> {
@@ -386,6 +389,37 @@ export class UsersService {
       isActive: user.isActive,
       rol: user.rol
     };
+  }
+
+  async sendEmail(sendEmailDto: SendEmailDto): Promise<HttpsSucess> {
+    try {
+      const { email, name } = sendEmailDto;
+
+      const userDB = await this.findByEmail(email);
+
+      console.log(userDB);
+
+      if (userDB.mustChangePassword) {
+        const password = this.generatePassword();
+
+        await this.updatePassword(userDB.id, password);
+
+        this.eventEmitter.emit('user.welcome-admin-first', {
+          name: name.toUpperCase(),
+          email: email,
+          password: password
+        });
+      }
+
+      return {
+        statusCode: HttpStatus.OK,
+        message: 'Email sent',
+        data: email
+      };
+    } catch (error) {
+      this.logger.error(`Error sending email to: ${sendEmailDto.email}`, error.stack);
+      handleException(error, 'Error sending email');
+    }
   }
 
   generatePassword(): string {

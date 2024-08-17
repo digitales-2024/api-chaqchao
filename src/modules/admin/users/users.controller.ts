@@ -5,6 +5,7 @@ import { GetUser } from '../auth/decorators/get-user.decorator';
 import { User } from './interfaces/user.interface';
 import { Auth } from '../auth/decorators';
 import { UpdateUserDto } from './dto';
+import { SendEmailDto } from './dto/send-email.dto';
 
 @Controller({
   path: 'users',
@@ -42,5 +43,10 @@ export class UsersController {
   @Get('generate-password')
   generatePassword() {
     return this.usersService.generatePassword();
+  }
+
+  @Get('send-email')
+  sendEmail(@Body() sendEmailDto: SendEmailDto) {
+    return this.usersService.sendEmail(sendEmailDto);
   }
 }
