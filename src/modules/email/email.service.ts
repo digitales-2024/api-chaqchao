@@ -7,8 +7,8 @@ import { EventPayloads } from 'src/interfaces/event-types.interface';
 export class EmailService {
   constructor(private readonly mailerService: MailerService) {}
 
-  @OnEvent('user.welcome')
-  async welcomeEmail(data: EventPayloads['user.welcome']) {
+  @OnEvent('user.welcome-admin-first')
+  async welcomeEmail(data: EventPayloads['user.welcome-admin-first']) {
     const { name, email } = data;
     const subject = `Welcome to Company: ${name}`;
 
