@@ -391,31 +391,35 @@ export class UsersService {
     };
   }
 
-  async sendEmail(sendEmailDto: SendEmailDto): Promise<HttpsSucess> {
+  async sendEmail(sendEmailDto: SendEmailDto): Promise<{ statusCode: number; message: string }> {
     try {
-      const { email, name } = sendEmailDto;
+      const { email } = sendEmailDto;
 
       const userDB = await this.findByEmail(email);
-
-      console.log(userDB);
 
       if (userDB.mustChangePassword) {
         const password = this.generatePassword();
 
         await this.updatePassword(userDB.id, password);
 
-        this.eventEmitter.emit('user.welcome-admin-first', {
-          name: name.toUpperCase(),
+        const emailResponse = await this.eventEmitter.emitAsync('user.welcome-admin-first', {
+          name: userDB.name.toUpperCase(),
           email: email,
           password: password
         });
-      }
 
-      return {
-        statusCode: HttpStatus.OK,
-        message: 'Email sent',
-        data: email
-      };
+        if (emailResponse) {
+          return {
+            statusCode: HttpStatus.OK,
+            message: `Email sent successfully`
+          };
+        } else {
+          return {
+            statusCode: HttpStatus.BAD_REQUEST,
+            message: `Failed to send email`
+          };
+        }
+      }
     } catch (error) {
       this.logger.error(`Error sending email to: ${sendEmailDto.email}`, error.stack);
       handleException(error, 'Error sending email');
