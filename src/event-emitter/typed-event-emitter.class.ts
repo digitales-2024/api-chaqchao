@@ -9,4 +9,11 @@ export class TypedEventEmitter {
   emit<K extends keyof EventPayloads>(event: K, payload: EventPayloads[K]): boolean {
     return this.eventEmitter.emit(event, payload);
   }
+
+  emitAsync<K extends keyof EventPayloads>(
+    event: K,
+    payload: EventPayloads[K]
+  ): Promise<boolean[]> {
+    return this.eventEmitter.emitAsync(event, payload);
+  }
 }
