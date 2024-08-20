@@ -9,3 +9,7 @@ export type UserPayload = Pick<
 };
 
 export type UserData = Omit<UserPayload, 'isActive' | 'mustChangePassword' | 'lastLogin'>;
+
+export type UserDataLogin = Pick<UserPayload, 'id' | 'name' | 'email' | 'phone' | 'rol'> & {
+  token: string;
+};
