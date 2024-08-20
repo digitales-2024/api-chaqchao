@@ -4,7 +4,7 @@ import { JwtPayload } from '../interfaces/jwt-payload.interface';
 import { UsersService } from '../../users/users.service';
 import { ConfigService } from '@nestjs/config';
 import { Injectable, UnauthorizedException } from '@nestjs/common';
-import { User } from '../../users/interfaces/user.interface';
+import { UserData } from 'src/interfaces';
 
 @Injectable()
 export class JwtStrategy extends PassportStrategy(Strategy) {
@@ -18,14 +18,22 @@ export class JwtStrategy extends PassportStrategy(Strategy) {
     });
   }
 
-  async validate(payload: JwtPayload): Promise<User> {
-    const { id } = payload;
+  async validate(payload: JwtPayload): Promise<UserData> {
+    const { id: idPayload } = payload;
 
-    const user = await this.userService.findById(id);
+    const user = await this.userService.findById(idPayload);
 
     if (!user.isActive)
       throw new UnauthorizedException('User is not active, talk to the administrator');
 
-    return user;
+    const { id, name, email, phone, rol } = user;
+
+    return {
+      id,
+      name,
+      email,
+      phone,
+      rol
+    };
   }
 }
