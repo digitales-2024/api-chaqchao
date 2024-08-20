@@ -33,7 +33,7 @@ model User {
   updatedRols Rol[] @relation("UpdatedRols")
   createdUserRols UserRol[] @relation("CreatedUserRols")
   updatedUserRols UserRol[] @relation("UpdatedUserRols")
-  userRols UserRol[] @relation("UserId")
+  userRol UserRol? @relation("UserId")
 
   @@unique([email, isActive])
   
@@ -60,7 +60,7 @@ model Rol {
 model UserRol {
   id String @id @default(uuid()) @unique
   user User @relation("UserId", fields: [userId], references: [id])
-  userId String
+  userId String @unique
   rol Rol @relation("RolId",fields: [rolId], references: [id])
   rolId String
   isActive Boolean @default(true)
