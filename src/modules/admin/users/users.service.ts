@@ -161,6 +161,7 @@ export class UsersService {
         await prisma.user.update({
           where: { id },
           data: {
+            email: userDB.email,
             isActive: false,
             updatedAt: new Date(),
             updatedBy: user.id
@@ -408,7 +409,7 @@ export class UsersService {
           password: password
         });
 
-        if (emailResponse) {
+        if (emailResponse.every((response) => response === true)) {
           return {
             statusCode: HttpStatus.OK,
             message: `Email sent successfully`
