@@ -2,7 +2,7 @@ import { MailerService } from '@nestjs-modules/mailer';
 import { Injectable, Logger } from '@nestjs/common';
 import { OnEvent } from '@nestjs/event-emitter';
 import { EventPayloads } from 'src/interfaces/event-types.interface';
-import { getFirstWord, handleException } from 'src/utils';
+import { getFirstWord } from 'src/utils';
 
 const infoBusiness = {
   business: 'Chaqchao',
@@ -18,7 +18,9 @@ export class EmailService {
   constructor(private readonly mailerService: MailerService) {}
 
   @OnEvent('user.welcome-admin-first')
-  async welcomeEmail(data: EventPayloads['user.welcome-admin-first']): Promise<any> {
+  async welcomeEmail(
+    data: EventPayloads['user.welcome-admin-first']
+  ): Promise<{ success: boolean }> {
     const { name, email, password } = data;
     const subject = `Bienvenido a ${infoBusiness.business}: ${getFirstWord(name)}`;
 
@@ -39,15 +41,15 @@ export class EmailService {
         }
       });
 
-      // Verificar si el correo fue enviado correctamente
-      if (sendingEmail && sendingEmail.accepted.length > 0) {
-        this.logger.log(`Email sent successfully to ${email}`);
+      if (sendingEmail) {
+        return { success: true }; // Retorna un objeto indicando éxito
       } else {
-        this.logger.warn(`Email was not accepted by the server for ${email}`);
+        return { success: false }; // Retorna un objeto indicando fallo
       }
     } catch (error) {
       this.logger.error(error);
-      handleException(error, 'Error sending email');
+      // handleException(error, 'Error sending email');
+      return { success: false }; // Retorna un objeto indicando fallo
     }
   }
 }

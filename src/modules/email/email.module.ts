@@ -23,7 +23,7 @@ import { EjsAdapter } from '@nestjs-modules/mailer/dist/adapters/ejs.adapter';
           }
         },
         defaults: {
-          from: `"From Name" <${configService.get<string>('MAIL_USER')}>`
+          from: 'Chaqchao'
         },
         template: {
           dir: join(__dirname, 'templates'),
