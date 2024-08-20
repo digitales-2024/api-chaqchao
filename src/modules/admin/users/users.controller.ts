@@ -6,7 +6,9 @@ import { User } from './interfaces/user.interface';
 import { Auth } from '../auth/decorators';
 import { UpdateUserDto } from './dto';
 import { SendEmailDto } from './dto/send-email.dto';
+import { ApiTags } from '@nestjs/swagger';
 
+@ApiTags('Users')
 @Controller({
   path: 'users',
   version: '1'

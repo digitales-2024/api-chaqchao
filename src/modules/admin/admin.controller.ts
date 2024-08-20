@@ -3,7 +3,9 @@ import { Auth, GetUser } from './auth/decorators';
 import { AdminService } from './admin.service';
 import { User } from './users/interfaces/user.interface';
 import { UpdatePasswordDto } from './auth/dto/update-password.dto';
+import { ApiTags } from '@nestjs/swagger';
 
+@ApiTags('Admin')
 @Controller()
 @Auth()
 export class AdminController {

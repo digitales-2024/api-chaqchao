@@ -4,7 +4,9 @@ import { CreateRolDto } from './dto/create-rol.dto';
 import { Auth, GetUser } from '../auth/decorators';
 import { User } from '../users/interfaces/user.interface';
 import { UpdateRolDto } from './dto/update-rol.dto';
+import { ApiTags } from '@nestjs/swagger';
 
+@ApiTags('Rol')
 @Controller({ path: 'rol', version: '1' })
 @Auth()
 export class RolController {
