@@ -8,12 +8,12 @@ import {
 import { LoginAuthDto } from './dto';
 import { UsersService } from '../users/users.service';
 import * as bcrypt from 'bcrypt';
-import { User } from '../users/interfaces/user.interface';
 import { handleException } from 'src/utils';
 import { JwtPayload } from './interfaces/jwt-payload.interface';
 import { JwtService } from '@nestjs/jwt';
 import { UpdatePasswordDto } from './dto/update-password.dto';
 import { RolService } from '../rol/rol.service';
+import { UserDataLogin } from 'src/interfaces';
 
 @Injectable()
 export class AuthService {
@@ -25,34 +25,37 @@ export class AuthService {
     private readonly jwtService: JwtService
   ) {}
 
-  async login(loginAuthDto: LoginAuthDto): Promise<User> {
+  async login(loginAuthDto: LoginAuthDto): Promise<UserDataLogin> {
     try {
       const { email, password } = loginAuthDto;
 
       // Buscamos el usuario por email
-      const user = await this.userService.findByEmail(email);
+      const userDB = await this.userService.findByEmail(email);
+
+      if (!userDB) {
+        throw new NotFoundException('User not registered');
+      }
 
       // Comparamos la contraseña ingresada con la contraseña encriptada
-      if (!bcrypt.compareSync(password, user.password)) {
+      if (!bcrypt.compareSync(password, userDB.password)) {
         throw new UnauthorizedException('Password incorrect');
       }
 
-      // Obtenemos el rol del usuario
-      const rol = await this.getRol(user);
-
       // Actualizamos el ultimo login del usuario
-      await this.userService.updateLastLogin(user.id);
+      await this.userService.updateLastLogin(userDB.id);
 
       // Indicar que el usuario debe cambiar la contraseña si es la primera vez que inicia sesión
-      await this.validateUser(email, password);
+      if (userDB.mustChangePassword) {
+        throw new ForbiddenException('You must change your password');
+      }
 
       return {
-        id: user.id,
-        name: user.name,
-        email: user.email,
-        phone: user.phone,
-        token: this.getJwtToken({ id: user.id }),
-        rol: rol.id
+        id: userDB.id,
+        name: userDB.name,
+        email: userDB.email,
+        phone: userDB.phone,
+        rol: userDB.rol,
+        token: this.getJwtToken({ id: userDB.id })
       };
     } catch (error) {
       this.logger.error(`Error logging in for email: ${loginAuthDto.email}`, error.stack);
@@ -62,21 +65,29 @@ export class AuthService {
       if (error instanceof NotFoundException) {
         throw error;
       }
+      if (error instanceof ForbiddenException) {
+        throw error;
+      }
       handleException(error, 'Error logging in');
     }
   }
 
-  async updatePassword(updatePasswordDto: UpdatePasswordDto): Promise<User> {
+  /**
+   * Actualiza la contraseña temporal del usuario
+   * @param updatePasswordDto Datos para actualizar la contraseña
+   * @returns Datos del usuario logueado
+   */
+  async updatePasswordTemp(updatePasswordDto: UpdatePasswordDto): Promise<UserDataLogin> {
     try {
       const { email, password, newPassword, confirmPassword } = updatePasswordDto;
 
-      const user = await this.userService.findByEmail(email);
+      const userDB = await this.userService.findByEmail(email);
 
-      if (!user.mustChangePassword) {
+      if (!userDB.mustChangePassword) {
         throw new ForbiddenException('You do not need to change your password');
       }
 
-      const isPasswordMatching = await bcrypt.compare(password, user.password);
+      const isPasswordMatching = await bcrypt.compare(password, userDB.password);
 
       if (!isPasswordMatching) {
         throw new UnauthorizedException('Password current do not match');
@@ -90,19 +101,15 @@ export class AuthService {
         throw new ForbiddenException('Passwords do not match');
       }
 
-      await this.userService.updatePassword(user.id, newPassword);
-
-      await this.userService.updateMustChangePassword(user.id, false);
-
-      const rol = await this.getRol(user);
+      await this.userService.updatePasswordTemp(userDB.id, updatePasswordDto);
 
       return {
-        id: user.id,
-        name: user.name,
-        email: user.email,
-        phone: user.phone,
-        token: this.getJwtToken({ id: user.id }),
-        rol: rol.id
+        id: userDB.id,
+        name: userDB.name,
+        email: userDB.email,
+        phone: userDB.phone,
+        rol: userDB.rol,
+        token: this.getJwtToken({ id: userDB.id })
       };
     } catch (error) {
       this.logger.error('Error updating password', error.stack);
@@ -110,30 +117,13 @@ export class AuthService {
     }
   }
 
-  private async validateUser(email: string, pass: string): Promise<any> {
-    const user = await this.userService.findByEmail(email);
-    if (!user) {
-      throw new UnauthorizedException('Email do not match');
-    }
-
-    const isPasswordMatching = await bcrypt.compare(pass, user.password);
-    if (!isPasswordMatching) {
-      throw new UnauthorizedException('Password do not match');
-    }
-
-    if (user.mustChangePassword) {
-      throw new ForbiddenException('You must change your password');
-    }
-
-    return user;
-  }
-
+  /**
+   * Genera un token JWT
+   * @param payload Payload para generar el token
+   * @returns  Token generado
+   */
   private getJwtToken(payload: JwtPayload) {
     const token = this.jwtService.sign(payload);
     return token;
-  }
-
-  private getRol(user: User) {
-    return this.rolService.findUserRol(user.id);
   }
 }

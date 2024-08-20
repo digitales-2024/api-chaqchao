@@ -2,12 +2,15 @@ import { PartialType } from '@nestjs/mapped-types';
 import { CreateUserDto } from '../../users/dto';
 import { IsNotEmpty, IsString, Matches, MaxLength, MinLength } from 'class-validator';
 import { Transform } from 'class-transformer';
+import { ApiProperty } from '@nestjs/swagger';
 
 export class UpdatePasswordDto extends PartialType(CreateUserDto) {
+  @ApiProperty()
   @IsString()
   @IsNotEmpty()
   password: string;
 
+  @ApiProperty()
   @IsString()
   @IsNotEmpty()
   @MinLength(6)
@@ -19,6 +22,7 @@ export class UpdatePasswordDto extends PartialType(CreateUserDto) {
   @Transform(({ value }) => value.trim())
   newPassword: string;
 
+  @ApiProperty()
   @IsString()
   @IsNotEmpty()
   @MinLength(6)
