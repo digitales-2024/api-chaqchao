@@ -23,6 +23,7 @@ async function bootstrap() {
     .setTitle('Chaqchao API')
     .setDescription('API for Chaqchao')
     .setVersion('1.0')
+    .addBearerAuth()
     .build();
   const document = SwaggerModule.createDocument(app, config);
 
