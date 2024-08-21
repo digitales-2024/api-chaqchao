@@ -1,29 +1,38 @@
 import { BadRequestException, HttpStatus, Injectable } from '@nestjs/common';
-import { User } from './users/interfaces/user.interface';
 import { UpdatePasswordDto } from './auth/dto/update-password.dto';
 import { PrismaService } from 'src/prisma/prisma.service';
 import * as bcrypt from 'bcrypt';
+import { HttpResponse, UserData } from 'src/interfaces';
 
 @Injectable()
 export class AdminService {
   constructor(private readonly prismaService: PrismaService) {}
 
-  getProfile(user: User) {
+  /**
+   * Obtiene los datos del usuario logueado
+   * @param user Usuario logueado
+   * @returns Data del usuario logueado
+   */
+  getProfile(user: UserData): UserData {
     return {
       id: user.id,
       name: user.name,
       email: user.email,
       phone: user.phone,
-      lastLogin: user.lastLogin,
-      isActive: user.isActive,
       rol: user.rol
     };
   }
-
-  async updatePassword(updatePassword: UpdatePasswordDto, user: User) {
+  /**
+   * Actualizar la contraseña del usuario
+   * @param updatePassword Datos para actualizar la contraseña
+   * @param user Usuario que realiza la actualización
+   * @returns Datos de la actualización
+   */
+  async updatePassword(
+    updatePassword: UpdatePasswordDto,
+    user: UserData
+  ): Promise<HttpResponse<string>> {
     const { email } = user;
-
-    console.log(user);
 
     const { password, newPassword, confirmPassword } = updatePassword;
 
@@ -47,7 +56,7 @@ export class AdminService {
     }
 
     if (newPassword !== confirmPassword) {
-      throw new BadRequestException('Passwords do not match');
+      throw new BadRequestException('Password and confirm password do not match');
     }
 
     const hashedPassword = await bcrypt.hash(newPassword, 10);
@@ -63,7 +72,8 @@ export class AdminService {
 
     return {
       statusCode: HttpStatus.OK,
-      message: 'Password updated successfully'
+      message: 'Password updated successfully',
+      data: userDB.email
     };
   }
 }
