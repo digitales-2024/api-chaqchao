@@ -8,37 +8,67 @@ import {
 import { PrismaService } from 'src/prisma/prisma.service';
 import * as bcrypt from 'bcrypt';
 import { CreateUserDto, UpdateUserDto } from './dto';
-import { User as UserInterface } from './interfaces/user.interface';
 import { handleException } from 'src/utils';
 import { RolService } from '../rol/rol.service';
-import { User } from '@prisma/client';
 import { generate } from 'generate-password';
-import { HttpsSucess } from 'src/interfaces';
+import { HttpResponse, UserData, UserDataLogin, UserPayload } from 'src/interfaces';
 import { TypedEventEmitter } from 'src/event-emitter/typed-event-emitter.class';
 import { SendEmailDto } from './dto/send-email.dto';
+import { UpdatePasswordDto } from '../auth/dto/update-password.dto';
 
 @Injectable()
 export class UsersService {
   private readonly logger = new Logger(UsersService.name);
   constructor(
     private readonly prisma: PrismaService,
-    private readonly rol: RolService,
+    private readonly rolService: RolService,
     private readonly eventEmitter: TypedEventEmitter
   ) {}
 
-  async create(createUserDto: CreateUserDto, user: UserInterface): Promise<UserInterface> {
+  /**
+   * Crear un usuario en la base de datos
+   * @param createUserDto Data del usuario a crear
+   * @param user Usuario que crea el usuario
+   * @returns Objetos con los datos del usuario creado
+   */
+  async create(createUserDto: CreateUserDto, user: UserDataLogin): Promise<HttpResponse<UserData>> {
     try {
-      const [newUser, rol] = await this.prisma.$transaction(async (prisma) => {
+      const newUser = await this.prisma.$transaction(async (prisma) => {
         const { rol, email, password, ...dataUser } = createUserDto;
 
+        // Verificar que el rol exista y este activo
+        const rolExist = await this.rolService.findById(rol);
+
+        if (!rolExist) {
+          throw new BadRequestException('Rol not found or inactive');
+        }
+
         // Verificar que no se pueda crear un usuario con el rol superadmin
-        await this.rol.isRolSuperAdmin(rol);
+        const rolIsSuperAdmin = await this.rolService.isRolSuperAdmin(rol);
 
-        // Verificamos si el email ya existe
-        await this.checkEmailExists(email);
+        if (rolIsSuperAdmin) {
+          throw new BadRequestException('You cannot create a user with the superadmin role');
+        }
 
-        // Buscamos el rol
-        await this.rol.findById(rol);
+        // Verificamos si el email ya existe y este activo
+        const existEmail = await this.checkEmailExist(email);
+
+        if (existEmail) {
+          throw new BadRequestException('Email already exists');
+        }
+
+        // Verificamos si el email ya existe y esta inactivo
+        const inactiveEmail = await this.checkEmailInactive(email);
+
+        if (inactiveEmail) {
+          throw new BadRequestException({
+            statusCode: HttpStatus.CONFLICT,
+            message: 'Email already exists',
+            data: {
+              id: (await this.findByEmailInactive(email)).id
+            }
+          });
+        }
 
         // Encriptamos la contraseña
         const hashedPassword = await bcrypt.hash(password, 10);
@@ -70,14 +100,27 @@ export class UsersService {
           }
         });
 
-        return [newUser, rol];
+        return {
+          ...newUser,
+          rol: rolExist
+        };
       });
+      console.log(newUser);
 
-      if (!user) {
-        throw new BadRequestException('User not created');
-      }
-
-      return { ...newUser, rol };
+      return {
+        statusCode: HttpStatus.CREATED,
+        message: 'User created',
+        data: {
+          id: newUser.id,
+          name: newUser.name,
+          email: newUser.email,
+          phone: newUser.phone,
+          rol: {
+            id: newUser.rol.id,
+            name: newUser.rol.name
+          }
+        }
+      };
     } catch (error) {
       this.logger.error(`Error creating a user for email: ${createUserDto.email}`, error.stack);
       if (error instanceof BadRequestException) {
@@ -87,22 +130,59 @@ export class UsersService {
     }
   }
 
+  /**
+   * Actualizar un usuario en la base de datos
+   * @param updateUserDto Data del usuario a actualizar
+   * @param id Id del usuario a actualizar
+   * @param user Usuario que actualiza el usuario
+   * @returns Data del usuario actualizado
+   */
   async update(
     updateUserDto: UpdateUserDto,
     id: string,
-    user: UserInterface
-  ): Promise<UserInterface> {
+    user: UserDataLogin
+  ): Promise<HttpResponse<UserData>> {
     try {
-      const [userUpdate, rol] = await this.prisma.$transaction(async (prisma) => {
+      const userUpdate = await this.prisma.$transaction(async (prisma) => {
         const { rol, ...dataUser } = updateUserDto;
 
-        await this.findById(id);
+        // Verificar que el usuario exista
+        const userDB = await this.findById(id);
 
-        // Verificar que no se pueda actualizar un usuario con el rol superadmin
-        await this.rol.isRolSuperAdmin(rol);
+        if (!userDB) {
+          throw new NotFoundException('User not found or inactive');
+        }
 
-        // Buscamos el rol
-        await this.rol.findById(rol);
+        // Verificar que el rol exista y este activo
+        if (!!rol) {
+          const rolExist = await this.rolService.findById(rol);
+
+          if (!rolExist) {
+            throw new BadRequestException('Rol not found or inactive');
+          }
+          // Verificar que no se pueda actualizar un usuario con el rol superadmin
+          const rolIsSuperAdmin = await this.rolService.isRolSuperAdmin(rol);
+
+          if (rolIsSuperAdmin) {
+            throw new BadRequestException('You cannot update a user with the superadmin role');
+          }
+
+          // Creamos la asignacion de un rol a un usuario
+          await prisma.userRol.update({
+            where: {
+              userId_rolId_isActive: {
+                userId: id,
+                rolId: userDB.rol.id,
+                isActive: true
+              }
+            },
+            data: {
+              rolId: rol,
+              updatedBy: user.id,
+              updatedAt: new Date()
+            }
+          });
+        }
 
         // Creamos el usuario
         const updateUser = await prisma.user.update({
@@ -116,30 +196,34 @@ export class UsersService {
             id: true,
             name: true,
             email: true,
-            phone: true
-          }
-        });
-
-        // Creamos la asignacion de un rol a un usuario
-        await prisma.userRol.update({
-          where: {
-            userId_rolId_isActive: {
-              userId: id,
-              rolId: rol,
-              isActive: true
+            phone: true,
+            userRol: {
+              select: {
+                rol: {
+                  select: {
+                    id: true,
+                    name: true
+                  }
+                }
+              }
             }
-          },
-          data: {
-            rolId: rol,
-            updatedBy: user.id,
-            updatedAt: new Date()
           }
         });
 
-        return [updateUser, rol];
+        return updateUser;
       });
 
-      return { ...userUpdate, rol };
+      return {
+        statusCode: HttpStatus.OK,
+        message: 'User updated successfully',
+        data: {
+          id: userUpdate.id,
+          name: userUpdate.name,
+          email: userUpdate.email,
+          phone: userUpdate.phone,
+          rol: userUpdate.userRol.rol
+        }
+      };
     } catch (error) {
       this.logger.error(`Error updating a user for id: ${id}`, error.stack);
       if (error instanceof BadRequestException) {
@@ -149,7 +233,13 @@ export class UsersService {
     }
   }
 
-  async remove(user: UserInterface, id: string): Promise<HttpsSucess> {
+  /**
+   * Eliminar un usuario en la base de datos
+   * @param id Id del usuario a eliminar
+   * @param user Usuario que elimina el usuario
+   * @returns  Datos del usuario eliminado
+   */
+  async remove(id: string, user: UserDataLogin): Promise<HttpResponse<UserData>> {
     try {
       const userRemove = await this.prisma.$transaction(async (prisma) => {
         const userDB = await this.findById(id);
@@ -158,10 +248,15 @@ export class UsersService {
           throw new BadRequestException('You cannot delete yourself');
         }
 
+        const isSuperAdmin = await this.rolService.isRolSuperAdmin(userDB.rol.id);
+
+        if (isSuperAdmin) {
+          throw new BadRequestException('You cannot delete a superadmin user');
+        }
+
         await prisma.user.update({
           where: { id },
           data: {
-            email: userDB.email,
             isActive: false,
             updatedAt: new Date(),
             updatedBy: user.id
@@ -189,13 +284,19 @@ export class UsersService {
           }
         });
 
-        return userDB;
+        return {
+          id: userDB.id,
+          name: userDB.name,
+          email: userDB.email,
+          phone: userDB.phone,
+          rol: userDB.rol
+        };
       });
 
       return {
         statusCode: HttpStatus.OK,
         message: 'User deleted',
-        data: userRemove.email
+        data: userRemove
       };
     } catch (error) {
       this.logger.error(`Error deleting a user for id: ${id}`, error.stack);
@@ -203,75 +304,99 @@ export class UsersService {
     }
   }
 
-  async updateLastLogin(id: string): Promise<void> {
-    await this.prisma.user.update({
-      where: { id },
-      data: {
-        lastLogin: new Date()
-      }
-    });
-  }
-
-  async findByEmail(email: string): Promise<User> {
-    const clientDB = await this.prisma.user.findUnique({
-      where: {
-        email_isActive: {
-          email,
-          isActive: true
-        }
-      }
-    });
-
-    if (!clientDB) {
-      throw new NotFoundException('Email not found');
-    }
-
-    return clientDB;
-  }
-
-  async checkEmailExists(email: string): Promise<void> {
-    const clientDB = await this.prisma.user.findUnique({
-      where: {
-        email_isActive: {
-          email,
-          isActive: true
-        }
-      }
-    });
-
-    if (clientDB) {
-      throw new BadRequestException('Email already exists');
-    }
-
-    if (clientDB?.isActive === false) {
-      throw new BadRequestException('Email already exists but is inactive');
-    }
-  }
-
-  async findById(id: string): Promise<UserInterface> {
-    const clientDB = await this.prisma.user.findUnique({
-      where: { id, isActive: true },
-      select: {
-        id: true,
-        name: true,
-        email: true,
-        phone: true,
-        lastLogin: true,
-        isActive: true,
-        userRols: {
+  /**
+   * Reactivar un usuario en la base de datos
+   * @param id Id del usuario a reactivar
+   * @param user Usuario que reactiva el usuario
+   * @returns Retorna un objeto con los datos del usuario reactivado
+   */
+  async reactivate(id: string, user: UserDataLogin): Promise<HttpResponse<UserData>> {
+    try {
+      const userReactivate = await this.prisma.$transaction(async (prisma) => {
+        const userDB = await prisma.user.findUnique({
+          where: { id },
           select: {
-            rolId: true
+            id: true,
+            name: true,
+            email: true,
+            phone: true,
+            isActive: true,
+            userRol: {
+              select: {
+                rol: {
+                  select: {
+                    id: true,
+                    name: true
+                  }
+                }
+              }
+            }
           }
+        });
+
+        if (!userDB) {
+          throw new NotFoundException('User not found');
         }
-      }
-    });
-    if (!clientDB) {
-      throw new NotFoundException('User not found');
+
+        if (userDB.isActive) {
+          throw new BadRequestException('User is already active');
+        }
+
+        await prisma.user.update({
+          where: { id },
+          data: {
+            isActive: true,
+            updatedAt: new Date(),
+            updatedBy: user.id
+          }
+        });
+
+        const userRolDB = await prisma.userRol.findFirst({
+          where: {
+            userId: id
+          }
+        });
+
+        if (!userRolDB) {
+          throw new NotFoundException('User rol not found');
+        }
+
+        await prisma.userRol.update({
+          where: {
+            id: userRolDB.id
+          },
+          data: {
+            isActive: true,
+            updatedAt: new Date(),
+            updatedBy: user.id
+          }
+        });
+
+        return {
+          id: userDB.id,
+          name: userDB.name,
+          email: userDB.email,
+          phone: userDB.phone,
+          rol: userDB.userRol.rol
+        };
+      });
+
+      return {
+        statusCode: HttpStatus.OK,
+        message: 'User reactivated',
+        data: userReactivate
+      };
+    } catch (error) {
+      this.logger.error(`Error reactivating a user for id: ${id}`, error.stack);
+      handleException(error, 'Error reactivating a user');
     }
-    return { ...clientDB, rol: clientDB.userRols[0].rolId };
   }
 
-  async findAll(): Promise<UserInterface[]> {
+  /**
+   * Buscar todos los usuarios activos en la base de datos
+   * @returns Retorna un array con los datos de los usuarios
+   */
+  async findAll(): Promise<UserData[]> {
     const usersDB = await this.prisma.user.findMany({
       where: {
         isActive: true
@@ -283,11 +408,19 @@ export class UsersService {
         phone: true,
         lastLogin: true,
         isActive: true,
-        userRols: {
+        userRol: {
           select: {
-            rolId: true
+            rol: {
+              select: {
+                id: true,
+                name: true
+              }
+            }
           }
         }
+      },
+      orderBy: {
+        createdAt: 'desc'
       }
     });
 
@@ -297,127 +430,74 @@ export class UsersService {
         name: user.name,
         email: user.email,
         phone: user.phone,
-        lastLogin: user.lastLogin,
-        isActive: user.isActive,
-        rol: user.userRols[0].rolId
+        rol: user.userRol.rol
       };
     });
   }
 
-  async findUserRols(userId: string) {
-    const userRolDB = await this.prisma.userRol.findMany({
-      where: {
-        userId
-      },
-      select: {
-        rol: {
-          select: {
-            name: true
-          }
-        }
-      }
-    });
+  /**
+   * Buscar un usuario por su id
+   * @param id Id del usuario
+   * @returns Retorna un objeto con los datos del usuario
+   */
+  async findOne(id: string): Promise<UserData> {
+    const userDB = await this.findById(id);
 
-    if (!userRolDB) {
-      throw new BadRequestException('User rols not found');
-    }
-
-    return userRolDB;
-  }
-
-  async createUserRol(userId: string, rolId: string, user: UserInterface) {
-    const userRolDB = await this.prisma.userRol.create({
-      data: {
-        userId,
-        rolId,
-        createdBy: user.id,
-        updatedBy: user.id
-      }
-    });
-
-    if (!userRolDB) {
-      throw new BadRequestException('User rols not created');
-    }
-
-    return userRolDB;
-  }
-
-  async updatePassword(userId: string, password: string): Promise<void> {
-    try {
-      const user = await this.prisma.user.findUnique({
-        where: { id: userId }
-      });
-
-      if (!user) {
-        throw new NotFoundException('User not found');
-      }
-
-      const newPassword = bcrypt.hashSync(password, 10);
-
-      await this.prisma.user.update({
-        where: { id: userId },
-        data: {
-          password: newPassword
-        }
-      });
-    } catch (error) {
-      this.logger.error(`Error updating password for user: ${userId}`, error.stack);
-      handleException(error, 'Error updating password');
-    }
-  }
-
-  async updateMustChangePassword(userId: string, mustChangePassword: boolean): Promise<void> {
-    try {
-      await this.prisma.user.update({
-        where: { id: userId },
-        data: {
-          mustChangePassword
-        }
-      });
-    } catch (error) {
-      this.logger.error(`Error updating must change password for user: ${userId}`, error.stack);
-      handleException(error, 'Error updating must change password');
-    }
-  }
-
-  async profile(user: UserInterface): Promise<UserInterface> {
     return {
-      id: user.id,
-      name: user.name,
-      email: user.email,
-      phone: user.phone,
-      lastLogin: user.lastLogin,
-      isActive: user.isActive,
-      rol: user.rol
+      id: userDB.id,
+      name: userDB.name,
+      email: userDB.email,
+      phone: userDB.phone,
+      rol: userDB.rol
     };
   }
 
-  async sendEmail(sendEmailDto: SendEmailDto): Promise<{ statusCode: number; message: string }> {
+  /**
+   * Genera una contraseña aleatoria
+   * @returns Contraseña aleatoria
+   */
+  generatePassword(): HttpResponse<string> {
+    const password = generate({
+      length: 10,
+      numbers: true
+    });
+
+    return {
+      statusCode: HttpStatus.OK,
+      message: 'Password generated',
+      data: password
+    };
+  }
+
+  /**
+   * Enviar un email al usuario con la contraseña temporal
+   * @param sendEmailDto Data para enviar el email
+   * @returns Estado del envio del email
+   */
+  async sendEmail(sendEmailDto: SendEmailDto): Promise<HttpResponse<string>> {
     try {
-      const { email } = sendEmailDto;
+      const { email, password } = sendEmailDto;
 
       const userDB = await this.findByEmail(email);
 
       if (userDB.mustChangePassword) {
-        const password = this.generatePassword();
-
-        await this.updatePassword(userDB.id, password);
-
         const emailResponse = await this.eventEmitter.emitAsync('user.welcome-admin-first', {
           name: userDB.name.toUpperCase(),
-          email: email,
-          password: password
+          email,
+          password
         });
 
         if (emailResponse.every((response) => response === true)) {
           return {
             statusCode: HttpStatus.OK,
-            message: `Email sent successfully`
+            message: `Email sent successfully`,
+            data: sendEmailDto.email
           };
         } else {
           return {
             statusCode: HttpStatus.BAD_REQUEST,
-            message: `Failed to send email`
+            message: `Failed to send email`,
+            data: sendEmailDto.email
           };
         }
       }
@@ -427,12 +507,222 @@ export class UsersService {
     }
   }
 
-  generatePassword(): string {
-    const password = generate({
-      length: 10,
-      numbers: true
+  /**
+   * Buscar un usuario por su email
+   * @param email Email del usuario
+   * @returns Retorna un objeto con los datos del usuario
+   */
+  async findByEmail(email: string): Promise<
+    UserData & {
+      password: string;
+      mustChangePassword: boolean;
+    }
+  > {
+    const clientDB = await this.prisma.user.findUnique({
+      where: {
+        email_isActive: {
+          email,
+          isActive: true
+        }
+      },
+      select: {
+        id: true,
+        name: true,
+        email: true,
+        phone: true,
+        password: true,
+        mustChangePassword: true,
+        userRol: {
+          select: {
+            rol: {
+              select: {
+                id: true,
+                name: true
+              }
+            }
+          }
+        }
+      }
     });
 
-    return password;
+    if (!clientDB) {
+      throw new NotFoundException('User not found');
+    }
+
+    return {
+      id: clientDB.id,
+      name: clientDB.name,
+      email: clientDB.email,
+      phone: clientDB.phone,
+      password: clientDB.password,
+      mustChangePassword: clientDB.mustChangePassword,
+      rol: clientDB.userRol.rol
+    };
+  }
+
+  /**
+   * Verifica si el email ya existe en la base de datos
+   * @param email Email del usuario
+   * @return Retorna si el email ya existe o no
+   */
+  async checkEmailExist(email: string): Promise<boolean> {
+    const clientDB = await this.prisma.user.findUnique({
+      where: {
+        email_isActive: {
+          email,
+          isActive: true
+        }
+      }
+    });
+
+    return !!clientDB;
+  }
+
+  /**
+   * Verifica si el email esta inactivo en la base de datos
+   * @param email Email del usuario
+   * @returns Retorna si el email esta inactivo o no
+   */
+  async checkEmailInactive(email: string): Promise<boolean> {
+    const clientDB = await this.prisma.user.findUnique({
+      where: {
+        email_isActive: {
+          email,
+          isActive: false
+        }
+      }
+    });
+
+    return !!clientDB;
+  }
+
+  /**
+   * Busca un usuario inactivo por su email
+   * @param email Email del usuario a buscar
+   * @returns Datos del usuario encontrado
+   */
+  async findByEmailInactive(email: string): Promise<UserData> {
+    const clientDB = await this.prisma.user.findUnique({
+      where: {
+        email_isActive: {
+          email,
+          isActive: false
+        }
+      },
+      select: {
+        id: true,
+        name: true,
+        email: true,
+        phone: true,
+        userRol: {
+          select: {
+            rol: {
+              select: {
+                id: true,
+                name: true
+              }
+            }
+          }
+        }
+      }
+    });
+
+    if (!clientDB) {
+      throw new NotFoundException('User not found');
+    }
+
+    return {
+      id: clientDB.id,
+      name: clientDB.name,
+      email: clientDB.email,
+      phone: clientDB.phone,
+      rol: clientDB.userRol.rol
+    };
+  }
+
+  /**
+   * Busca un usuario por su id y retorna un objeto con los datos del usuario
+   * @param id Es el id del usuario
+   * @returns  Retorna un objeto con los datos del usuario
+   */
+  async findById(id: string): Promise<UserPayload> {
+    try {
+      const clientDB = await this.prisma.user.findUnique({
+        where: { id, isActive: true },
+        select: {
+          id: true,
+          name: true,
+          email: true,
+          phone: true,
+          lastLogin: true,
+          isActive: true,
+          mustChangePassword: true,
+          userRol: {
+            select: {
+              rol: {
+                select: {
+                  id: true,
+                  name: true
+                }
+              }
+            }
+          }
+        }
+      });
+
+      if (!clientDB) {
+        throw new NotFoundException('User not found');
+      }
+      return {
+        id: clientDB.id,
+        name: clientDB.name,
+        email: clientDB.email,
+        phone: clientDB.phone,
+        isActive: clientDB.isActive,
+        lastLogin: clientDB.lastLogin,
+        mustChangePassword: clientDB.mustChangePassword,
+        rol: clientDB.userRol.rol
+      };
+    } catch (error) {
+      this.logger.error(`Error finding user for id: ${id}`, error.stack);
+      handleException(error, 'Error finding user');
+    }
+  }
+
+  /**
+   * Actualiza la fecha de ultimo login del usuario
+   * @param id Id del usuario a actualizar la fecha de ultimo login
+   */
+  async updateLastLogin(id: string): Promise<void> {
+    await this.prisma.user.update({
+      where: { id },
+      data: {
+        lastLogin: new Date()
+      }
+    });
+  }
+
+  /**
+   * Actualiza la contraseña temporal del usuario
+   * @param userId Id del usuario a actualizar la contraseña
+   * @param updatePasswordDto Datos para actualizar la contraseña
+   */
+  async updatePasswordTemp(userId: string, updatePasswordDto: UpdatePasswordDto): Promise<boolean> {
+    try {
+      const hashingPassword = bcrypt.hashSync(updatePasswordDto.newPassword, 10);
+
+      const userUpdate = await this.prisma.user.update({
+        where: { id: userId },
+        data: {
+          password: hashingPassword,
+          mustChangePassword: false
+        }
+      });
+
+      return !!userUpdate;
+    } catch (error) {
+      this.logger.error(`Error updating password for user: ${userId}`, error.stack);
+      handleException(error, 'Error updating password');
+    }
   }
 }
