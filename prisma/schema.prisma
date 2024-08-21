@@ -16,17 +16,60 @@ datasource db {
 model User {
   id String @id @default(uuid()) @unique
   name String
-  email String @unique
+  email String
   password String
   phone String?
-  lastLogin DateTime
+  lastLogin DateTime @default(now()) @db.Timestamptz(6)
   isActive Boolean @default(true)
   createdUser User? @relation("CreatedUsers", fields: [createdBy], references: [id])
   createdBy String?
   updatedUser User? @relation("UpdatedUsers", fields: [updatedBy], references: [id])
   updatedBy String?
-  createdAt DateTime @default(now())
+  createdAt DateTime @default(now()) @db.Timestamptz(6)
   updatedAt DateTime @updatedAt
   createdUsers User[] @relation("CreatedUsers")
   updatedUsers User[] @relation("UpdatedUsers")
+  createdRols Rol[] @relation("CreatedRols")
+  updatedRols Rol[] @relation("UpdatedRols")
+  createdUserRols UserRol[] @relation("CreatedUserRols")
+  updatedUserRols UserRol[] @relation("UpdatedUserRols")
+  userRol UserRol? @relation("UserId")
+
+  @@unique([email, isActive])
+  
+  mustChangePassword Boolean  @default(true)
+}
+
+model Rol {
+  id String @id @default(uuid()) @unique
+  name String
+  description String?
+  isActive Boolean @default(true)
+  createdRol User? @relation("CreatedRols", fields: [createdBy], references: [id])
+  createdBy String?
+  updatedRol User? @relation("UpdatedRols", fields: [updatedBy], references: [id])
+  updatedBy String?
+  createdAt DateTime @default(now()) @db.Timestamptz(6)
+  updatedAt DateTime @updatedAt
+
+  rolUsers UserRol[] @relation("RolId")
+
+  @@unique([name, isActive])
+}
+
+model UserRol {
+  id String @id @default(uuid()) @unique
+  user User @relation("UserId", fields: [userId], references: [id])
+  userId String @unique
+  rol Rol @relation("RolId",fields: [rolId], references: [id])
+  rolId String
+  isActive Boolean @default(true)
+  createdUser User? @relation("CreatedUserRols", fields: [createdBy], references: [id])
+  createdBy String?
+  updatedUser User? @relation("UpdatedUserRols", fields: [updatedBy], references: [id])
+  updatedBy String?
+  createdAt DateTime @default(now()) @db.Timestamptz(6)
+  updatedAt DateTime @updatedAt
+
+  @@unique([userId, rolId, isActive])
 }
