@@ -18,9 +18,7 @@ export class EmailService {
   constructor(private readonly mailerService: MailerService) {}
 
   @OnEvent('user.welcome-admin-first')
-  async welcomeEmail(
-    data: EventPayloads['user.welcome-admin-first']
-  ): Promise<{ success: boolean }> {
+  async welcomeEmail(data: EventPayloads['user.welcome-admin-first']): Promise<boolean> {
     const { name, email, password } = data;
     const subject = `Bienvenido a ${infoBusiness.business}: ${getFirstWord(name)}`;
 
@@ -42,14 +40,13 @@ export class EmailService {
       });
 
       if (sendingEmail) {
-        return { success: true }; // Retorna un objeto indicando éxito
+        return true; // Retorna true indicando éxito
       } else {
-        return { success: false }; // Retorna un objeto indicando fallo
+        return false; // Retorna false indicando fallo
       }
     } catch (error) {
       this.logger.error(error);
-      // handleException(error, 'Error sending email');
-      return { success: false }; // Retorna un objeto indicando fallo
+      return false; // Retorna false indicando fallo
     }
   }
 }
