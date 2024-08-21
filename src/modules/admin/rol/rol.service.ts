@@ -222,10 +222,6 @@ export class RolService {
         }
       });
 
-      if (!rolDB) {
-        throw new BadRequestException('Rol not found');
-      }
-
       return rolDB;
     } catch (error) {
       this.logger.error(`Error getting a rol for id: ${id}`, error.stack);
