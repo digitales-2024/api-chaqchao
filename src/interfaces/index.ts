@@ -1,4 +1,3 @@
-export { HttpsSucess } from './https-sucess.interface';
 export { EventPayloads } from './event-types.interface';
 export { UserPayload, UserData, UserDataLogin } from './user.type';
 export { Rol } from './rol.type';
