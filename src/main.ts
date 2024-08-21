@@ -29,9 +29,9 @@ async function bootstrap() {
 
   document.tags = [
     { name: 'Auth', description: 'Operations about authentication' },
+    { name: 'Admin', description: 'Operations about admin' },
     { name: 'Users', description: 'Operations about users' },
     { name: 'Rol', description: 'Operations about roles' },
-    { name: 'Admin', description: 'Operations about admin' },
     { name: 'Products', description: 'Operations about products' },
     { name: 'Orders', description: 'Operations about orders' }
   ];
