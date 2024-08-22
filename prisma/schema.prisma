@@ -21,12 +21,14 @@ model User {
   phone String?
   lastLogin DateTime @default(now()) @db.Timestamptz(6)
   isActive Boolean @default(true)
+  mustChangePassword Boolean  @default(true)
   createdUser User? @relation("CreatedUsers", fields: [createdBy], references: [id])
   createdBy String?
   updatedUser User? @relation("UpdatedUsers", fields: [updatedBy], references: [id])
   updatedBy String?
   createdAt DateTime @default(now()) @db.Timestamptz(6)
   updatedAt DateTime @updatedAt
+
   createdUsers User[] @relation("CreatedUsers")
   updatedUsers User[] @relation("UpdatedUsers")
   createdRols Rol[] @relation("CreatedRols")
@@ -37,7 +39,6 @@ model User {
 
   @@unique([email, isActive])
   
-  mustChangePassword Boolean  @default(true)
 }
 
 model Rol {
@@ -53,6 +54,7 @@ model Rol {
   updatedAt DateTime @updatedAt
 
   rolUsers UserRol[] @relation("RolId")
+  rolPermissions Module_Permissions[] @relation("RolId")
 
   @@unique([name, isActive])
 }
@@ -72,4 +74,39 @@ model UserRol {
   updatedAt DateTime @updatedAt
 
   @@unique([userId, rolId, isActive])
+}
+
+model Permission{
+  id String @id @default(uuid()) @unique
+  name String @unique
+  description String?
+  createdAt DateTime @default(now()) @db.Timestamptz(6)
+  updatedAt DateTime @updatedAt
+
+  permissionModule Module_Permissions[] @relation("PermissionId")
+
+}
+
+model Module{
+  id String @id @default(uuid()) @unique
+  name String @unique
+  description String?
+  createdAt DateTime @default(now()) @db.Timestamptz(6)
+  updatedAt DateTime @updatedAt
+
+  modulePermissions Module_Permissions[] @relation("ModuleId")
+}
+
+model Module_Permissions{
+  id String @id @default(uuid()) @unique
+  module Module @relation("ModuleId", fields: [moduleId], references: [id])
+  moduleId String
+  permission Permission @relation("PermissionId", fields: [permissionId], references: [id])
+  permissionId String
+  rol Rol @relation("RolId", fields: [rolId], references: [id])
+  rolId String
+  createdAt DateTime @default(now()) @db.Timestamptz(6)
+  updatedAt DateTime @updatedAt
+
+  @@unique([moduleId, permissionId])
 }
