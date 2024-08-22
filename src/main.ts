@@ -32,6 +32,8 @@ async function bootstrap() {
     { name: 'Admin', description: 'Operations about admin' },
     { name: 'Users', description: 'Operations about users' },
     { name: 'Rol', description: 'Operations about roles' },
+    { name: 'Modules', description: 'Operations about modules' },
+    { name: 'Permissions', description: 'Operations about permissions' },
     { name: 'Products', description: 'Operations about products' },
     { name: 'Orders', description: 'Operations about orders' },
     { name: 'Audit', description: 'Operations about audit' }
