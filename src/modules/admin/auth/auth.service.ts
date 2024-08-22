@@ -54,7 +54,7 @@ export class AuthService {
         name: userDB.name,
         email: userDB.email,
         phone: userDB.phone,
-        rol: userDB.rol,
+        roles: userDB.roles,
         token: this.getJwtToken({ id: userDB.id })
       };
     } catch (error) {
@@ -108,7 +108,7 @@ export class AuthService {
         name: userDB.name,
         email: userDB.email,
         phone: userDB.phone,
-        rol: userDB.rol,
+        roles: userDB.roles,
         token: this.getJwtToken({ id: userDB.id })
       };
     } catch (error) {

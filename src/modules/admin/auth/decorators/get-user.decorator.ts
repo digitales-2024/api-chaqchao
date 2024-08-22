@@ -16,6 +16,6 @@ export const GetUser = createParamDecorator((data, ctx: ExecutionContext): UserD
     name: user.name,
     email: user.email,
     phone: user.phone,
-    rol: user.rol
+    roles: user.roles
   };
 });

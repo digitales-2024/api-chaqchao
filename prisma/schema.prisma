@@ -22,12 +22,15 @@ model User {
   lastLogin DateTime @default(now()) @db.Timestamptz(6)
   isActive Boolean @default(true)
   mustChangePassword Boolean  @default(true)
+  createdAt DateTime @default(now()) @db.Timestamptz(6)
+  updatedAt DateTime @updatedAt
+  
   createdUser User? @relation("CreatedUsers", fields: [createdBy], references: [id])
   createdBy String?
   updatedUser User? @relation("UpdatedUsers", fields: [updatedBy], references: [id])
   updatedBy String?
-  createdAt DateTime @default(now()) @db.Timestamptz(6)
-  updatedAt DateTime @updatedAt
+  
+  userRols UserRol[] @relation("UserId")
 
   createdUsers User[] @relation("CreatedUsers")
   updatedUsers User[] @relation("UpdatedUsers")
@@ -35,7 +38,7 @@ model User {
   updatedRols Rol[] @relation("UpdatedRols")
   createdUserRols UserRol[] @relation("CreatedUserRols")
   updatedUserRols UserRol[] @relation("UpdatedUserRols")
-  userRol UserRol? @relation("UserId")
+
 
   @@unique([email, isActive])
   
