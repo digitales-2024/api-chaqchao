@@ -21,12 +21,14 @@ model User {
   phone String?
   lastLogin DateTime @default(now()) @db.Timestamptz(6)
   isActive Boolean @default(true)
+  mustChangePassword Boolean  @default(true)
   createdUser User? @relation("CreatedUsers", fields: [createdBy], references: [id])
   createdBy String?
   updatedUser User? @relation("UpdatedUsers", fields: [updatedBy], references: [id])
   updatedBy String?
   createdAt DateTime @default(now()) @db.Timestamptz(6)
   updatedAt DateTime @updatedAt
+
   createdUsers User[] @relation("CreatedUsers")
   updatedUsers User[] @relation("UpdatedUsers")
   createdRols Rol[] @relation("CreatedRols")
@@ -34,10 +36,15 @@ model User {
   createdUserRols UserRol[] @relation("CreatedUserRols")
   updatedUserRols UserRol[] @relation("UpdatedUserRols")
   userRol UserRol? @relation("UserId")
+  createdPermissions Permission[] @relation("CreatedPermissions")
+  updatedPermissions Permission[] @relation("UpdatedPermissions")
+  createdModules Module[] @relation("CreatedModules")
+  updatedModules Module[] @relation("UpdatedModules")
+  createdModulePermissions Module_Permissions[] @relation("CreatedModulePermissions")
+  updatedModulePermissions Module_Permissions[] @relation("UpdatedModulePermissions")
 
   @@unique([email, isActive])
   
-  mustChangePassword Boolean  @default(true)
 }
 
 model Rol {
@@ -53,6 +60,7 @@ model Rol {
   updatedAt DateTime @updatedAt
 
   rolUsers UserRol[] @relation("RolId")
+  rolPermissions Module_Permissions[] @relation("RolId")
 
   @@unique([name, isActive])
 }
@@ -72,4 +80,52 @@ model UserRol {
   updatedAt DateTime @updatedAt
 
   @@unique([userId, rolId, isActive])
+}
+
+model Permission{
+  id String @id @default(uuid()) @unique
+  name String @unique
+  description String?
+  createdPermission User? @relation("CreatedPermissions", fields: [createdBy], references: [id])
+  createdBy String?
+  updatedPermission User? @relation("UpdatedPermissions", fields: [updatedBy], references: [id])
+  updatedBy String?
+  createdAt DateTime @default(now()) @db.Timestamptz(6)
+  updatedAt DateTime @updatedAt
+
+  permissionModule Module_Permissions[] @relation("PermissionId")
+
+}
+
+model Module{
+  id String @id @default(uuid()) @unique
+  name String @unique
+  description String?
+  createdModule User? @relation("CreatedModules", fields: [createdBy], references: [id])
+  createdBy String?
+  updatedModule User? @relation("UpdatedModules", fields: [updatedBy], references: [id])
+  updatedBy String?
+  createdAt DateTime @default(now()) @db.Timestamptz(6)
+  updatedAt DateTime @updatedAt
+
+  modulePermissions Module_Permissions[] @relation("ModuleId")
+}
+
+model Module_Permissions{
+  id String @id @default(uuid()) @unique
+  module Module @relation("ModuleId", fields: [moduleId], references: [id])
+  moduleId String
+  permission Permission @relation("PermissionId", fields: [permissionId], references: [id])
+  permissionId String
+  rol Rol @relation("RolId", fields: [rolId], references: [id])
+  rolId String
+
+  createdModulePermission User? @relation("CreatedModulePermissions", fields: [createdBy], references: [id])
+  createdBy String?
+  updatedModulePermission User? @relation("UpdatedModulePermissions", fields: [updatedBy], references: [id])
+  updatedBy String?
+  createdAt DateTime @default(now()) @db.Timestamptz(6)
+  updatedAt DateTime @updatedAt
+
+  @@unique([moduleId, permissionId])
 }
