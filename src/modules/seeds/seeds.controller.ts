@@ -14,4 +14,14 @@ export class SeedsController {
   initDataBase() {
     return this.seedsService.generateSuperAdmin();
   }
+
+  @Post('modules')
+  initModules() {
+    return this.seedsService.generateModules();
+  }
+
+  @Post('permissions')
+  initPermissions() {
+    return this.seedsService.generatePermissions();
+  }
 }
