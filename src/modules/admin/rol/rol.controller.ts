@@ -50,8 +50,8 @@ export class RolController {
   @ApiBadRequestResponse({ description: 'Rol no found' })
   @ApiOkResponse({ description: 'Rol deleted' })
   @Delete(':id')
-  remove(@Param('id') id: string): Promise<HttpResponse<Rol>> {
-    return this.rolService.remove(id);
+  remove(@Param('id') id: string, @GetUser() user: UserData): Promise<HttpResponse<Rol>> {
+    return this.rolService.remove(id, user);
   }
 
   @ApiBadRequestResponse({ description: 'Rols no found' })
@@ -64,7 +64,7 @@ export class RolController {
   @ApiBadRequestResponse({ description: 'Rol no found' })
   @ApiOkResponse({ description: 'Rol found' })
   @Get(':id')
-  findById(@Param('id') id: string): Promise<Rol> {
+  findOne(@Param('id') id: string): Promise<Rol> {
     return this.rolService.findById(id);
   }
 }
