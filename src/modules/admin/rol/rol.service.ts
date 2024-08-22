@@ -5,11 +5,16 @@ import { handleException, NoDataUpdate } from 'src/utils';
 import { ValidRols } from '../auth/interfaces';
 import { UpdateRolDto } from './dto/update-rol.dto';
 import { HttpResponse, Rol, UserData } from 'src/interfaces';
+import { AuditActionType } from '@prisma/client';
+import { AuditService } from '../audit/audit.service';
 
 @Injectable()
 export class RolService {
   private readonly logger = new Logger(RolService.name);
-  constructor(private readonly prisma: PrismaService) {}
+  constructor(
+    private readonly prisma: PrismaService,
+    private readonly audit: AuditService
+  ) {}
 
   /**
    * Crear un nuevo rol
@@ -21,17 +26,28 @@ export class RolService {
     try {
       const { name } = createRolDto;
 
-      const rolExist = await this.checkExitByName(name);
+      const newRol = await this.prisma.$transaction(async (prisma) => {
+        const rolExist = await this.checkExitByName(name);
 
-      if (rolExist) {
-        throw new BadRequestException('Rol already exists');
-      }
+        if (rolExist) {
+          throw new BadRequestException('Rol already exists');
+        }
 
-      const newRol = await this.prisma.rol.create({
-        data: { ...createRolDto, createdBy: user.id, updatedBy: user.id },
-        select: { id: true, name: true, description: true }
+        const newRol = await prisma.rol.create({
+          data: createRolDto,
+          select: { id: true, name: true, description: true }
+        });
+
+        await this.audit.create({
+          entityId: newRol.id,
+          entityType: 'rol',
+          action: AuditActionType.CREATE,
+          performedById: user.id,
+          createdAt: new Date()
+        });
+
+        return newRol;
       });
-
       return {
         statusCode: HttpStatus.CREATED,
         message: 'Rol created',
@@ -55,49 +71,58 @@ export class RolService {
    */
   async update(id: string, updateRolDto: UpdateRolDto, user: UserData): Promise<HttpResponse<Rol>> {
     try {
-      const { name } = updateRolDto;
+      const updateRol = await this.prisma.$transaction(async (prisma) => {
+        const { name } = updateRolDto;
 
-      if (NoDataUpdate(updateRolDto)) {
-        throw new BadRequestException('No data to update');
-      }
-
-      if (updateRolDto.name === ValidRols.SUPER_ADMIN) {
-        throw new BadRequestException('Rol name is invalid');
-      }
-
-      if (updateRolDto.name) {
-        const rolExist = await this.checkExitByName(name);
-
-        if (rolExist) {
-          throw new BadRequestException('Rol already exists');
+        if (NoDataUpdate(updateRolDto)) {
+          throw new BadRequestException('No data to update');
         }
-      }
 
-      const rolDB = await this.findById(id);
-
-      if (!rolDB) {
-        throw new BadRequestException('Rol not found');
-      }
-
-      const rolUpdate = await this.prisma.rol.update({
-        where: {
-          id
-        },
-        data: {
-          ...updateRolDto,
-          updatedBy: user.id
-        },
-        select: {
-          id: true,
-          name: true,
-          description: true
+        if (updateRolDto.name === ValidRols.SUPER_ADMIN) {
+          throw new BadRequestException('Rol name is invalid');
         }
+
+        if (updateRolDto.name) {
+          const rolExist = await this.checkExitByName(name);
+
+          if (rolExist) {
+            throw new BadRequestException('Rol already exists');
+          }
+        }
+
+        const rolDB = await this.findById(id);
+
+        if (!rolDB) {
+          throw new BadRequestException('Rol not found');
+        }
+
+        const rolUpdate = await prisma.rol.update({
+          where: {
+            id
+          },
+          data: updateRolDto,
+          select: {
+            id: true,
+            name: true,
+            description: true
+          }
+        });
+
+        await this.audit.create({
+          entityId: id,
+          entityType: 'rol',
+          action: AuditActionType.UPDATE,
+          performedById: user.id,
+          createdAt: new Date()
+        });
+
+        return rolUpdate;
       });
 
       return {
         statusCode: HttpStatus.OK,
         message: 'Rol updated',
-        data: rolUpdate
+        data: updateRol
       };
     } catch (error) {
       this.logger.error(`Error updating a rol for id: ${id}`, error.stack);
@@ -111,39 +136,54 @@ export class RolService {
   /**
    * Eliminar un rol existente en la base de datos por su id
    * @param id Id del rol a eliminar
+   * @param user Usuario que elimina el rol
    * @returns  Datos del rol eliminado
    */
-  async remove(id: string): Promise<HttpResponse<Rol>> {
+  async remove(id: string, user: UserData): Promise<HttpResponse<Rol>> {
     try {
-      const rolIsSuperAdmin = await this.isRolSuperAdmin(id);
+      const removeRol = await this.prisma.$transaction(async (prisma) => {
+        const rolIsSuperAdmin = await this.isRolSuperAdmin(id);
 
-      if (rolIsSuperAdmin) {
-        throw new BadRequestException(
-          'It is not possible to delete the rol because it is super admin'
-        );
-      }
-
-      const rolIsUsed = await this.rolIsUsed(id);
-
-      if (rolIsUsed) {
-        throw new BadRequestException('It is not possible to delete the rol because it is in use');
-      }
-
-      const rolDelete = await this.prisma.rol.delete({
-        where: {
-          id
-        },
-        select: {
-          id: true,
-          name: true,
-          description: true
+        if (rolIsSuperAdmin) {
+          throw new BadRequestException(
+            'It is not possible to delete the rol because it is super admin'
+          );
         }
+
+        const rolIsUsed = await this.rolIsUsed(id);
+
+        if (rolIsUsed) {
+          throw new BadRequestException(
+            'It is not possible to delete the rol because it is in use'
+          );
+        }
+
+        const rolDelete = await prisma.rol.delete({
+          where: {
+            id
+          },
+          select: {
+            id: true,
+            name: true,
+            description: true
+          }
+        });
+
+        await this.audit.create({
+          entityId: id,
+          entityType: 'rol',
+          action: AuditActionType.DELETE,
+          performedById: user.id,
+          createdAt: new Date()
+        });
+
+        return rolDelete;
       });
 
       return {
         statusCode: HttpStatus.OK,
         message: 'Rol deleted',
-        data: rolDelete
+        data: removeRol
       };
     } catch (error) {
       this.logger.error(`Error deleting a rol for id: ${id}`, error.stack);
@@ -221,6 +261,8 @@ export class RolService {
           description: true
         }
       });
+
+      if (!rolDB) throw new BadRequestException('Rol not found for id');
 
       return rolDB;
     } catch (error) {

@@ -22,20 +22,15 @@ model User {
   lastLogin DateTime @default(now()) @db.Timestamptz(6)
   isActive Boolean @default(true)
   mustChangePassword Boolean  @default(true)
-  createdUser User? @relation("CreatedUsers", fields: [createdBy], references: [id])
-  createdBy String?
-  updatedUser User? @relation("UpdatedUsers", fields: [updatedBy], references: [id])
-  updatedBy String?
+
   createdAt DateTime @default(now()) @db.Timestamptz(6)
   updatedAt DateTime @updatedAt
-
-  createdUsers User[] @relation("CreatedUsers")
-  updatedUsers User[] @relation("UpdatedUsers")
-  createdRols Rol[] @relation("CreatedRols")
-  updatedRols Rol[] @relation("UpdatedRols")
-  createdUserRols UserRol[] @relation("CreatedUserRols")
-  updatedUserRols UserRol[] @relation("UpdatedUserRols")
-  userRol UserRol? @relation("UserId")
+  
+  // Relación con auditorías (acciones realizadas por este usuario)
+  auditsPerformed Audit[] @relation("AuditPerformedBy")
+  
+  // Relación con UserRol
+  userRols UserRol[] @relation("UserId")
 
   @@unique([email, isActive])
   
@@ -46,14 +41,14 @@ model Rol {
   name String
   description String?
   isActive Boolean @default(true)
-  createdRol User? @relation("CreatedRols", fields: [createdBy], references: [id])
-  createdBy String?
-  updatedRol User? @relation("UpdatedRols", fields: [updatedBy], references: [id])
-  updatedBy String?
+
   createdAt DateTime @default(now()) @db.Timestamptz(6)
   updatedAt DateTime @updatedAt
 
+  // Relación con UserRol
   rolUsers UserRol[] @relation("RolId")
+
+  // Relación con Module_Permissions
   rolPermissions Module_Permissions[] @relation("RolId")
 
   @@unique([name, isActive])
@@ -66,10 +61,7 @@ model UserRol {
   rol Rol @relation("RolId",fields: [rolId], references: [id])
   rolId String
   isActive Boolean @default(true)
-  createdUser User? @relation("CreatedUserRols", fields: [createdBy], references: [id])
-  createdBy String?
-  updatedUser User? @relation("UpdatedUserRols", fields: [updatedBy], references: [id])
-  updatedBy String?
+  
   createdAt DateTime @default(now()) @db.Timestamptz(6)
   updatedAt DateTime @updatedAt
 
@@ -80,20 +72,23 @@ model Permission{
   id String @id @default(uuid()) @unique
   name String @unique
   description String?
+
   createdAt DateTime @default(now()) @db.Timestamptz(6)
   updatedAt DateTime @updatedAt
 
+  // Relación con Module_Permissions
   permissionModule Module_Permissions[] @relation("PermissionId")
-
 }
 
 model Module{
   id String @id @default(uuid()) @unique
   name String @unique
   description String?
+
   createdAt DateTime @default(now()) @db.Timestamptz(6)
   updatedAt DateTime @updatedAt
 
+  // Relación con Module_Permissions
   modulePermissions Module_Permissions[] @relation("ModuleId")
 }
 
@@ -105,8 +100,25 @@ model Module_Permissions{
   permissionId String
   rol Rol @relation("RolId", fields: [rolId], references: [id])
   rolId String
+
   createdAt DateTime @default(now()) @db.Timestamptz(6)
   updatedAt DateTime @updatedAt
 
   @@unique([moduleId, permissionId])
+}
+
+model Audit {
+  id          String   @id @default(uuid()) @unique
+  entityId    String
+  entityType  String   // Representa el nombre del modelo (ej: User, Rol, etc.)
+  action      AuditActionType   // Representa la acción (CREATE, UPDATE, DELETE)
+  performedBy User     @relation("AuditPerformedBy", fields: [performedById], references: [id])
+  performedById String
+  createdAt   DateTime @default(now()) @db.Timestamptz(6)
+}
+
+enum AuditActionType {
+  CREATE
+  UPDATE
+  DELETE
 }

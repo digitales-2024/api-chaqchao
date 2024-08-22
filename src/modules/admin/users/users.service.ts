@@ -11,10 +11,13 @@ import { CreateUserDto, UpdateUserDto } from './dto';
 import { handleException } from 'src/utils';
 import { RolService } from '../rol/rol.service';
 import { generate } from 'generate-password';
-import { HttpResponse, UserData, UserDataLogin, UserPayload } from 'src/interfaces';
+import { HttpResponse, UserData, UserPayload } from 'src/interfaces';
 import { TypedEventEmitter } from 'src/event-emitter/typed-event-emitter.class';
 import { SendEmailDto } from './dto/send-email.dto';
 import { UpdatePasswordDto } from '../auth/dto/update-password.dto';
+import { ValidRols } from '../auth/interfaces';
+import { AuditService } from '../audit/audit.service';
+import { AuditActionType } from '@prisma/client';
 
 @Injectable()
 export class UsersService {
@@ -22,7 +25,8 @@ export class UsersService {
   constructor(
     private readonly prisma: PrismaService,
     private readonly rolService: RolService,
-    private readonly eventEmitter: TypedEventEmitter
+    private readonly eventEmitter: TypedEventEmitter,
+    private readonly audit: AuditService
   ) {}
 
   /**
@@ -31,7 +35,7 @@ export class UsersService {
    * @param user Usuario que crea el usuario
    * @returns Objetos con los datos del usuario creado
    */
-  async create(createUserDto: CreateUserDto, user: UserDataLogin): Promise<HttpResponse<UserData>> {
+  async create(createUserDto: CreateUserDto, user: UserData): Promise<HttpResponse<UserData>> {
     try {
       const newUser = await this.prisma.$transaction(async (prisma) => {
         const { rol, email, password, ...dataUser } = createUserDto;
@@ -78,9 +82,7 @@ export class UsersService {
           data: {
             email,
             ...dataUser,
-            password: hashedPassword,
-            createdBy: user.id,
-            updatedBy: user.id
+            password: hashedPassword
           },
           select: {
             id: true,
@@ -94,10 +96,16 @@ export class UsersService {
         await prisma.userRol.create({
           data: {
             userId: newUser.id,
-            rolId: rol,
-            createdBy: user.id,
-            updatedBy: user.id
+            rolId: rol
           }
+        });
+
+        await this.audit.create({
+          entityId: newUser.id,
+          entityType: 'user',
+          action: AuditActionType.CREATE,
+          performedById: user.id,
+          createdAt: new Date()
         });
 
         return {
@@ -105,7 +113,6 @@ export class UsersService {
           rol: rolExist
         };
       });
-      console.log(newUser);
 
       return {
         statusCode: HttpStatus.CREATED,
@@ -115,10 +122,12 @@ export class UsersService {
           name: newUser.name,
           email: newUser.email,
           phone: newUser.phone,
-          rol: {
-            id: newUser.rol.id,
-            name: newUser.rol.name
-          }
+          roles: [
+            {
+              id: newUser.rol.id,
+              name: newUser.rol.name
+            }
+          ]
         }
       };
     } catch (error) {
@@ -140,64 +149,64 @@ export class UsersService {
   async update(
     updateUserDto: UpdateUserDto,
     id: string,
-    user: UserDataLogin
+    user: UserData
   ): Promise<HttpResponse<UserData>> {
     try {
       const userUpdate = await this.prisma.$transaction(async (prisma) => {
-        const { rol, ...dataUser } = updateUserDto;
+        const { roles, ...dataUser } = updateUserDto;
 
         // Verificar que el usuario exista
         const userDB = await this.findById(id);
-
         if (!userDB) {
           throw new NotFoundException('User not found or inactive');
         }
 
-        // Verificar que el rol exista y este activo
-        if (!!rol) {
-          const rolExist = await this.rolService.findById(rol);
-
-          if (!rolExist) {
-            throw new BadRequestException('Rol not found or inactive');
-          }
-          // Verificar que no se pueda actualizar un usuario con el rol superadmin
-          const rolIsSuperAdmin = await this.rolService.isRolSuperAdmin(rol);
-
-          if (rolIsSuperAdmin) {
-            throw new BadRequestException('You cannot update a user with the superadmin role');
-          }
-
-          // Creamos la asignacion de un rol a un usuario
-          await prisma.userRol.update({
+        // Si se proporcionan roles para actualizar
+        if (roles && roles.length > 0) {
+          // Eliminar roles actuales activos
+          await prisma.userRol.updateMany({
             where: {
-              userId_rolId_isActive: {
-                userId: id,
-                rolId: userDB.rol.id,
-                isActive: true
-              }
+              userId: id,
+              isActive: true
             },
             data: {
-              rolId: rol,
-              updatedBy: user.id,
-              updatedAt: new Date()
+              isActive: false
             }
           });
+
+          // Asignar nuevos roles
+          for (const rolId of roles) {
+            const rolExist = await this.rolService.findById(rolId);
+            if (!rolExist) {
+              throw new BadRequestException(`Role with ID ${rolId} not found or inactive`);
+            }
+
+            const rolIsSuperAdmin = await this.rolService.isRolSuperAdmin(rolId);
+            if (rolIsSuperAdmin) {
+              throw new BadRequestException('You cannot update a user with the superadmin role');
+            }
+
+            await prisma.userRol.create({
+              data: {
+                userId: id,
+                rolId: rolId,
+                createdAt: new Date(),
+                updatedAt: new Date()
+              }
+            });
+          }
         }
 
-        // Creamos el usuario
+        // Actualizar los datos del usuario
         const updateUser = await prisma.user.update({
           where: { id },
-          data: {
-            ...dataUser,
-            updatedBy: user.id,
-            updatedAt: new Date()
-          },
+          data: dataUser,
           select: {
             id: true,
             name: true,
             email: true,
             phone: true,
-            userRol: {
+            userRols: {
               select: {
                 rol: {
                   select: {
@@ -208,6 +217,14 @@ export class UsersService {
               }
             }
           }
+        });
+
+        await this.audit.create({
+          entityId: id,
+          entityType: 'user',
+          action: AuditActionType.UPDATE,
+          performedById: user.id,
+          createdAt: new Date()
         });
 
         return updateUser;
@@ -221,12 +238,18 @@ export class UsersService {
           name: userUpdate.name,
           email: userUpdate.email,
           phone: userUpdate.phone,
-          rol: userUpdate.userRol.rol
+          roles: userUpdate.userRols.map((userRol) => ({
+            id: userRol.rol.id,
+            name: userRol.rol.name
+          }))
         }
       };
     } catch (error) {
       this.logger.error(`Error updating a user for id: ${id}`, error.stack);
       if (error instanceof BadRequestException) {
+        throw error;
+      }
+      if (error instanceof NotFoundException) {
         throw error;
       }
       handleException(error, 'Error updating a user');
@@ -239,48 +262,61 @@ export class UsersService {
    * @param user Usuario que elimina el usuario
    * @returns  Datos del usuario eliminado
    */
-  async remove(id: string, user: UserDataLogin): Promise<HttpResponse<UserData>> {
+  async remove(id: string, user: UserData): Promise<HttpResponse<UserData>> {
     try {
       const userRemove = await this.prisma.$transaction(async (prisma) => {
+        // Verificar que el usuario exista
         const userDB = await this.findById(id);
+        if (!userDB) {
+          throw new NotFoundException('User not found or inactive');
+        }
 
+        // No permitir que el usuario se elimine a sí mismo
         if (userDB.id === user.id) {
           throw new BadRequestException('You cannot delete yourself');
         }
 
-        const isSuperAdmin = await this.rolService.isRolSuperAdmin(userDB.rol.id);
+        // Verificar si el usuario tiene algún rol de superadmin activo
+        const superAdminRoles = await prisma.userRol.findMany({
+          where: {
+            userId: id,
+            isActive: true,
+            rol: {
+              is: {
+                name: ValidRols.SUPER_ADMIN
+              }
+            }
+          }
+        });
 
-        if (isSuperAdmin) {
+        if (superAdminRoles.length > 0) {
           throw new BadRequestException('You cannot delete a superadmin user');
         }
 
+        // Marcar el usuario como inactivo
         await prisma.user.update({
           where: { id },
           data: {
-            isActive: false,
-            updatedAt: new Date(),
-            updatedBy: user.id
+            isActive: false
           }
         });
 
-        const userRolDB = await prisma.userRol.findFirst({
-          where: {
-            userId: id
-          }
+        await this.audit.create({
+          entityId: id,
+          entityType: 'user',
+          action: AuditActionType.DELETE,
+          performedById: user.id,
+          createdAt: new Date()
         });
 
-        if (!userRolDB) {
-          throw new NotFoundException('User rol not found');
-        }
-
-        await prisma.userRol.update({
+        // Marcar todos los roles del usuario como inactivos
+        await prisma.userRol.updateMany({
           where: {
-            id: userRolDB.id
+            userId: id,
+            isActive: true
           },
           data: {
-            isActive: false,
-            updatedAt: new Date(),
-            updatedBy: user.id
+            isActive: false
           }
         });
 
@@ -289,7 +325,7 @@ export class UsersService {
           name: userDB.name,
           email: userDB.email,
           phone: userDB.phone,
-          rol: userDB.rol
+          roles: userDB.roles
         };
       });
 
@@ -310,7 +346,7 @@ export class UsersService {
    * @param user Usuario que reactiva el usuario
    * @returns Retorna un objeto con los datos del usuario reactivado
    */
-  async reactivate(id: string, user: UserDataLogin): Promise<HttpResponse<UserData>> {
+  async reactivate(id: string, user: UserData): Promise<HttpResponse<UserData>> {
     try {
       const userReactivate = await this.prisma.$transaction(async (prisma) => {
         const userDB = await prisma.user.findUnique({
@@ -321,7 +357,7 @@ export class UsersService {
             email: true,
             phone: true,
             isActive: true,
-            userRol: {
+            userRols: {
               select: {
                 rol: {
                   select: {
@@ -345,10 +381,16 @@ export class UsersService {
         await prisma.user.update({
           where: { id },
           data: {
-            isActive: true,
-            updatedAt: new Date(),
-            updatedBy: user.id
+            isActive: true
           }
+        });
+
+        await this.audit.create({
+          entityId: id,
+          entityType: 'user',
+          action: AuditActionType.UPDATE,
+          performedById: user.id,
+          createdAt: new Date()
         });
 
         const userRolDB = await prisma.userRol.findFirst({
@@ -366,9 +408,7 @@ export class UsersService {
             id: userRolDB.id
           },
           data: {
-            isActive: true,
-            updatedAt: new Date(),
-            updatedBy: user.id
+            isActive: true
           }
         });
 
@@ -377,7 +417,12 @@ export class UsersService {
           name: userDB.name,
           email: userDB.email,
           phone: userDB.phone,
-          rol: userDB.userRol.rol
+          roles: userDB.userRols.map((rol) => {
+            return {
+              id: rol.rol.id,
+              name: rol.rol.name
+            };
+          })
         };
       });
 
@@ -408,7 +453,7 @@ export class UsersService {
         phone: true,
         lastLogin: true,
         isActive: true,
-        userRol: {
+        userRols: {
           select: {
             rol: {
               select: {
@@ -430,7 +475,12 @@ export class UsersService {
         name: user.name,
         email: user.email,
         phone: user.phone,
-        rol: user.userRol.rol
+        roles: user.userRols.map((rol) => {
+          return {
+            id: rol.rol.id,
+            name: rol.rol.name
+          };
+        })
       };
     });
   }
@@ -448,7 +498,7 @@ export class UsersService {
       name: userDB.name,
       email: userDB.email,
       phone: userDB.phone,
-      rol: userDB.rol
+      roles: userDB.roles
     };
   }
 
@@ -532,7 +582,7 @@ export class UsersService {
         phone: true,
         password: true,
         mustChangePassword: true,
-        userRol: {
+        userRols: {
           select: {
             rol: {
               select: {
@@ -556,7 +606,12 @@ export class UsersService {
       phone: clientDB.phone,
       password: clientDB.password,
       mustChangePassword: clientDB.mustChangePassword,
-      rol: clientDB.userRol.rol
+      roles: clientDB.userRols.map((rol) => {
+        return {
+          id: rol.rol.id,
+          name: rol.rol.name
+        };
+      })
     };
   }
 
@@ -614,7 +669,7 @@ export class UsersService {
         name: true,
         email: true,
         phone: true,
-        userRol: {
+        userRols: {
           select: {
             rol: {
               select: {
@@ -636,7 +691,12 @@ export class UsersService {
       name: clientDB.name,
       email: clientDB.email,
       phone: clientDB.phone,
-      rol: clientDB.userRol.rol
+      roles: clientDB.userRols.map((rol) => {
+        return {
+          id: rol.rol.id,
+          name: rol.rol.name
+        };
+      })
     };
   }
 
@@ -657,7 +717,7 @@ export class UsersService {
           lastLogin: true,
           isActive: true,
           mustChangePassword: true,
-          userRol: {
+          userRols: {
             select: {
               rol: {
                 select: {
@@ -681,10 +741,18 @@ export class UsersService {
         isActive: clientDB.isActive,
         lastLogin: clientDB.lastLogin,
         mustChangePassword: clientDB.mustChangePassword,
-        rol: clientDB.userRol.rol
+        roles: clientDB.userRols.map((rol) => {
+          return {
+            id: rol.rol.id,
+            name: rol.rol.name
+          };
+        })
       };
     } catch (error) {
       this.logger.error(`Error finding user for id: ${id}`, error.stack);
+      if (error instanceof NotFoundException) {
+        throw error;
+      }
       handleException(error, 'Error finding user');
     }
   }

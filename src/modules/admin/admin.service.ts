@@ -19,7 +19,7 @@ export class AdminService {
       name: user.name,
       email: user.email,
       phone: user.phone,
-      rol: user.rol
+      roles: user.roles
     };
   }
   /**

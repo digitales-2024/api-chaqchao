@@ -19,7 +19,7 @@ export class UpdateUserDto extends PartialType(
 
   @ApiProperty({
     required: false,
-    description: 'User rol'
+    description: 'User rols'
   })
-  rol?: string;
+  roles?: string[];
 }
