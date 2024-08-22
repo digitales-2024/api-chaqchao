@@ -11,11 +11,13 @@ import { CreateUserDto, UpdateUserDto } from './dto';
 import { handleException } from 'src/utils';
 import { RolService } from '../rol/rol.service';
 import { generate } from 'generate-password';
-import { HttpResponse, UserData, UserDataLogin, UserPayload } from 'src/interfaces';
+import { HttpResponse, UserData, UserPayload } from 'src/interfaces';
 import { TypedEventEmitter } from 'src/event-emitter/typed-event-emitter.class';
 import { SendEmailDto } from './dto/send-email.dto';
 import { UpdatePasswordDto } from '../auth/dto/update-password.dto';
 import { ValidRols } from '../auth/interfaces';
+import { AuditService } from '../audit/audit.service';
+import { AuditActionType } from '@prisma/client';
 
 @Injectable()
 export class UsersService {
@@ -23,7 +25,8 @@ export class UsersService {
   constructor(
     private readonly prisma: PrismaService,
     private readonly rolService: RolService,
-    private readonly eventEmitter: TypedEventEmitter
+    private readonly eventEmitter: TypedEventEmitter,
+    private readonly audit: AuditService
   ) {}
 
   /**
@@ -32,7 +35,7 @@ export class UsersService {
    * @param user Usuario que crea el usuario
    * @returns Objetos con los datos del usuario creado
    */
-  async create(createUserDto: CreateUserDto, user: UserDataLogin): Promise<HttpResponse<UserData>> {
+  async create(createUserDto: CreateUserDto, user: UserData): Promise<HttpResponse<UserData>> {
     try {
       const newUser = await this.prisma.$transaction(async (prisma) => {
         const { rol, email, password, ...dataUser } = createUserDto;
@@ -79,9 +82,7 @@ export class UsersService {
           data: {
             email,
             ...dataUser,
-            password: hashedPassword,
-            createdBy: user.id,
-            updatedBy: user.id
+            password: hashedPassword
           },
           select: {
             id: true,
@@ -95,10 +96,16 @@ export class UsersService {
         await prisma.userRol.create({
           data: {
             userId: newUser.id,
-            rolId: rol,
-            createdBy: user.id,
-            updatedBy: user.id
+            rolId: rol
           }
+        });
+
+        await this.audit.create({
+          entityId: newUser.id,
+          entityType: 'user',
+          action: AuditActionType.CREATE,
+          performedById: user.id,
+          createdAt: new Date()
         });
 
         return {
@@ -142,7 +149,7 @@ export class UsersService {
   async update(
     updateUserDto: UpdateUserDto,
     id: string,
-    user: UserDataLogin
+    user: UserData
   ): Promise<HttpResponse<UserData>> {
     try {
       const userUpdate = await this.prisma.$transaction(async (prisma) => {
@@ -163,9 +170,7 @@ export class UsersService {
               isActive: true
             },
             data: {
-              isActive: false,
-              updatedBy: user.id,
-              updatedAt: new Date()
+              isActive: false
             }
           });
 
@@ -185,8 +190,6 @@ export class UsersService {
               data: {
                 userId: id,
                 rolId: rolId,
-                createdBy: user.id,
-                updatedBy: user.id,
                 createdAt: new Date(),
                 updatedAt: new Date()
               }
@@ -197,11 +200,7 @@ export class UsersService {
         // Actualizar los datos del usuario
         const updateUser = await prisma.user.update({
           where: { id },
-          data: {
-            ...dataUser,
-            updatedBy: user.id,
-            updatedAt: new Date()
-          },
+          data: dataUser,
           select: {
             id: true,
             name: true,
@@ -218,6 +217,14 @@ export class UsersService {
               }
             }
           }
+        });
+
+        await this.audit.create({
+          entityId: id,
+          entityType: 'user',
+          action: AuditActionType.UPDATE,
+          performedById: user.id,
+          createdAt: new Date()
         });
 
         return updateUser;
@@ -242,6 +249,9 @@ export class UsersService {
       if (error instanceof BadRequestException) {
         throw error;
       }
+      if (error instanceof NotFoundException) {
+        throw error;
+      }
       handleException(error, 'Error updating a user');
     }
   }
@@ -252,7 +262,7 @@ export class UsersService {
    * @param user Usuario que elimina el usuario
    * @returns  Datos del usuario eliminado
    */
-  async remove(id: string, user: UserDataLogin): Promise<HttpResponse<UserData>> {
+  async remove(id: string, user: UserData): Promise<HttpResponse<UserData>> {
     try {
       const userRemove = await this.prisma.$transaction(async (prisma) => {
         // Verificar que el usuario exista
@@ -287,10 +297,16 @@ export class UsersService {
         await prisma.user.update({
           where: { id },
           data: {
-            isActive: false,
-            updatedAt: new Date(),
-            updatedBy: user.id
+            isActive: false
           }
+        });
+
+        await this.audit.create({
+          entityId: id,
+          entityType: 'user',
+          action: AuditActionType.DELETE,
+          performedById: user.id,
+          createdAt: new Date()
         });
 
         // Marcar todos los roles del usuario como inactivos
@@ -300,9 +316,7 @@ export class UsersService {
             isActive: true
           },
           data: {
-            isActive: false,
-            updatedAt: new Date(),
-            updatedBy: user.id
+            isActive: false
           }
         });
 
@@ -332,7 +346,7 @@ export class UsersService {
    * @param user Usuario que reactiva el usuario
    * @returns Retorna un objeto con los datos del usuario reactivado
    */
-  async reactivate(id: string, user: UserDataLogin): Promise<HttpResponse<UserData>> {
+  async reactivate(id: string, user: UserData): Promise<HttpResponse<UserData>> {
     try {
       const userReactivate = await this.prisma.$transaction(async (prisma) => {
         const userDB = await prisma.user.findUnique({
@@ -367,10 +381,16 @@ export class UsersService {
         await prisma.user.update({
           where: { id },
           data: {
-            isActive: true,
-            updatedAt: new Date(),
-            updatedBy: user.id
+            isActive: true
           }
+        });
+
+        await this.audit.create({
+          entityId: id,
+          entityType: 'user',
+          action: AuditActionType.UPDATE,
+          performedById: user.id,
+          createdAt: new Date()
         });
 
         const userRolDB = await prisma.userRol.findFirst({
@@ -388,9 +408,7 @@ export class UsersService {
             id: userRolDB.id
           },
           data: {
-            isActive: true,
-            updatedAt: new Date(),
-            updatedBy: user.id
+            isActive: true
           }
         });
 
@@ -732,6 +750,9 @@ export class UsersService {
       };
     } catch (error) {
       this.logger.error(`Error finding user for id: ${id}`, error.stack);
+      if (error instanceof NotFoundException) {
+        throw error;
+      }
       handleException(error, 'Error finding user');
     }
   }
