@@ -34,24 +34,14 @@ export class SeedsService {
           }
         });
 
-        await prisma.user.update({
-          where: { id: superAdmin.id },
-          data: {
-            createdBy: superAdmin.id,
-            updatedBy: superAdmin.id
-          }
-        });
-
         const rolSuperAdmin = await prisma.rol.create({
-          data: { ...rolSuperAdminSeed, createdBy: superAdmin.id, updatedBy: superAdmin.id }
+          data: { ...rolSuperAdminSeed }
         });
 
         await prisma.userRol.create({
           data: {
             userId: superAdmin.id,
-            rolId: rolSuperAdmin.id,
-            createdBy: superAdmin.id,
-            updatedBy: superAdmin.id
+            rolId: rolSuperAdmin.id
           }
         });
       });
