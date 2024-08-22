@@ -70,7 +70,8 @@ model UserRol {
 
 model Permission{
   id String @id @default(uuid()) @unique
-  name String @unique
+  cod String 
+  name String 
   description String?
 
   createdAt DateTime @default(now()) @db.Timestamptz(6)
@@ -78,11 +79,14 @@ model Permission{
 
   // Relación con Module_Permissions
   permissionModule Module_Permissions[] @relation("PermissionId")
+
+  @@unique([cod, name])
 }
 
 model Module{
   id String @id @default(uuid()) @unique
-  name String @unique
+  cod String
+  name String
   description String?
 
   createdAt DateTime @default(now()) @db.Timestamptz(6)
@@ -90,6 +94,8 @@ model Module{
 
   // Relación con Module_Permissions
   modulePermissions Module_Permissions[] @relation("ModuleId")
+
+  @@unique([cod, name])
 }
 
 model Module_Permissions{
