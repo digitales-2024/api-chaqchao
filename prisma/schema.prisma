@@ -110,7 +110,7 @@ model Module_Permissions{
   createdAt DateTime @default(now()) @db.Timestamptz(6)
   updatedAt DateTime @updatedAt
 
-  @@unique([moduleId, permissionId])
+  @@unique([moduleId, permissionId, rolId])
 }
 
 model Audit {
