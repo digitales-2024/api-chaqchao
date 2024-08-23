@@ -1,6 +1,7 @@
 import { ApiProperty } from '@nestjs/swagger';
 import { Transform } from 'class-transformer';
-import { IsNotEmpty, IsString } from 'class-validator';
+import { IsArray, IsNotEmpty, IsString } from 'class-validator';
+import { ModulePermissions } from 'src/interfaces';
 
 export class CreateRolDto {
   @ApiProperty({
@@ -19,4 +20,8 @@ export class CreateRolDto {
   @IsString()
   @Transform(({ value }) => value.trim().toLowerCase())
   description?: string;
+
+  @IsArray()
+  @IsNotEmpty()
+  modulePermissions: ModulePermissions[];
 }
