@@ -440,7 +440,7 @@ export class RolService {
     });
 
     if (!userRolDB) {
-      throw new BadRequestException('Rol not found');
+      throw new BadRequestException('Rol super admin not found');
     }
 
     return !!(userRolDB.name === ValidRols.SUPER_ADMIN);
