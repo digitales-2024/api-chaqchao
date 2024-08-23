@@ -11,7 +11,7 @@ import { CreateUserDto, UpdateUserDto } from './dto';
 import { handleException } from 'src/utils';
 import { RolService } from '../rol/rol.service';
 import { generate } from 'generate-password';
-import { HttpResponse, UserData, UserPayload } from 'src/interfaces';
+import { HttpResponse, Rol, UserData, UserPayload } from 'src/interfaces';
 import { TypedEventEmitter } from 'src/event-emitter/typed-event-emitter.class';
 import { SendEmailDto } from './dto/send-email.dto';
 import { UpdatePasswordDto } from '../auth/dto/update-password.dto';
@@ -38,20 +38,27 @@ export class UsersService {
   async create(createUserDto: CreateUserDto, user: UserData): Promise<HttpResponse<UserData>> {
     try {
       const newUser = await this.prisma.$transaction(async (prisma) => {
-        const { rol, email, password, ...dataUser } = createUserDto;
+        const { roles, email, password, ...dataUser } = createUserDto;
 
         // Verificar que el rol exista y este activo
-        const rolExist = await this.rolService.findById(rol);
 
-        if (!rolExist) {
-          throw new BadRequestException('Rol not found or inactive');
+        if (!roles || roles.length === 0) {
+          throw new BadRequestException('Roles is required');
         }
 
-        // Verificar que no se pueda crear un usuario con el rol superadmin
-        const rolIsSuperAdmin = await this.rolService.isRolSuperAdmin(rol);
+        for (const rol of roles) {
+          const rolExist = await this.rolService.findById(rol);
 
-        if (rolIsSuperAdmin) {
-          throw new BadRequestException('You cannot create a user with the superadmin role');
+          if (!rolExist) {
+            throw new BadRequestException('Rol not found or inactive');
+          }
+
+          // Verificar que no se pueda crear un usuario con el rol superadmin
+          const rolIsSuperAdmin = await this.rolService.isRolSuperAdmin(rol);
+
+          if (rolIsSuperAdmin) {
+            throw new BadRequestException('You cannot create a user with the superadmin role');
+          }
         }
 
         // Verificamos si el email ya existe y este activo
@@ -92,25 +99,42 @@ export class UsersService {
           }
         });
 
-        // Creamos la asignacion de un rol a un usuario
-        await prisma.userRol.create({
-          data: {
-            userId: newUser.id,
-            rolId: rol
-          }
-        });
+        const userRoles: Omit<Rol, 'description'>[] = [];
 
-        await this.audit.create({
-          entityId: newUser.id,
-          entityType: 'user',
-          action: AuditActionType.CREATE,
-          performedById: user.id,
-          createdAt: new Date()
-        });
+        for (const rol of roles) {
+          // Creamos la asignacion de un rol a un usuario
+          const newUserRol = await prisma.userRol.create({
+            data: {
+              userId: newUser.id,
+              rolId: rol
+            },
+            select: {
+              rol: {
+                select: {
+                  id: true,
+                  name: true
+                }
+              }
+            }
+          });
+
+          userRoles.push({
+            id: newUserRol.rol.id,
+            name: newUserRol.rol.name
+          });
+
+          await this.audit.create({
+            entityId: newUser.id,
+            entityType: 'user',
+            action: AuditActionType.CREATE,
+            performedById: user.id,
+            createdAt: new Date()
+          });
+        }
 
         return {
           ...newUser,
-          rol: rolExist
+          roles: userRoles
         };
       });
 
@@ -122,12 +146,7 @@ export class UsersService {
           name: newUser.name,
           email: newUser.email,
           phone: newUser.phone,
-          roles: [
-            {
-              id: newUser.rol.id,
-              name: newUser.rol.name
-            }
-          ]
+          roles: newUser.roles
         }
       };
     } catch (error) {
@@ -156,26 +175,51 @@ export class UsersService {
         const { roles, ...dataUser } = updateUserDto;
 
         // Verificar que el usuario exista
-        const userDB = await this.findById(id);
+        const userDB = await prisma.user.findUnique({
+          where: { id },
+          include: { userRols: true }
+        });
         if (!userDB) {
           throw new NotFoundException('User not found or inactive');
         }
 
-        // Si se proporcionan roles para actualizar
+        // Manejar roles
         if (roles && roles.length > 0) {
-          // Eliminar roles actuales activos
-          await prisma.userRol.updateMany({
+          // Obtener roles actuales del usuario
+          const existingRoles = await prisma.userRol.findMany({
             where: {
-              userId: id,
-              isActive: true
+              userId: id
             },
-            data: {
-              isActive: false
+            select: {
+              rolId: true
             }
           });
 
-          // Asignar nuevos roles
-          for (const rolId of roles) {
+          const existingRoleIds = new Set(existingRoles.map((role) => role.rolId));
+          const newRoleIds = new Set(roles);
+
+          // Roles a eliminar (existentes pero no en el nuevo arreglo)
+          const rolesToRemove = existingRoles
+            .filter((role) => !newRoleIds.has(role.rolId))
+            .map((role) => role.rolId);
+
+          // Roles a agregar (nuevos que no existen actualmente)
+          const rolesToAdd = roles.filter((role) => !existingRoleIds.has(role));
+
+          // Eliminar roles no presentes en la actualización
+          if (rolesToRemove.length > 0) {
+            await prisma.userRol.deleteMany({
+              where: {
+                userId: id,
+                rolId: {
+                  in: rolesToRemove
+                }
+              }
+            });
+          }
+
+          // Agregar nuevos roles
+          for (const rolId of rolesToAdd) {
             const rolExist = await this.rolService.findById(rolId);
             if (!rolExist) {
               throw new BadRequestException(`Role with ID ${rolId} not found or inactive`);
@@ -186,14 +230,24 @@ export class UsersService {
               throw new BadRequestException('You cannot update a user with the superadmin role');
             }
 
-            await prisma.userRol.create({
-              data: {
-                userId: id,
-                rolId: rolId,
-                createdAt: new Date(),
-                updatedAt: new Date()
+            // Verificar si el rol ya está asociado al usuario
+            const roleAlreadyAssigned = await prisma.userRol.findUnique({
+              where: {
+                userId_rolId: {
+                  userId: id,
+                  rolId: rolId
+                }
               }
             });
+
+            if (!roleAlreadyAssigned) {
+              await prisma.userRol.create({
+                data: {
+                  userId: id,
+                  rolId: rolId
+                }
+              });
+            }
           }
         }
 
@@ -238,9 +292,9 @@ export class UsersService {
           name: userUpdate.name,
           email: userUpdate.email,
           phone: userUpdate.phone,
-          roles: userUpdate.userRols.map((userRol) => ({
-            id: userRol.rol.id,
-            name: userRol.rol.name
+          roles: userUpdate.userRols.map((rol) => ({
+            id: rol.rol.id,
+            name: rol.rol.name
           }))
         }
       };
@@ -280,7 +334,6 @@ export class UsersService {
         const superAdminRoles = await prisma.userRol.findMany({
           where: {
             userId: id,
-            isActive: true,
             rol: {
               is: {
                 name: ValidRols.SUPER_ADMIN
@@ -309,11 +362,10 @@ export class UsersService {
           createdAt: new Date()
         });
 
-        // Marcar todos los roles del usuario como inactivos
+        // Eliminar todos los roles del usuario
         await prisma.userRol.updateMany({
           where: {
-            userId: id,
-            isActive: true
+            userId: id
           },
           data: {
             isActive: false
@@ -385,31 +437,23 @@ export class UsersService {
           }
         });
 
+        // Si el usuario se reactiva, entonces se reactivan todos los roles asociados
+        await prisma.userRol.updateMany({
+          where: {
+            userId: id
+          },
+          data: {
+            isActive: true
+          }
+        });
+
+        // Crear un registro de auditoria
         await this.audit.create({
           entityId: id,
           entityType: 'user',
           action: AuditActionType.UPDATE,
           performedById: user.id,
           createdAt: new Date()
-        });
-
-        const userRolDB = await prisma.userRol.findFirst({
-          where: {
-            userId: id
-          }
-        });
-
-        if (!userRolDB) {
-          throw new NotFoundException('User rol not found');
-        }
-
-        await prisma.userRol.update({
-          where: {
-            id: userRolDB.id
-          },
-          data: {
-            isActive: true
-          }
         });
 
         return {

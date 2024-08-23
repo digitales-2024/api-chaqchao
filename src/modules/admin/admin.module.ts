@@ -6,9 +6,19 @@ import { AdminController } from './admin.controller';
 import { AdminService } from './admin.service';
 import { PrismaModule } from 'src/prisma/prisma.module';
 import { AuditModule } from './audit/audit.module';
+import { ModulesModule } from './modules/modules.module';
+import { PermissionsModule } from './permissions/permissions.module';
 
 @Module({
-  imports: [UsersModule, AuthModule, RolModule, PrismaModule, AuditModule],
+  imports: [
+    UsersModule,
+    AuthModule,
+    RolModule,
+    PrismaModule,
+    AuditModule,
+    ModulesModule,
+    PermissionsModule
+  ],
   controllers: [AdminController],
   providers: [AdminService]
 })

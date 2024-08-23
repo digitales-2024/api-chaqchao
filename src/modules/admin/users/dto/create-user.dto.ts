@@ -1,6 +1,7 @@
 import { ApiProperty } from '@nestjs/swagger';
 import { Transform } from 'class-transformer';
 import {
+  IsArray,
   IsEmail,
   IsMobilePhone,
   IsNotEmpty,
@@ -44,7 +45,7 @@ export class CreateUserDto {
   phone?: string;
 
   @ApiProperty()
-  @IsString()
+  @IsArray()
   @IsNotEmpty()
-  rol: string;
+  roles: string[];
 }

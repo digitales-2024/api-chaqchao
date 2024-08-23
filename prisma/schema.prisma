@@ -57,20 +57,21 @@ model Rol {
 model UserRol {
   id String @id @default(uuid()) @unique
   user User @relation("UserId", fields: [userId], references: [id])
-  userId String @unique
+  userId String
+  isActive Boolean @default(true)
   rol Rol @relation("RolId",fields: [rolId], references: [id])
   rolId String
-  isActive Boolean @default(true)
   
   createdAt DateTime @default(now()) @db.Timestamptz(6)
   updatedAt DateTime @updatedAt
 
-  @@unique([userId, rolId, isActive])
+  @@unique([userId, rolId])
 }
 
 model Permission{
   id String @id @default(uuid()) @unique
-  name String @unique
+  cod String 
+  name String 
   description String?
 
   createdAt DateTime @default(now()) @db.Timestamptz(6)
@@ -78,11 +79,14 @@ model Permission{
 
   // Relación con Module_Permissions
   permissionModule Module_Permissions[] @relation("PermissionId")
+
+  @@unique([cod, name])
 }
 
 model Module{
   id String @id @default(uuid()) @unique
-  name String @unique
+  cod String
+  name String
   description String?
 
   createdAt DateTime @default(now()) @db.Timestamptz(6)
@@ -90,6 +94,8 @@ model Module{
 
   // Relación con Module_Permissions
   modulePermissions Module_Permissions[] @relation("ModuleId")
+
+  @@unique([cod, name])
 }
 
 model Module_Permissions{
@@ -104,7 +110,7 @@ model Module_Permissions{
   createdAt DateTime @default(now()) @db.Timestamptz(6)
   updatedAt DateTime @updatedAt
 
-  @@unique([moduleId, permissionId])
+  @@unique([moduleId, permissionId, rolId])
 }
 
 model Audit {
