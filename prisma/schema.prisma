@@ -58,6 +58,7 @@ model UserRol {
   id String @id @default(uuid()) @unique
   user User @relation("UserId", fields: [userId], references: [id])
   userId String
+  isActive Boolean @default(true)
   rol Rol @relation("RolId",fields: [rolId], references: [id])
   rolId String
   
