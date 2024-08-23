@@ -1,5 +1,5 @@
 import { User } from '@prisma/client';
-import { Rol } from './rol.type';
+import { Rol } from './index';
 
 export type UserPayload = Pick<
   User,
