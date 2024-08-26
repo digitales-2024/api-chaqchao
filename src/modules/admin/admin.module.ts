@@ -8,6 +8,7 @@ import { PrismaModule } from 'src/prisma/prisma.module';
 import { AuditModule } from './audit/audit.module';
 import { ModulesModule } from './modules/modules.module';
 import { PermissionsModule } from './permissions/permissions.module';
+import { ProductsModule } from './products/products.module';
 
 @Module({
   imports: [
@@ -17,7 +18,8 @@ import { PermissionsModule } from './permissions/permissions.module';
     PrismaModule,
     AuditModule,
     ModulesModule,
-    PermissionsModule
+    PermissionsModule,
+    ProductsModule
   ],
   controllers: [AdminController],
   providers: [AdminService]
