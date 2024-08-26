@@ -9,6 +9,7 @@ import { AuditModule } from './audit/audit.module';
 import { ModulesModule } from './modules/modules.module';
 import { PermissionsModule } from './permissions/permissions.module';
 import { ProductsModule } from './products/products.module';
+import { CategoryModule } from './category/category.module';
 
 @Module({
   imports: [
@@ -19,7 +20,8 @@ import { ProductsModule } from './products/products.module';
     AuditModule,
     ModulesModule,
     PermissionsModule,
-    ProductsModule
+    ProductsModule,
+    CategoryModule
   ],
   controllers: [AdminController],
   providers: [AdminService]
