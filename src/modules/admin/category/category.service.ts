@@ -55,12 +55,37 @@ export class CategoryService {
     }
   }
 
-  findAll() {
-    return `This action returns all category`;
+  /**
+   * Mostrar un listado de todas las categorias activas
+   * @returns Todas las categorias activas
+   */
+  async findAll(): Promise<CategoryData[]> {
+    try {
+      return await this.prisma.category.findMany({
+        where: { isActive: true },
+        select: { id: true, name: true, description: true }
+      });
+    } catch (error) {
+      this.logger.error('Error get all categories');
+      handleException(error, 'Error get all categories');
+    }
   }
 
-  findOne(id: number) {
-    return `This action returns a #${id} category`;
+  /**
+   * Mostrar categoria por id
+   * @param id Id de la categoria
+   * @returns Categoria buscada
+   */
+  async findOne(id: string): Promise<CategoryData> {
+    try {
+      return await this.findById(id);
+    } catch (error) {
+      this.logger.error('Error get category');
+      if (error instanceof BadRequestException) {
+        throw error;
+      }
+      handleException(error, 'Error get category');
+    }
   }
 
   update(id: number, updateCategoryDto: UpdateCategoryDto) {
@@ -79,12 +104,34 @@ export class CategoryService {
   async findByName(name: string): Promise<CategoryData> {
     const categoryDB = await this.prisma.category.findFirst({
       where: { name },
-      select: { id: true, name: true, description: true }
+      select: { id: true, name: true, description: true, isActive: true }
     });
-    console.log(!categoryDB);
+    if (!categoryDB.isActive) {
+      throw new BadRequestException('This category exist, but is inactive');
+    }
     if (categoryDB) {
       throw new BadRequestException('This category exists');
     }
+    return categoryDB;
+  }
+
+  /**
+   * Valida si es que existe la categoria por id
+   * @param id Id de la categoria
+   * @returns Si existe la categoria te retorna el mensaje de error si no te retorna la categoria
+   */
+  async findById(id: string): Promise<CategoryData> {
+    const categoryDB = await this.prisma.category.findFirst({
+      where: { id },
+      select: { id: true, name: true, description: true, isActive: true }
+    });
+    if (!categoryDB) {
+      throw new BadRequestException('This category doesnt exist');
+    }
+    if (!categoryDB.isActive) {
+      throw new BadRequestException('This category exist, but is inactive');
+    }
+
     return categoryDB;
   }
 }

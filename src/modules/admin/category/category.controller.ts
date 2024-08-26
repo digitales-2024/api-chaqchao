@@ -8,6 +8,7 @@ import {
   ApiBadRequestResponse,
   ApiBearerAuth,
   ApiCreatedResponse,
+  ApiOkResponse,
   ApiTags,
   ApiUnauthorizedResponse
 } from '@nestjs/swagger';
@@ -33,14 +34,16 @@ export class CategoryController {
     return this.categoryService.create(createCategoryDto, user);
   }
 
+  @ApiOkResponse({ description: 'Get all categories' })
   @Get()
-  findAll() {
+  findAll(): Promise<CategoryData[]> {
     return this.categoryService.findAll();
   }
 
+  @ApiOkResponse({ description: 'Get category by id' })
   @Get(':id')
-  findOne(@Param('id') id: string) {
-    return this.categoryService.findOne(+id);
+  findOne(@Param('id') id: string): Promise<CategoryData> {
+    return this.categoryService.findOne(id);
   }
 
   @Patch(':id')
