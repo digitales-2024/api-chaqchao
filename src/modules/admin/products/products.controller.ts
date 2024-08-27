@@ -4,8 +4,18 @@ import { CreateProductDto } from './dto/create-product.dto';
 import { UpdateProductDto } from './dto/update-product.dto';
 import { Auth, GetUser } from '../auth/decorators';
 import { HttpResponse, ProductData, UserData } from 'src/interfaces';
-import { ApiOkResponse } from '@nestjs/swagger';
+import {
+  ApiBadRequestResponse,
+  ApiBearerAuth,
+  ApiOkResponse,
+  ApiTags,
+  ApiUnauthorizedResponse
+} from '@nestjs/swagger';
 
+@ApiTags('Products')
+@ApiBearerAuth()
+@ApiBadRequestResponse({ description: 'Bad Request' })
+@ApiUnauthorizedResponse({ description: 'Unauthorized' })
 @Auth()
 @Controller({
   path: 'products',
@@ -27,9 +37,10 @@ export class ProductsController {
     return this.productsService.findAll();
   }
 
+  @ApiOkResponse({ description: 'Get product by id' })
   @Get(':id')
-  findOne(@Param('id') id: string) {
-    return this.productsService.findOne(+id);
+  findOne(@Param('id') id: string): Promise<ProductData> {
+    return this.productsService.findOne(id);
   }
 
   @Patch(':id')

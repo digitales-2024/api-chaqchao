@@ -1,10 +1,4 @@
-import {
-  BadRequestException,
-  HttpStatus,
-  Injectable,
-  Logger,
-  NotFoundException
-} from '@nestjs/common';
+import { BadRequestException, HttpStatus, Injectable, Logger } from '@nestjs/common';
 import { CreateProductDto } from './dto/create-product.dto';
 import { UpdateProductDto } from './dto/update-product.dto';
 import { PrismaService } from 'src/prisma/prisma.service';
@@ -62,8 +56,21 @@ export class ProductsService {
     return `This action returns all products`;
   }
 
-  findOne(id: number) {
-    return `This action returns a #${id} product`;
+  /**
+   * Mostrar producto por id
+   * @param id Id del producto
+   * @returns Informacion del Producto
+   */
+  async findOne(id: string): Promise<ProductData> {
+    try {
+      return await this.findById(id);
+    } catch (error) {
+      this.logger.error('Error get category');
+      if (error instanceof BadRequestException) {
+        throw error;
+      }
+      handleException(error, 'Error get category');
+    }
   }
 
   update(id: number, updateProductDto: UpdateProductDto) {
@@ -89,31 +96,7 @@ export class ProductsService {
   async desactivate(id: string, user: UserData): Promise<HttpResponse<ProductData>> {
     try {
       const productDesactivate = await this.prisma.$transaction(async (prisma) => {
-        const productDB = await prisma.product.findUnique({
-          where: { id },
-          select: {
-            id: true,
-            name: true,
-            description: true,
-            isActive: true,
-            price: true,
-            image: true,
-            category: {
-              select: {
-                id: true,
-                name: true
-              }
-            }
-          }
-        });
-
-        if (!productDB) {
-          throw new NotFoundException('Product not found');
-        }
-
-        if (!productDB.isActive) {
-          throw new BadRequestException('Product is already deactivated');
-        }
+        const productDB = await this.findById(id);
 
         // Actualizar el estado del producto
         await prisma.product.update({
@@ -156,5 +139,38 @@ export class ProductsService {
       this.logger.error(`Error deactivating a product for id: ${id}`, error.stack);
       handleException(error, 'Error deactivating a product');
     }
+  }
+
+  /**
+   * Mostrar producto por id
+   * @param id Id del producto
+   * @returns Si existe el producto te retorna el mensaje de error si no te retorna el producto
+   */
+  async findById(id: string): Promise<ProductData> {
+    const produCtDB = await this.prisma.product.findFirst({
+      where: { id },
+      select: {
+        id: true,
+        name: true,
+        description: true,
+        isActive: true,
+        price: true,
+        image: true,
+        category: {
+          select: {
+            id: true,
+            name: true
+          }
+        }
+      }
+    });
+    if (!produCtDB) {
+      throw new BadRequestException('This product doesnt exist');
+    }
+    if (!!produCtDB && !produCtDB.isActive) {
+      throw new BadRequestException('This product exist, but is inactive');
+    }
+
+    return produCtDB;
   }
 }
