@@ -98,8 +98,75 @@ export class CategoryService {
     }
   }
 
-  update(id: number, updateCategoryDto: UpdateCategoryDto) {
-    return `This action updates a #${id} category ${updateCategoryDto}`;
+  /**
+   * Actualizar una categoria en la base de datos
+   * @param id Id de la categoria
+   * @param updateCategoryDto Data de Categoria
+   * @param user Usuario que actualiza la categoria
+   * @returns Categoria actualizada
+   */
+  async update(
+    id: string,
+    updateCategoryDto: UpdateCategoryDto,
+    user: UserData
+  ): Promise<HttpResponse<CategoryData>> {
+    try {
+      // Obtener la categoría actual desde la base de datos
+      const categoryDB = await this.findById(id);
+
+      const { name } = updateCategoryDto;
+
+      if (!!name) {
+        const hasChanges: boolean = name === categoryDB.name;
+        if (!hasChanges) {
+          const updateCategory = await this.prisma.$transaction(async (prisma) => {
+            // Proceder a actualizar los datos si ha habido cambios
+            const updatedCategory = await prisma.category.update({
+              where: { id },
+              data: updateCategoryDto,
+              select: {
+                id: true,
+                name: true,
+                description: true
+              }
+            });
+            // Registrar la auditoría de la actualización
+            await this.prisma.audit.create({
+              data: {
+                entityId: updatedCategory.id,
+                action: AuditActionType.UPDATE,
+                performedById: user.id,
+                entityType: 'category'
+              }
+            });
+            return updatedCategory;
+          });
+          return {
+            statusCode: HttpStatus.OK,
+            message: 'Category updated successfully',
+            data: {
+              id: updateCategory.id,
+              name: updateCategory.name,
+              description: updateCategory.description
+            }
+          };
+        }
+      }
+
+      return {
+        statusCode: HttpStatus.OK,
+        message: 'Category updated successfully',
+        data: categoryDB
+      };
+    } catch (error) {
+      this.logger.error(`Error updating a category for id: ${id}`, error.stack);
+
+      if (error instanceof BadRequestException || error instanceof NotFoundException) {
+        throw error;
+      }
+
+      handleException(error, 'Error updating a category');
+    }
   }
 
   /**
@@ -195,6 +262,12 @@ export class CategoryService {
     return categoryDB;
   }
 
+  /**
+   * Reactivar categoria
+   * @param id Id de la categoria
+   * @param user Usuario que reactiva la categoria
+   * @returns Categoria activada
+   */
   async reactivate(id: string, user: UserData): Promise<HttpResponse<CategoryData>> {
     try {
       const categoryReactivate = await this.prisma.$transaction(async (prisma) => {
