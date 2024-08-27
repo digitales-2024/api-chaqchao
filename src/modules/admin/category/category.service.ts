@@ -323,4 +323,66 @@ export class CategoryService {
       handleException(error, 'Error reactivating a category');
     }
   }
+
+  /**
+   * Desactivar categoria
+   * @param id Id de la categoria
+   * @param user Usuario que reactiva la categoria
+   * @returns Categoria desactivada
+   */
+  async desactivate(id: string, user: UserData): Promise<HttpResponse<CategoryData>> {
+    try {
+      const categoryDesactivate = await this.prisma.$transaction(async (prisma) => {
+        const categoryDB = await prisma.category.findUnique({
+          where: { id },
+          select: {
+            id: true,
+            name: true,
+            description: true,
+            isActive: true
+          }
+        });
+
+        if (!categoryDB) {
+          throw new NotFoundException('Category not found');
+        }
+
+        if (!categoryDB.isActive) {
+          throw new BadRequestException('Category is already desactive');
+        }
+
+        await prisma.category.update({
+          where: { id },
+          data: {
+            isActive: false
+          }
+        });
+
+        // Crear un registro de auditoria
+        await this.prisma.audit.create({
+          data: {
+            entityId: categoryDB.id,
+            action: AuditActionType.UPDATE,
+            performedById: user.id,
+            entityType: 'category'
+          }
+        });
+
+        return {
+          id: categoryDB.id,
+          name: categoryDB.name,
+          description: categoryDB.description
+        };
+      });
+
+      return {
+        statusCode: HttpStatus.OK,
+        message: 'Category desactivated',
+        data: categoryDesactivate
+      };
+    } catch (error) {
+      this.logger.error(`Error desactivating a category for id: ${id}`, error.stack);
+      handleException(error, 'Error desactivating a category');
+    }
+  }
 }
