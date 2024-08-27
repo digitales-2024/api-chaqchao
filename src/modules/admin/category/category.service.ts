@@ -1,4 +1,10 @@
-import { BadRequestException, HttpStatus, Injectable, Logger } from '@nestjs/common';
+import {
+  BadRequestException,
+  HttpStatus,
+  Injectable,
+  Logger,
+  NotFoundException
+} from '@nestjs/common';
 import { CreateCategoryDto } from './dto/create-category.dto';
 import { UpdateCategoryDto } from './dto/update-category.dto';
 import { CategoryData, HttpResponse, UserData } from 'src/interfaces';
@@ -187,5 +193,61 @@ export class CategoryService {
     }
 
     return categoryDB;
+  }
+
+  async reactivate(id: string, user: UserData): Promise<HttpResponse<CategoryData>> {
+    try {
+      const categoryReactivate = await this.prisma.$transaction(async (prisma) => {
+        const categoryDB = await prisma.category.findUnique({
+          where: { id },
+          select: {
+            id: true,
+            name: true,
+            description: true,
+            isActive: true
+          }
+        });
+
+        if (!categoryDB) {
+          throw new NotFoundException('Category not found');
+        }
+
+        if (categoryDB.isActive) {
+          throw new BadRequestException('Category is already active');
+        }
+
+        await prisma.category.update({
+          where: { id },
+          data: {
+            isActive: true
+          }
+        });
+
+        // Crear un registro de auditoria
+        await this.prisma.audit.create({
+          data: {
+            entityId: categoryDB.id,
+            action: AuditActionType.UPDATE,
+            performedById: user.id,
+            entityType: 'category'
+          }
+        });
+
+        return {
+          id: categoryDB.id,
+          name: categoryDB.name,
+          description: categoryDB.description
+        };
+      });
+
+      return {
+        statusCode: HttpStatus.OK,
+        message: 'Category reactivated',
+        data: categoryReactivate
+      };
+    } catch (error) {
+      this.logger.error(`Error reactivating a category for id: ${id}`, error.stack);
+      handleException(error, 'Error reactivating a category');
+    }
   }
 }

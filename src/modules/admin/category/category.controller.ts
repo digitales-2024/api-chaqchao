@@ -56,4 +56,13 @@ export class CategoryController {
   remove(@Param('id') id: string, @GetUser() user: UserData): Promise<HttpResponse<CategoryData>> {
     return this.categoryService.remove(id, user);
   }
+
+  @ApiOkResponse({ description: 'Category reactivated' })
+  @Patch('reactivate/:id')
+  reactivate(
+    @Param('id') id: string,
+    @GetUser() user: UserData
+  ): Promise<HttpResponse<CategoryData>> {
+    return this.categoryService.reactivate(id, user);
+  }
 }
