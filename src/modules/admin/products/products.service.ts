@@ -20,8 +20,7 @@ export class ProductsService {
       const newProduct = await this.prisma.product.create({
         data: {
           ...createProductDto,
-          price: parseFloat(price.toString()),
-          categoryId: '714924ea-4852-463c-8f09-9175591dbc5e'
+          price: parseFloat(price.toString())
         }
       });
 
@@ -66,5 +65,11 @@ export class ProductsService {
 
   remove(id: number) {
     return `This action removes a #${id} product`;
+  }
+  async findProductsByIdCategory(id: string) {
+    return await this.prisma.product.findMany({
+      where: { categoryId: id },
+      select: { id: true, name: true, description: true, isActive: true }
+    });
   }
 }
