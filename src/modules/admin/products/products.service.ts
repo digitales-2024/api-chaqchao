@@ -1,4 +1,10 @@
-import { BadRequestException, HttpStatus, Injectable, Logger } from '@nestjs/common';
+import {
+  BadRequestException,
+  HttpStatus,
+  Injectable,
+  Logger,
+  NotFoundException
+} from '@nestjs/common';
 import { CreateProductDto } from './dto/create-product.dto';
 import { UpdateProductDto } from './dto/update-product.dto';
 import { PrismaService } from 'src/prisma/prisma.service';
@@ -203,5 +209,85 @@ export class ProductsService {
     }
 
     return produCtDB;
+  }
+  /**
+   * Activar o desactivar los productos por id
+   * @param id Id del Producto
+   * @param user Usuario que cambia el estado
+   * @returns Producto desactivado o activado
+   */
+  async toggleActivation(id: string, user: UserData): Promise<HttpResponse<ProductData>> {
+    try {
+      const toggledProduct = await this.prisma.$transaction(async (prisma) => {
+        // Obtener el producto actual, incluyendo isActive para la lógica de activación/desactivación
+        const productDB = await prisma.product.findUnique({
+          where: { id },
+          select: {
+            id: true,
+            name: true,
+            description: true,
+            isActive: true,
+            price: true,
+            image: true,
+            category: {
+              select: {
+                id: true,
+                name: true
+              }
+            }
+          }
+        });
+
+        if (!productDB) {
+          throw new NotFoundException('Product not found');
+        }
+
+        // Determinar la nueva acción basada en el estado actual de isActive
+        const newStatus = !productDB.isActive;
+        const action = newStatus ? 'activated' : 'desactivated';
+
+        // Actualizar el estado de isActive del producto
+        await prisma.product.update({
+          where: { id },
+          data: {
+            isActive: newStatus
+          }
+        });
+
+        // Crear un registro de auditoría
+        await this.prisma.audit.create({
+          data: {
+            entityId: productDB.id,
+            action: AuditActionType.UPDATE,
+            performedById: user.id,
+            entityType: 'product'
+          }
+        });
+
+        // Retornar la estructura de ProductData sin incluir isActive
+        const productData: ProductData = {
+          id: productDB.id,
+          name: productDB.name,
+          description: productDB.description,
+          price: productDB.price,
+          image: productDB.image,
+          category: {
+            id: productDB.category.id,
+            name: productDB.category.name
+          }
+        };
+
+        return { productData, action };
+      });
+
+      return {
+        statusCode: HttpStatus.OK,
+        message: `Product successfully ${toggledProduct.action}`,
+        data: toggledProduct.productData
+      };
+    } catch (error) {
+      this.logger.error(`Error toggling activation for product with id: ${id}`, error.stack);
+      handleException(error, 'Error toggling product activation');
+    }
   }
 }

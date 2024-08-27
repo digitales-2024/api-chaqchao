@@ -62,4 +62,13 @@ export class ProductsController {
   ): Promise<HttpResponse<ProductData>> {
     return this.productsService.desactivate(id, user);
   }
+
+  @ApiOkResponse({ description: 'Product toggle activation' })
+  @Patch('toggleactivation/:id')
+  toggleActivation(
+    @Param('id') id: string,
+    @GetUser() user: UserData
+  ): Promise<HttpResponse<ProductData>> {
+    return this.productsService.toggleActivation(id, user);
+  }
 }
