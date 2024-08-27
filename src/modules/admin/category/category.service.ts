@@ -5,12 +5,16 @@ import { CategoryData, HttpResponse, UserData } from 'src/interfaces';
 import { PrismaService } from 'src/prisma/prisma.service';
 import { handleException } from 'src/utils';
 import { AuditActionType } from '@prisma/client';
+import { ProductsService } from '../products/products.service';
 
 @Injectable()
 export class CategoryService {
   private readonly logger = new Logger(CategoryService.name);
 
-  constructor(private readonly prisma: PrismaService) {}
+  constructor(
+    private readonly prisma: PrismaService,
+    private readonly product: ProductsService
+  ) {}
 
   /**
    * Creacion de una nueva categoria
@@ -92,8 +96,55 @@ export class CategoryService {
     return `This action updates a #${id} category ${updateCategoryDto}`;
   }
 
-  remove(id: number) {
-    return `This action removes a #${id} category`;
+  /**
+   * Eliminar categoria por id
+   * @param id Id de la categoria
+   * @param user Usuario que elimina la categoria
+   * @returns Categoria eliminada
+   */
+  async remove(id: string, user: UserData): Promise<HttpResponse<CategoryData>> {
+    try {
+      await this.findById(id);
+      const productsDB = await this.product.findProductsByIdCategory(id);
+      const isAllProductsActive = productsDB.every((product) => product.isActive);
+      if (productsDB.length > 0 && isAllProductsActive) {
+        throw new BadRequestException('Category asigned to product');
+      }
+      const isAllProductsInactive = productsDB.every((product) => !product.isActive);
+      let categoryDelete: CategoryData;
+      if (isAllProductsInactive) {
+        categoryDelete = await this.prisma.category.update({
+          where: { id },
+          data: { isActive: false },
+          select: { id: true, name: true, description: true }
+        });
+      } else {
+        categoryDelete = await this.prisma.category.delete({
+          where: { id },
+          select: { id: true, name: true, description: true }
+        });
+      }
+
+      await this.prisma.audit.create({
+        data: {
+          entityId: id,
+          action: AuditActionType.DELETE,
+          performedById: user.id,
+          entityType: 'category'
+        }
+      });
+      return {
+        statusCode: HttpStatus.OK,
+        message: 'Category deleted',
+        data: categoryDelete
+      };
+    } catch (error) {
+      this.logger.error(`Error delete category by id ${id}`, error);
+      if (error instanceof BadRequestException) {
+        throw error;
+      }
+      handleException(error, 'Error delete category');
+    }
   }
 
   /**
@@ -106,12 +157,15 @@ export class CategoryService {
       where: { name },
       select: { id: true, name: true, description: true, isActive: true }
     });
-    if (!categoryDB.isActive) {
-      throw new BadRequestException('This category exist, but is inactive');
-    }
+
     if (categoryDB) {
       throw new BadRequestException('This category exists');
     }
+
+    if (!!categoryDB && !categoryDB.isActive) {
+      throw new BadRequestException('This category exist, but is inactive');
+    }
+
     return categoryDB;
   }
 
@@ -128,7 +182,7 @@ export class CategoryService {
     if (!categoryDB) {
       throw new BadRequestException('This category doesnt exist');
     }
-    if (!categoryDB.isActive) {
+    if (!!categoryDB && !categoryDB.isActive) {
       throw new BadRequestException('This category exist, but is inactive');
     }
 

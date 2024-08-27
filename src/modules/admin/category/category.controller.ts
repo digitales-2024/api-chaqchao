@@ -51,8 +51,9 @@ export class CategoryController {
     return this.categoryService.update(+id, updateCategoryDto);
   }
 
+  @ApiOkResponse({ description: 'Category deleted' })
   @Delete(':id')
-  remove(@Param('id') id: string) {
-    return this.categoryService.remove(+id);
+  remove(@Param('id') id: string, @GetUser() user: UserData): Promise<HttpResponse<CategoryData>> {
+    return this.categoryService.remove(id, user);
   }
 }
