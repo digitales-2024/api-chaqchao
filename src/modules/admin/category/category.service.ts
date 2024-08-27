@@ -327,7 +327,7 @@ export class CategoryService {
   /**
    * Desactivar categoria
    * @param id Id de la categoria
-   * @param user Usuario que reactiva la categoria
+   * @param user Usuario que desactiva la categoria
    * @returns Categoria desactivada
    */
   async desactivate(id: string, user: UserData): Promise<HttpResponse<CategoryData>> {

@@ -4,6 +4,7 @@ import { CreateProductDto } from './dto/create-product.dto';
 import { UpdateProductDto } from './dto/update-product.dto';
 import { Auth, GetUser } from '../auth/decorators';
 import { HttpResponse, ProductData, UserData } from 'src/interfaces';
+import { ApiOkResponse } from '@nestjs/swagger';
 
 @Auth()
 @Controller({
@@ -39,5 +40,14 @@ export class ProductsController {
   @Delete(':id')
   remove(@Param('id') id: string) {
     return this.productsService.remove(+id);
+  }
+
+  @ApiOkResponse({ description: 'Product desactivated' })
+  @Patch('desactivate/:id')
+  desactivate(
+    @Param('id') id: string,
+    @GetUser() user: UserData
+  ): Promise<HttpResponse<ProductData>> {
+    return this.productsService.desactivate(id, user);
   }
 }
