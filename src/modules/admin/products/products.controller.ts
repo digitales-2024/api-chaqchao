@@ -32,8 +32,9 @@ export class ProductsController {
     return this.productsService.create(createProductDto, user);
   }
 
+  @ApiOkResponse({ description: 'Get all products' })
   @Get()
-  findAll() {
+  findAll(): Promise<ProductData[]> {
     return this.productsService.findAll();
   }
 

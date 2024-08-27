@@ -52,8 +52,33 @@ export class ProductsService {
     }
   }
 
-  findAll() {
-    return `This action returns all products`;
+  /**
+   * Mostrar todos los productos
+   * @returns Todos los productos
+   */
+  async findAll(): Promise<ProductData[]> {
+    try {
+      return await this.prisma.product.findMany({
+        where: { isActive: true },
+        select: {
+          id: true,
+          name: true,
+          description: true,
+          isActive: true,
+          price: true,
+          image: true,
+          category: {
+            select: {
+              id: true,
+              name: true
+            }
+          }
+        }
+      });
+    } catch (error) {
+      this.logger.error('Error get all products');
+      handleException(error, 'Error get all products');
+    }
   }
 
   /**
@@ -65,11 +90,11 @@ export class ProductsService {
     try {
       return await this.findById(id);
     } catch (error) {
-      this.logger.error('Error get category');
+      this.logger.error('Error get product');
       if (error instanceof BadRequestException) {
         throw error;
       }
-      handleException(error, 'Error get category');
+      handleException(error, 'Error get product');
     }
   }
 
@@ -80,6 +105,12 @@ export class ProductsService {
   remove(id: number) {
     return `This action removes a #${id} product`;
   }
+
+  /**
+   * Mostrar productos por id categoria
+   * @param id Id de Categoria
+   * @returns Productos asignados a la categoria
+   */
   async findProductsByIdCategory(id: string) {
     return await this.prisma.product.findMany({
       where: { categoryId: id },
