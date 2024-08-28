@@ -1,6 +1,8 @@
 import {
   BadRequestException,
+  forwardRef,
   HttpStatus,
+  Inject,
   Injectable,
   Logger,
   NotFoundException
@@ -19,7 +21,8 @@ export class CategoryService {
 
   constructor(
     private readonly prisma: PrismaService,
-    private readonly product: ProductsService
+    @Inject(forwardRef(() => ProductsService))
+    private readonly productsService: ProductsService
   ) {}
 
   /**
@@ -178,7 +181,7 @@ export class CategoryService {
   async remove(id: string, user: UserData): Promise<HttpResponse<CategoryData>> {
     try {
       await this.findById(id);
-      const productsDB = await this.product.findProductsByIdCategory(id);
+      const productsDB = await this.productsService.findProductsByIdCategory(id);
       const isAllProductsActive = productsDB.every((product) => product.isActive);
       if (productsDB.length > 0 && isAllProductsActive) {
         throw new BadRequestException('Category asigned to product');
@@ -327,7 +330,7 @@ export class CategoryService {
   /**
    * Desactivar categoria
    * @param id Id de la categoria
-   * @param user Usuario que desactiva la categoria
+   * @param user Usuario que reactiva la categoria
    * @returns Categoria desactivada
    */
   async desactivate(id: string, user: UserData): Promise<HttpResponse<CategoryData>> {
