@@ -24,20 +24,51 @@ export class ProductsService {
     private readonly categoryService: CategoryService
   ) {}
 
+  /**
+   * Creacion del producto
+   * @param createProductDto Data del producto
+   * @param user Usuario que crea el producto
+   * @returns Producto Creado
+   */
   async create(
     createProductDto: CreateProductDto,
     user: UserData
   ): Promise<HttpResponse<ProductData>> {
     try {
-      const { price } = createProductDto;
+      const { price, categoryId } = createProductDto;
 
+      // Validar la categoría si se proporciona un categoryId
+      if (categoryId) {
+        const categoryDB = await this.categoryService.findById(categoryId);
+
+        if (!categoryDB) {
+          throw new BadRequestException('Invalid categoryId provided');
+        }
+      }
+
+      // Crear el nuevo producto con el precio convertido
       const newProduct = await this.prisma.product.create({
         data: {
           ...createProductDto,
           price: parseFloat(price.toString())
+        },
+        select: {
+          id: true,
+          name: true,
+          description: true,
+          price: true,
+          image: true,
+          isAvailable: true,
+          category: {
+            select: {
+              id: true,
+              name: true
+            }
+          }
         }
       });
 
+      // Registrar la auditoría de la creación
       await this.prisma.audit.create({
         data: {
           action: AuditActionType.CREATE,
@@ -57,7 +88,10 @@ export class ProductsService {
           price: newProduct.price,
           image: newProduct.image,
           isAvailable: newProduct.isAvailable,
-          category: { id: newProduct.categoryId, name: 'Category name' }
+          category: {
+            id: newProduct.category.id,
+            name: newProduct.category.name
+          }
         }
       };
     } catch (error) {
