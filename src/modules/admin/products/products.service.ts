@@ -1,6 +1,8 @@
 import {
   BadRequestException,
+  forwardRef,
   HttpStatus,
+  Inject,
   Injectable,
   Logger,
   NotFoundException
@@ -11,11 +13,16 @@ import { PrismaService } from 'src/prisma/prisma.service';
 import { HttpResponse, ProductData, UserData } from 'src/interfaces';
 import { AuditActionType } from '@prisma/client';
 import { handleException } from 'src/utils';
+import { CategoryService } from '../category/category.service';
 
 @Injectable()
 export class ProductsService {
   private readonly logger = new Logger(ProductsService.name);
-  constructor(private readonly prisma: PrismaService) {}
+  constructor(
+    private readonly prisma: PrismaService,
+    @Inject(forwardRef(() => CategoryService))
+    private readonly categoryService: CategoryService
+  ) {}
 
   async create(
     createProductDto: CreateProductDto,
@@ -49,6 +56,7 @@ export class ProductsService {
           description: newProduct.description,
           price: newProduct.price,
           image: newProduct.image,
+          isAvailable: newProduct.isAvailable,
           category: { id: newProduct.categoryId, name: 'Category name' }
         }
       };
@@ -73,6 +81,7 @@ export class ProductsService {
           isActive: true,
           price: true,
           image: true,
+          isAvailable: true,
           category: {
             select: {
               id: true,
@@ -104,12 +113,140 @@ export class ProductsService {
     }
   }
 
-  update(id: number, updateProductDto: UpdateProductDto) {
-    return `This action updates a #${id} product${updateProductDto}`;
-  }
+  async update(
+    id: string,
+    updateProductDto: UpdateProductDto,
+    user: UserData
+  ): Promise<HttpResponse<ProductData>> {
+    try {
+      // Obtener el producto actual desde la base de datos
+      const productDB = await this.prisma.product.findUnique({
+        where: { id },
+        select: {
+          id: true,
+          name: true,
+          description: true,
+          isActive: true,
+          price: true,
+          image: true,
+          isAvailable: true,
+          category: {
+            select: {
+              id: true,
+              name: true
+            }
+          }
+        }
+      });
 
-  remove(id: number) {
-    return `This action removes a #${id} product`;
+      if (!productDB) {
+        throw new NotFoundException('Product not found');
+      }
+
+      // Validar la categoría si se proporciona un nuevo categoryId
+      if (updateProductDto.categoryId) {
+        const categoryDB = await this.categoryService.findById(updateProductDto.categoryId);
+
+        if (!categoryDB) {
+          throw new BadRequestException('Invalid categoryId provided');
+        }
+      }
+
+      const { price } = updateProductDto;
+
+      const dataToUpdate = {
+        ...updateProductDto,
+        ...(price !== undefined && { price: parseFloat(price.toString()) })
+      };
+
+      // Verificar si hay cambios en los datos
+      const hasChanges =
+        (updateProductDto.name && updateProductDto.name !== productDB.name) ||
+        (updateProductDto.description && updateProductDto.description !== productDB.description) ||
+        (price !== undefined && parseFloat(price.toString()) !== productDB.price) ||
+        (updateProductDto.image && updateProductDto.image !== productDB.image) ||
+        (updateProductDto.categoryId && updateProductDto.categoryId !== productDB.category.id);
+
+      if (!hasChanges) {
+        return {
+          statusCode: HttpStatus.OK,
+          message: 'Product updated successfully',
+          data: {
+            id: productDB.id,
+            name: productDB.name,
+            description: productDB.description,
+            price: productDB.price,
+            image: productDB.image,
+            isAvailable: productDB.isAvailable,
+            category: {
+              id: productDB.category.id,
+              name: productDB.category.name
+            }
+          }
+        };
+      }
+
+      // Actualizar los datos del producto si ha habido cambios
+      const updatedProduct = await this.prisma.$transaction(async (prisma) => {
+        const productUpdate = await prisma.product.update({
+          where: { id },
+          data: dataToUpdate,
+          select: {
+            id: true,
+            name: true,
+            description: true,
+            isActive: true,
+            price: true,
+            image: true,
+            isAvailable: true,
+            category: {
+              select: {
+                id: true,
+                name: true
+              }
+            }
+          }
+        });
+
+        // Registrar la auditoría de la actualización
+        await prisma.audit.create({
+          data: {
+            entityId: productUpdate.id,
+            action: AuditActionType.UPDATE,
+            performedById: user.id,
+            entityType: 'product'
+          }
+        });
+
+        return productUpdate;
+      });
+
+      // Retornar la respuesta con los datos actualizados
+      return {
+        statusCode: HttpStatus.OK,
+        message: 'Product updated successfully',
+        data: {
+          id: updatedProduct.id,
+          name: updatedProduct.name,
+          description: updatedProduct.description,
+          price: updatedProduct.price,
+          image: updatedProduct.image,
+          isAvailable: updatedProduct.isAvailable,
+          category: {
+            id: updatedProduct.category.id,
+            name: updatedProduct.category.name
+          }
+        }
+      };
+    } catch (error) {
+      this.logger.error(`Error updating product with id: ${id}`, error.stack);
+
+      if (error instanceof BadRequestException || error instanceof NotFoundException) {
+        throw error;
+      }
+
+      handleException(error, 'Error updating a product');
+    }
   }
 
   /**
@@ -128,9 +265,9 @@ export class ProductsService {
    * Desactivar producto
    * @param id Id del producto
    * @param user Usuario que desactiva el producto
-   * @returns Producto desactivada
+   * @returns Producto desactivado
    */
-  async desactivate(id: string, user: UserData): Promise<HttpResponse<ProductData>> {
+  async remove(id: string, user: UserData): Promise<HttpResponse<ProductData>> {
     try {
       const productDesactivate = await this.prisma.$transaction(async (prisma) => {
         const productDB = await this.findById(id);
@@ -160,6 +297,7 @@ export class ProductsService {
           description: productDB.description,
           price: productDB.price,
           image: productDB.image,
+          isAvailable: productDB.isAvailable,
           category: {
             id: productDB.category.id,
             name: productDB.category.name
@@ -169,12 +307,12 @@ export class ProductsService {
 
       return {
         statusCode: HttpStatus.OK,
-        message: 'Product deactivated successfully',
+        message: 'Product desactivated successfully',
         data: productDesactivate
       };
     } catch (error) {
       this.logger.error(`Error deactivating a product for id: ${id}`, error.stack);
-      handleException(error, 'Error deactivating a product');
+      handleException(error, 'Error desactivating a product');
     }
   }
 
@@ -193,6 +331,7 @@ export class ProductsService {
         isActive: true,
         price: true,
         image: true,
+        isAvailable: true,
         category: {
           select: {
             id: true,
@@ -229,6 +368,7 @@ export class ProductsService {
             isActive: true,
             price: true,
             image: true,
+            isAvailable: true,
             category: {
               select: {
                 id: true,
@@ -243,14 +383,14 @@ export class ProductsService {
         }
 
         // Determinar la nueva acción basada en el estado actual de isActive
-        const newStatus = !productDB.isActive;
+        const newStatus = !productDB.isAvailable;
         const action = newStatus ? 'activated' : 'desactivated';
 
         // Actualizar el estado de isActive del producto
         await prisma.product.update({
           where: { id },
           data: {
-            isActive: newStatus
+            isAvailable: newStatus
           }
         });
 
@@ -271,6 +411,7 @@ export class ProductsService {
           description: productDB.description,
           price: productDB.price,
           image: productDB.image,
+          isAvailable: productDB.isAvailable,
           category: {
             id: productDB.category.id,
             name: productDB.category.name
