@@ -50,8 +50,12 @@ export class ProductVariationController {
     return this.productVariationService.update(+id, updateProductVariationDto);
   }
 
+  @ApiOkResponse({ description: 'Product variation deleted' })
   @Delete(':id')
-  remove(@Param('id') id: string) {
-    return this.productVariationService.remove(+id);
+  remove(
+    @Param('id') id: string,
+    @GetUser() user: UserData
+  ): Promise<HttpResponse<ProductVariationData>> {
+    return this.productVariationService.remove(id, user);
   }
 }

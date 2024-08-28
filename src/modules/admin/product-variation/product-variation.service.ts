@@ -181,7 +181,54 @@ export class ProductVariationService {
     return `This action updates a #${id} ${updateProductVariationDto} productVariation`;
   }
 
-  remove(id: number) {
-    return `This action removes a #${id} productVariation`;
+  /**
+   * Eliminar variacion del producto por id
+   * @param id Id de la variacion del producto
+   * @param user Usuario que elimina la variacion del producto
+   * @returns Variacion de Producto eliminado
+   */
+  async remove(id: string, user: UserData): Promise<HttpResponse<ProductVariationData>> {
+    try {
+      await this.findById(id);
+
+      const productVariationDelete: ProductVariationData =
+        await this.prisma.productVariation.delete({
+          where: { id },
+          select: {
+            id: true,
+            name: true,
+            description: true,
+            isActive: true,
+            additionalPrice: true,
+            product: {
+              select: {
+                id: true,
+                name: true
+              }
+            }
+          }
+        });
+
+      await this.prisma.audit.create({
+        data: {
+          entityId: id,
+          action: AuditActionType.DELETE,
+          performedById: user.id,
+          entityType: 'productVariation'
+        }
+      });
+
+      return {
+        statusCode: HttpStatus.OK,
+        message: 'Product variation deleted',
+        data: productVariationDelete
+      };
+    } catch (error) {
+      this.logger.error(`Error deleting product variation by id ${id}`, error);
+      if (error instanceof BadRequestException) {
+        throw error;
+      }
+      handleException(error, 'Error deleting product variation');
+    }
   }
 }
