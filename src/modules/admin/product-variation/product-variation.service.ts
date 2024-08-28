@@ -128,8 +128,53 @@ export class ProductVariationService {
     }
   }
 
-  findOne(id: number) {
-    return `This action returns a #${id} productVariation`;
+  /**
+   * Mostrar la variacion del producto buscada por el id
+   * @param id Id de la variacion del producto
+   * @returns Variacion del Producto
+   */
+  async findOne(id: string): Promise<ProductVariationData> {
+    try {
+      return await this.findById(id);
+    } catch (error) {
+      this.logger.error('Error get product variation');
+      if (error instanceof BadRequestException) {
+        throw error;
+      }
+      handleException(error, 'Error get product variation');
+    }
+  }
+
+  /**
+   * Mostrar variacion de producto por id
+   * @param id Id de la variacion del producto
+   * @returns Variacion del producto
+   */
+  async findById(id: string): Promise<ProductVariationData> {
+    const produCtDB = await this.prisma.productVariation.findFirst({
+      where: { id },
+      select: {
+        id: true,
+        name: true,
+        description: true,
+        isActive: true,
+        additionalPrice: true,
+        product: {
+          select: {
+            id: true,
+            name: true
+          }
+        }
+      }
+    });
+    if (!produCtDB) {
+      throw new BadRequestException('This product variation doesnt exist');
+    }
+    if (!!produCtDB && !produCtDB.isActive) {
+      throw new BadRequestException('This product variation exist, but is inactive');
+    }
+
+    return produCtDB;
   }
 
   update(id: number, updateProductVariationDto: UpdateProductVariationDto) {

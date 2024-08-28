@@ -39,9 +39,10 @@ export class ProductVariationController {
     return this.productVariationService.findAll();
   }
 
+  @ApiOkResponse({ description: 'Get product variation by id' })
   @Get(':id')
-  findOne(@Param('id') id: string) {
-    return this.productVariationService.findOne(+id);
+  findOne(@Param('id') id: string): Promise<ProductVariationData> {
+    return this.productVariationService.findOne(id);
   }
 
   @Patch(':id')
