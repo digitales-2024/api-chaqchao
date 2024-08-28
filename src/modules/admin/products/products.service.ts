@@ -112,7 +112,13 @@ export class ProductsService {
       handleException(error, 'Error get product');
     }
   }
-
+  /**
+   * Actualizar el producto por id
+   * @param id Id del producto
+   * @param updateProductDto Data del producto
+   * @param user Usuario que actualiza el producto
+   * @returns Producto actualizado
+   */
   async update(
     id: string,
     updateProductDto: UpdateProductDto,
