@@ -46,7 +46,7 @@ export class CategoryController {
     return this.categoryService.findOne(id);
   }
 
-  @ApiOkResponse({ description: 'User updated' })
+  @ApiOkResponse({ description: 'Category updated' })
   @Patch(':id')
   update(
     @Param('id') id: string,
