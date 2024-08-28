@@ -45,9 +45,14 @@ export class ProductVariationController {
     return this.productVariationService.findOne(id);
   }
 
+  @ApiOkResponse({ description: 'Product variation updated' })
   @Patch(':id')
-  update(@Param('id') id: string, @Body() updateProductVariationDto: UpdateProductVariationDto) {
-    return this.productVariationService.update(+id, updateProductVariationDto);
+  update(
+    @Param('id') id: string,
+    @Body() updateProductVariationDto: UpdateProductVariationDto,
+    @GetUser() user: UserData
+  ): Promise<HttpResponse<ProductVariationData>> {
+    return this.productVariationService.update(id, updateProductVariationDto, user);
   }
 
   @ApiOkResponse({ description: 'Product variation deleted' })

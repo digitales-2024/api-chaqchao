@@ -177,8 +177,137 @@ export class ProductVariationService {
     return produCtDB;
   }
 
-  update(id: number, updateProductVariationDto: UpdateProductVariationDto) {
-    return `This action updates a #${id} ${updateProductVariationDto} productVariation`;
+  async update(
+    id: string,
+    updateProductVariationDto: UpdateProductVariationDto,
+    user: UserData
+  ): Promise<HttpResponse<ProductVariationData>> {
+    try {
+      // Obtener la variación de producto actual desde la base de datos
+      const productVariationDB = await this.prisma.productVariation.findUnique({
+        where: { id },
+        select: {
+          id: true,
+          name: true,
+          description: true,
+          isActive: true,
+          additionalPrice: true,
+          product: {
+            select: {
+              id: true,
+              name: true
+            }
+          }
+        }
+      });
+
+      if (!productVariationDB) {
+        throw new NotFoundException('Product variation not found');
+      }
+
+      // Validar el producto si se proporciona un nuevo productId
+      if (updateProductVariationDto.productId) {
+        const productDB = await this.productsService.findById(updateProductVariationDto.productId);
+
+        if (!productDB) {
+          throw new BadRequestException('Invalid productId provided');
+        }
+      }
+
+      const { additionalPrice } = updateProductVariationDto;
+
+      const dataToUpdate = {
+        ...updateProductVariationDto,
+        ...(additionalPrice !== undefined && {
+          additionalPrice: parseFloat(additionalPrice.toString())
+        })
+      };
+
+      // Verificar si hay cambios en los datos
+      const hasChanges =
+        (updateProductVariationDto.name &&
+          updateProductVariationDto.name !== productVariationDB.name) ||
+        (updateProductVariationDto.description &&
+          updateProductVariationDto.description !== productVariationDB.description) ||
+        (additionalPrice !== undefined &&
+          parseFloat(additionalPrice.toString()) !== productVariationDB.additionalPrice) ||
+        (updateProductVariationDto.productId &&
+          updateProductVariationDto.productId !== productVariationDB.product.id);
+
+      if (!hasChanges) {
+        return {
+          statusCode: HttpStatus.OK,
+          message: 'Product variation updated successfully',
+          data: {
+            id: productVariationDB.id,
+            name: productVariationDB.name,
+            description: productVariationDB.description,
+            additionalPrice: productVariationDB.additionalPrice,
+            product: {
+              id: productVariationDB.product.id,
+              name: productVariationDB.product.name
+            }
+          }
+        };
+      }
+
+      // Actualizar los datos de la variación de producto si ha habido cambios
+      const updatedProductVariation = await this.prisma.$transaction(async (prisma) => {
+        const productVariationUpdate = await prisma.productVariation.update({
+          where: { id },
+          data: dataToUpdate,
+          select: {
+            id: true,
+            name: true,
+            description: true,
+            isActive: true,
+            additionalPrice: true,
+            product: {
+              select: {
+                id: true,
+                name: true
+              }
+            }
+          }
+        });
+
+        // Registrar la auditoría de la actualización
+        await prisma.audit.create({
+          data: {
+            entityId: productVariationUpdate.id,
+            action: AuditActionType.UPDATE,
+            performedById: user.id,
+            entityType: 'productVariation'
+          }
+        });
+
+        return productVariationUpdate;
+      });
+
+      // Retornar la respuesta con los datos actualizados
+      return {
+        statusCode: HttpStatus.OK,
+        message: 'Product variation updated successfully',
+        data: {
+          id: updatedProductVariation.id,
+          name: updatedProductVariation.name,
+          description: updatedProductVariation.description,
+          additionalPrice: updatedProductVariation.additionalPrice,
+          product: {
+            id: updatedProductVariation.product.id,
+            name: updatedProductVariation.product.name
+          }
+        }
+      };
+    } catch (error) {
+      this.logger.error(`Error updating product variation with id: ${id}`, error.stack);
+
+      if (error instanceof BadRequestException || error instanceof NotFoundException) {
+        throw error;
+      }
+
+      handleException(error, 'Error updating a product variation');
+    }
   }
 
   /**
