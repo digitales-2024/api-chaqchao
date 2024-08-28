@@ -7,6 +7,7 @@ import { HttpResponse, ProductData, UserData } from 'src/interfaces';
 import {
   ApiBadRequestResponse,
   ApiBearerAuth,
+  ApiCreatedResponse,
   ApiOkResponse,
   ApiTags,
   ApiUnauthorizedResponse
@@ -24,6 +25,7 @@ import {
 export class ProductsController {
   constructor(private readonly productsService: ProductsService) {}
 
+  @ApiCreatedResponse({ description: 'Product created' })
   @Post()
   create(
     @Body() createProductDto: CreateProductDto,
