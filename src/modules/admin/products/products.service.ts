@@ -399,28 +399,7 @@ export class ProductsService {
     try {
       const toggledProduct = await this.prisma.$transaction(async (prisma) => {
         // Obtener el producto actual, incluyendo isActive para la lógica de activación/desactivación
-        const productDB = await prisma.product.findUnique({
-          where: { id },
-          select: {
-            id: true,
-            name: true,
-            description: true,
-            isActive: true,
-            price: true,
-            image: true,
-            isAvailable: true,
-            category: {
-              select: {
-                id: true,
-                name: true
-              }
-            }
-          }
-        });
-
-        if (!productDB) {
-          throw new NotFoundException('Product not found');
-        }
+        const productDB = await this.findById(id);
 
         // Determinar la nueva acción basada en el estado actual de isActive
         const newStatus = !productDB.isAvailable;

@@ -117,48 +117,54 @@ export class CategoryService {
       // Obtener la categoría actual desde la base de datos
       const categoryDB = await this.findById(id);
 
-      const { name } = updateCategoryDto;
+      const { name, description } = updateCategoryDto;
 
-      if (!!name) {
-        const hasChanges: boolean = name === categoryDB.name;
-        if (!hasChanges) {
-          const updateCategory = await this.prisma.$transaction(async (prisma) => {
-            // Proceder a actualizar los datos si ha habido cambios
-            const updatedCategory = await prisma.category.update({
-              where: { id },
-              data: updateCategoryDto,
-              select: {
-                id: true,
-                name: true,
-                description: true
-              }
-            });
-            // Registrar la auditoría de la actualización
-            await this.prisma.audit.create({
-              data: {
-                entityId: updatedCategory.id,
-                action: AuditActionType.UPDATE,
-                performedById: user.id,
-                entityType: 'category'
-              }
-            });
-            return updatedCategory;
-          });
-          return {
-            statusCode: HttpStatus.OK,
-            message: 'Category updated successfully',
-            data: {
-              id: updateCategory.id,
-              name: updateCategory.name,
-              description: updateCategory.description
+      // Verificar si hay cambios en los datos
+      const hasChanges =
+        (name && name !== categoryDB.name) ||
+        (description && description !== categoryDB.description);
+
+      if (hasChanges) {
+        const updatedCategory = await this.prisma.$transaction(async (prisma) => {
+          // Proceder a actualizar los datos si ha habido cambios
+          const categoryUpdate = await prisma.category.update({
+            where: { id },
+            data: updateCategoryDto,
+            select: {
+              id: true,
+              name: true,
+              description: true
             }
-          };
-        }
+          });
+
+          // Registrar la auditoría de la actualización
+          await prisma.audit.create({
+            data: {
+              entityId: categoryUpdate.id,
+              action: AuditActionType.UPDATE,
+              performedById: user.id,
+              entityType: 'category'
+            }
+          });
+
+          return categoryUpdate;
+        });
+
+        return {
+          statusCode: HttpStatus.OK,
+          message: 'Category updated successfully',
+          data: {
+            id: updatedCategory.id,
+            name: updatedCategory.name,
+            description: updatedCategory.description
+          }
+        };
       }
 
+      // Si no hay cambios, devolver el estado actual de la categoría
       return {
         statusCode: HttpStatus.OK,
-        message: 'Category updated successfully',
+        message: 'No changes detected for category',
         data: categoryDB
       };
     } catch (error) {
@@ -181,26 +187,55 @@ export class CategoryService {
   async remove(id: string, user: UserData): Promise<HttpResponse<CategoryData>> {
     try {
       await this.findById(id);
+
+      // Obtener todos los productos asociados a la categoría
       const productsDB = await this.productsService.findProductsByIdCategory(id);
-      const isAllProductsActive = productsDB.every((product) => product.isActive);
-      if (productsDB.length > 0 && isAllProductsActive) {
-        throw new BadRequestException('Category asigned to product');
+
+      // Verificar si no hay productos asignados
+      if (productsDB.length === 0) {
+        // Eliminar la categoría si no tiene productos asignados
+        const categoryDelete = await this.prisma.category.delete({
+          where: { id },
+          select: { id: true, name: true, description: true }
+        });
+
+        // Registrar la auditoría de la eliminación
+        await this.prisma.audit.create({
+          data: {
+            entityId: id,
+            action: AuditActionType.DELETE,
+            performedById: user.id,
+            entityType: 'category'
+          }
+        });
+
+        return {
+          statusCode: HttpStatus.OK,
+          message: 'Category deleted',
+          data: categoryDelete
+        };
       }
+
+      // Verificar si todos los productos están activos
+      const isAllProductsActive = productsDB.every((product) => product.isActive);
+      if (isAllProductsActive) {
+        throw new BadRequestException('Category assigned to active products');
+      }
+
+      // Verificar si todos los productos están inactivos
       const isAllProductsInactive = productsDB.every((product) => !product.isActive);
-      let categoryDelete: CategoryData;
+      let categoryUpdate: CategoryData;
+
+      // Si todos los productos están inactivos, actualizar el estado de la categoría a inactivo
       if (isAllProductsInactive) {
-        categoryDelete = await this.prisma.category.update({
+        categoryUpdate = await this.prisma.category.update({
           where: { id },
           data: { isActive: false },
           select: { id: true, name: true, description: true }
         });
-      } else {
-        categoryDelete = await this.prisma.category.delete({
-          where: { id },
-          select: { id: true, name: true, description: true }
-        });
       }
 
+      // Registrar la auditoría de la actualización o eliminación
       await this.prisma.audit.create({
         data: {
           entityId: id,
@@ -209,17 +244,18 @@ export class CategoryService {
           entityType: 'category'
         }
       });
+
       return {
         statusCode: HttpStatus.OK,
-        message: 'Category deleted',
-        data: categoryDelete
+        message: isAllProductsInactive ? 'Category status set to inactive' : 'Category deleted',
+        data: categoryUpdate
       };
     } catch (error) {
-      this.logger.error(`Error delete category by id ${id}`, error);
+      this.logger.error(`Error deleting category by id ${id}`, error.stack);
       if (error instanceof BadRequestException) {
         throw error;
       }
-      handleException(error, 'Error delete category');
+      handleException(error, 'Error deleting category');
     }
   }
 
