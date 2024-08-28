@@ -10,6 +10,7 @@ import { ModulesModule } from './modules/modules.module';
 import { PermissionsModule } from './permissions/permissions.module';
 import { ProductsModule } from './products/products.module';
 import { CategoryModule } from './category/category.module';
+import { ProductVariationModule } from './product-variation/product-variation.module';
 
 @Module({
   imports: [
@@ -21,7 +22,8 @@ import { CategoryModule } from './category/category.module';
     ModulesModule,
     PermissionsModule,
     ProductsModule,
-    CategoryModule
+    CategoryModule,
+    ProductVariationModule
   ],
   controllers: [AdminController],
   providers: [AdminService]
