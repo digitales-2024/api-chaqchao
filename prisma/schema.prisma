@@ -171,7 +171,6 @@ model ProductVariation{
   name String
   description String?
   additionalPrice Float
-  isActive Boolean @default(true)
 
   createdAt DateTime @default(now()) @db.Timestamptz(6)
   updatedAt DateTime @updatedAt
