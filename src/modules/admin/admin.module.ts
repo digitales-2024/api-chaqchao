@@ -8,6 +8,9 @@ import { PrismaModule } from 'src/prisma/prisma.module';
 import { AuditModule } from './audit/audit.module';
 import { ModulesModule } from './modules/modules.module';
 import { PermissionsModule } from './permissions/permissions.module';
+import { ProductsModule } from './products/products.module';
+import { CategoryModule } from './category/category.module';
+import { ProductVariationModule } from './product-variation/product-variation.module';
 import { BusinessConfigModule } from './business-config/business-config.module';
 
 @Module({
@@ -19,6 +22,9 @@ import { BusinessConfigModule } from './business-config/business-config.module';
     AuditModule,
     ModulesModule,
     PermissionsModule,
+    ProductsModule,
+    CategoryModule,
+    ProductVariationModule,
     BusinessConfigModule
   ],
   controllers: [AdminController],
