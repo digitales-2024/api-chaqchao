@@ -91,12 +91,13 @@ export class ProductVariationService {
   }
 
   /**
-   * Mostrar todas las variaciones de productos
-   * @returns Variacion de Productos activos
+   * Mostrar todas las variaciones de productos asignadas a un producto
+   * @returns Variacion de Productos asignados a un producto
    */
-  async findAll(): Promise<ProductVariationData[]> {
+  async findAllVariation(id: string): Promise<ProductVariationData[]> {
     try {
       return await this.prisma.productVariation.findMany({
+        where: { productId: id },
         select: {
           id: true,
           name: true,
