@@ -7,3 +7,4 @@ export { Module } from './module.interface';
 export { Permission } from './permission.interface';
 export { ModulePermissions } from './module-permissions.interface';
 export { ModulePermissionsData } from './module-permissions.interface';
+export { BusinessConfigData } from './business-config.interface';
