@@ -11,7 +11,7 @@ export class CreateProductVariationDto {
 
   @ApiProperty()
   @IsString()
-  @Transform(({ value }) => value.trim())
+  @Transform(({ value }) => value?.trim() || '')
   description?: string;
 
   @ApiProperty()

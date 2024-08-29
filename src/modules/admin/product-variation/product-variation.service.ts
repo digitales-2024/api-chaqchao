@@ -55,13 +55,7 @@ export class ProductVariationService {
           id: true,
           name: true,
           description: true,
-          additionalPrice: true,
-          product: {
-            select: {
-              id: true,
-              name: true
-            }
-          }
+          additionalPrice: true
         }
       });
 
@@ -82,11 +76,7 @@ export class ProductVariationService {
           id: newProductVariation.id,
           name: newProductVariation.name,
           description: newProductVariation.description,
-          additionalPrice: newProductVariation.additionalPrice,
-          product: {
-            id: newProductVariation.product.id,
-            name: newProductVariation.product.name
-          }
+          additionalPrice: newProductVariation.additionalPrice
         }
       };
     } catch (error) {
@@ -107,12 +97,10 @@ export class ProductVariationService {
   async findAll(): Promise<ProductVariationData[]> {
     try {
       return await this.prisma.productVariation.findMany({
-        where: { isActive: true },
         select: {
           id: true,
           name: true,
           description: true,
-          isActive: true,
           additionalPrice: true,
           product: {
             select: {
@@ -157,7 +145,6 @@ export class ProductVariationService {
         id: true,
         name: true,
         description: true,
-        isActive: true,
         additionalPrice: true,
         product: {
           select: {
@@ -169,9 +156,6 @@ export class ProductVariationService {
     });
     if (!produCtDB) {
       throw new BadRequestException('This product variation doesnt exist');
-    }
-    if (!!produCtDB && !produCtDB.isActive) {
-      throw new BadRequestException('This product variation exist, but is inactive');
     }
 
     return produCtDB;
@@ -190,7 +174,6 @@ export class ProductVariationService {
           id: true,
           name: true,
           description: true,
-          isActive: true,
           additionalPrice: true,
           product: {
             select: {
@@ -242,11 +225,7 @@ export class ProductVariationService {
             id: productVariationDB.id,
             name: productVariationDB.name,
             description: productVariationDB.description,
-            additionalPrice: productVariationDB.additionalPrice,
-            product: {
-              id: productVariationDB.product.id,
-              name: productVariationDB.product.name
-            }
+            additionalPrice: productVariationDB.additionalPrice
           }
         };
       }
@@ -260,7 +239,6 @@ export class ProductVariationService {
             id: true,
             name: true,
             description: true,
-            isActive: true,
             additionalPrice: true,
             product: {
               select: {
@@ -292,11 +270,7 @@ export class ProductVariationService {
           id: updatedProductVariation.id,
           name: updatedProductVariation.name,
           description: updatedProductVariation.description,
-          additionalPrice: updatedProductVariation.additionalPrice,
-          product: {
-            id: updatedProductVariation.product.id,
-            name: updatedProductVariation.product.name
-          }
+          additionalPrice: updatedProductVariation.additionalPrice
         }
       };
     } catch (error) {
@@ -327,7 +301,6 @@ export class ProductVariationService {
             id: true,
             name: true,
             description: true,
-            isActive: true,
             additionalPrice: true,
             product: {
               select: {

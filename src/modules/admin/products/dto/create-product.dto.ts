@@ -1,6 +1,7 @@
 import { ApiProperty } from '@nestjs/swagger';
 import { Transform } from 'class-transformer';
-import { IsNotEmpty, IsNumber, IsString, IsUrl, IsUUID } from 'class-validator';
+import { IsArray, IsNotEmpty, IsNumber, IsString, IsUrl, IsUUID } from 'class-validator';
+import { CreateProductVariationDto } from '../../product-variation/dto/create-product-variation.dto';
 
 export class CreateProductDto {
   @ApiProperty()
@@ -28,4 +29,8 @@ export class CreateProductDto {
   @IsNotEmpty()
   @IsUUID()
   categoryId: string;
+
+  @ApiProperty()
+  @IsArray()
+  variations: CreateProductVariationDto[];
 }
