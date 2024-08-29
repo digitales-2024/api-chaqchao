@@ -7,3 +7,6 @@ export { Module } from './module.interface';
 export { Permission } from './permission.interface';
 export { ModulePermissions } from './module-permissions.interface';
 export { ModulePermissionsData } from './module-permissions.interface';
+export { ProductData } from './product.interface';
+export { CategoryData } from './category.interface';
+export { ProductVariationData } from './product-variation.interface';

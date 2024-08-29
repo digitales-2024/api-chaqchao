@@ -128,3 +128,54 @@ enum AuditActionType {
   UPDATE
   DELETE
 }
+
+
+model Product{
+  id String @id @default(uuid()) @unique
+  name String
+  description String?
+  price Float
+  image String?
+  isAvailable Boolean @default(true)
+  isActive Boolean @default(true)
+  
+  createdAt DateTime @default(now()) @db.Timestamptz(6)
+  updatedAt DateTime @updatedAt
+
+  // Relación con Category
+  category Category @relation("categoryId", fields: [categoryId], references: [id])
+  categoryId String
+
+  // Relación con ProductVariation
+  productVariations ProductVariation[] @relation("productId")
+
+}
+
+model Category{
+  id String @id @default(uuid()) @unique
+
+  name String @unique
+  description String?
+  isActive Boolean @default(true)
+
+  createdAt DateTime @default(now()) @db.Timestamptz(6)
+  updatedAt DateTime @updatedAt
+
+  // Relación con Product
+  products Product[] @relation("categoryId") 
+}
+
+model ProductVariation{
+  id String @id @default(uuid()) @unique
+
+  name String
+  description String?
+  additionalPrice Float
+
+  createdAt DateTime @default(now()) @db.Timestamptz(6)
+  updatedAt DateTime @updatedAt
+
+  // Relación con Product
+  product Product @relation("productId", fields: [productId], references: [id])
+  productId String
+}
