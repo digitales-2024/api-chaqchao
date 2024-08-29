@@ -12,7 +12,7 @@ export class CreateBusinessConfigDto {
   @ApiProperty()
   @IsString()
   @IsNotEmpty()
-  @Transform(({ value }) => value.trim())
+  @Transform(({ value }) => value.trim().toLowerCase())
   email: string;
 
   @ApiProperty()
