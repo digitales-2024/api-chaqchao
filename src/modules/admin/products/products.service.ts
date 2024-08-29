@@ -51,50 +51,57 @@ export class ProductsService {
         }
       }
 
-      // Crear el nuevo producto
-      newProduct = await this.prisma.product.create({
-        data: {
-          name,
-          description,
-          price: parseFloat(price.toString()),
-          image,
-          categoryId
-        },
-        select: {
-          id: true,
-          name: true,
-          description: true,
-          price: true,
-          image: true,
-          isAvailable: true,
-          category: {
-            select: {
-              id: true,
-              name: true
+      // Crear el producto y registrar la auditoría
+      newProduct = await this.prisma.$transaction(async () => {
+        // Crear el nuevo producto
+        const product = await this.prisma.product.create({
+          data: {
+            name,
+            description,
+            price: parseFloat(price.toString()),
+            image,
+            categoryId
+          },
+          select: {
+            id: true,
+            name: true,
+            description: true,
+            price: true,
+            image: true,
+            isAvailable: true,
+            category: {
+              select: {
+                id: true,
+                name: true
+              }
             }
           }
-        }
+        });
+
+        // Registrar la auditoría de la creación del producto
+        await this.prisma.audit.create({
+          data: {
+            action: AuditActionType.CREATE,
+            entityId: product.id,
+            entityType: 'product',
+            performedById: user.id
+          }
+        });
+
+        return product;
       });
 
-      // Registrar la auditoría de la creación del producto
-      await this.prisma.audit.create({
-        data: {
-          action: AuditActionType.CREATE,
-          entityId: newProduct.id,
-          entityType: 'product',
-          performedById: user.id
+      // Crear las variaciones del producto
+      await this.prisma.$transaction(async () => {
+        for (const variation of variations) {
+          const createProductVariationDto: CreateProductVariationDto = {
+            ...variation,
+            productId: newProduct.id,
+            description: variation.description || ''
+          };
+          await this.productVariationService.create(createProductVariationDto, user);
         }
       });
-
-      // Procesar y crear las variaciones del producto
-      for (const variation of variations) {
-        const createProductVariationDto: CreateProductVariationDto = {
-          ...variation,
-          productId: newProduct.id,
-          description: variation.description || ''
-        };
-        await this.productVariationService.create(createProductVariationDto, user);
-      }
 
       // Obtener las variaciones creadas para incluirlas en la respuesta
       const createdVariations = await this.prisma.productVariation.findMany({
@@ -281,7 +288,7 @@ export class ProductsService {
         (updateProductDto.image && updateProductDto.image !== productDB.image) ||
         (updateProductDto.categoryId && updateProductDto.categoryId !== productDB.category.id);
 
-      // Primera transacción: Actualizar el producto y registrar la auditoría
+      // Actualizar el producto y registrar la auditoría
       const updatedProduct = await this.prisma.$transaction(async () => {
         let productUpdate = productDB;
 
@@ -327,7 +334,7 @@ export class ProductsService {
         return productUpdate;
       });
 
-      // Segunda transacción: Manejar las variaciones
+      // Manejar las variaciones
       await this.prisma.$transaction(async () => {
         // Obtener las variaciones actuales
         const existingVariations = productDB.productVariations;
@@ -364,17 +371,17 @@ export class ProductsService {
             // Crear nueva variación solo si `name` está presente
             const createVariationDto: CreateProductVariationDto = {
               ...variation,
-              productId: updatedProduct.id, // Asegúrate de incluir productId
+              productId: updatedProduct.id,
               description: variation.description || '',
               name: variation.name,
-              additionalPrice: variation.additionalPrice // Asegúrate de que additionalPrice esté presente
+              additionalPrice: variation.additionalPrice
             };
             await this.productVariationService.create(createVariationDto, user);
           }
         }
       });
 
-      // Recargar el producto actualizado para asegurarse de que las variaciones están reflejadas
+      // Recargar el producto actualizado
       const finalUpdatedProduct = await this.prisma.product.findUnique({
         where: { id },
         select: {
@@ -483,7 +490,7 @@ export class ProductsService {
             id: productDB.category.id,
             name: productDB.category.name
           },
-          variations: productDB.variations // Incluir las variaciones del producto
+          variations: productDB.variations
         };
       });
 
@@ -550,7 +557,7 @@ export class ProductsService {
       image: productDB.image,
       isAvailable: productDB.isAvailable,
       category: productDB.category,
-      variations: productDB.productVariations // Cambia 'productVariations' a 'variations'
+      variations: productDB.productVariations
     };
   }
   /**
@@ -579,7 +586,6 @@ export class ProductsService {
               }
             },
             productVariations: {
-              // Asegúrate de que esto coincida con tu relación en el schema
               select: {
                 id: true,
                 name: true,
@@ -623,7 +629,7 @@ export class ProductsService {
           description: productDB.description,
           price: productDB.price,
           image: productDB.image,
-          isAvailable: newStatus, // Utilizar el nuevo estado
+          isAvailable: newStatus,
           category: {
             id: productDB.category.id,
             name: productDB.category.name
