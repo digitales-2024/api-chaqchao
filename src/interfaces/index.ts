@@ -11,3 +11,4 @@ export { ProductData } from './product.interface';
 export { CategoryData } from './category.interface';
 export { ProductVariationData } from './product-variation.interface';
 export { BusinessConfigData } from './business-config.interface';
+export { BusinessHoursData } from './business-hours.interface';
