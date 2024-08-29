@@ -1,15 +1,17 @@
-import { Controller, Get, Post, Body, Param, Delete } from '@nestjs/common';
+import { Controller, Get, Post, Body, Param, Delete, Patch } from '@nestjs/common';
 import { BusinessConfigService } from './business-config.service';
 import { CreateBusinessConfigDto } from './dto/create-business-config.dto';
-import { BusinessConfigData, UserData } from 'src/interfaces';
+import { BusinessConfigData, HttpResponse, UserData } from 'src/interfaces';
 import { Auth, GetUser } from '../auth/decorators';
 import {
   ApiBadRequestResponse,
   ApiBearerAuth,
   ApiInternalServerErrorResponse,
+  ApiOkResponse,
   ApiTags,
   ApiUnauthorizedResponse
 } from '@nestjs/swagger';
+import { UpdateBusinessConfigDto } from './dto/update-business-config.dto';
 
 @ApiTags('BusinessConfig')
 @ApiBearerAuth()
@@ -24,17 +26,23 @@ import {
 export class BusinessConfigController {
   constructor(private readonly businessConfigService: BusinessConfigService) {}
 
+  @ApiOkResponse({ description: 'Business Config created' })
   @Post()
   create(
     @Body() createBusinessConfigDto: CreateBusinessConfigDto,
     @GetUser() user: UserData
-  ): Promise<BusinessConfigData> {
-    return this.businessConfigService.createUpdate(createBusinessConfigDto, user);
+  ): Promise<HttpResponse<BusinessConfigData>> {
+    return this.businessConfigService.create(createBusinessConfigDto, user);
   }
 
-  @Get()
-  findAll() {
-    return this.businessConfigService.findAll();
+  @ApiOkResponse({ description: 'Business Config updated' })
+  @Patch(':id')
+  update(
+    @Param('id') id: string,
+    @Body() updateBusinessConfigDto: UpdateBusinessConfigDto,
+    @GetUser() user: UserData
+  ): Promise<HttpResponse<BusinessConfigData>> {
+    return this.businessConfigService.update(id, updateBusinessConfigDto, user);
   }
 
   @Get(':id')

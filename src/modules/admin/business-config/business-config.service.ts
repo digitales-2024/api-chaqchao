@@ -1,28 +1,137 @@
-import { Injectable, Logger } from '@nestjs/common';
+import {
+  BadRequestException,
+  HttpStatus,
+  Injectable,
+  Logger,
+  NotFoundException
+} from '@nestjs/common';
 import { CreateBusinessConfigDto } from './dto/create-business-config.dto';
-import { UpdateBusinessConfigDto } from './dto/update-business-config.dto';
-import { BusinessConfigData, UserData } from 'src/interfaces';
+import { BusinessConfigData, HttpResponse, UserData } from 'src/interfaces';
 import { PrismaService } from 'src/prisma/prisma.service';
 import { AuditActionType } from '@prisma/client';
+import { handleException } from 'src/utils';
+import { UpdateBusinessConfigDto } from './dto/update-business-config.dto';
 
 @Injectable()
 export class BusinessConfigService {
   private readonly logger = new Logger(BusinessConfigService.name);
   constructor(private readonly prisma: PrismaService) {}
 
-  async createUpdate(
+  /**
+   * Crea un BusinessConfig
+   * @param createBusinessConfigDto Data del BusinessConfig a crear
+   * @param user Usuario que realiza la creación
+   * @returns BusinessConfig creado
+   */
+  async create(
     createBusinessConfigDto: CreateBusinessConfigDto,
     user: UserData
-  ): Promise<BusinessConfigData> {
+  ): Promise<HttpResponse<BusinessConfigData>> {
     const { businessName, contactNumber, email, address } = createBusinessConfigDto;
 
-    // Verificar si ya existe un registro en la tabla BusinessConfig
-    const existingConfig = await this.prisma.businessConfig.findFirst();
+    try {
+      // Verificar si ya existe un registro en la tabla BusinessConfig
+      const existingConfig = await this.prisma.businessConfig.findFirst();
 
-    if (existingConfig) {
-      // Si existe, realizar una actualización
+      if (existingConfig) {
+        // Si existe, devolver un mensaje indicando que ya existe un registro
+        return {
+          statusCode: HttpStatus.CONFLICT,
+          message: 'A business config already exists',
+          data: null
+        };
+      } else {
+        // Si no existe, crear un nuevo registro
+        const newConfig = await this.prisma.businessConfig.create({
+          data: {
+            businessName,
+            contactNumber,
+            email,
+            address
+          }
+        });
+
+        // Registrar la auditoría de la creación
+        await this.prisma.audit.create({
+          data: {
+            action: AuditActionType.CREATE,
+            entityId: newConfig.id,
+            entityType: 'businessConfig',
+            performedById: user.id
+          }
+        });
+
+        return {
+          statusCode: HttpStatus.CREATED,
+          message: 'Business config created successfully',
+          data: {
+            id: newConfig.id,
+            businessName: newConfig.businessName,
+            contactNumber: newConfig.contactNumber,
+            email: newConfig.email,
+            address: newConfig.address
+          }
+        };
+      }
+    } catch (error) {
+      this.logger.error(`Error creating business config: ${error.message}`, error.stack);
+
+      if (error instanceof BadRequestException || error instanceof NotFoundException) {
+        throw error;
+      }
+
+      handleException(error, 'Error creating business config');
+    }
+  }
+
+  /**
+   * Actualiza un BusinessConfig por id
+   * @param id Id del BusinessConfig
+   * @param updateBusinessConfigDto Data del BusinessConfig a actualizar
+   * @param user Usuario que realiza la actualización
+   * @returns BusinessConfig actualizado
+   */
+  async update(
+    id: string,
+    updateBusinessConfigDto: UpdateBusinessConfigDto,
+    user: UserData
+  ): Promise<HttpResponse<BusinessConfigData>> {
+    const { businessName, contactNumber, email, address } = updateBusinessConfigDto;
+
+    try {
+      // Verificar si ya existe un registro en la tabla BusinessConfig con el id proporcionado
+      const existingConfig = await this.prisma.businessConfig.findUnique({
+        where: { id }
+      });
+
+      if (!existingConfig) {
+        throw new NotFoundException('Business config not found');
+      }
+
+      // Verificar si hay cambios en los datos
+      const hasChanges =
+        (businessName !== undefined && businessName !== existingConfig.businessName) ||
+        (contactNumber !== undefined && contactNumber !== existingConfig.contactNumber) ||
+        (email !== undefined && email !== existingConfig.email) ||
+        (address !== undefined && address !== existingConfig.address);
+
+      if (!hasChanges) {
+        return {
+          statusCode: HttpStatus.OK,
+          message: 'Business config updated successfully',
+          data: {
+            id: existingConfig.id,
+            businessName: existingConfig.businessName,
+            contactNumber: existingConfig.contactNumber,
+            email: existingConfig.email,
+            address: existingConfig.address
+          }
+        };
+      }
+
+      // Realizar una actualización
       const updatedConfig = await this.prisma.businessConfig.update({
-        where: { id: existingConfig.id },
+        where: { id },
         data: {
           businessName,
           contactNumber,
@@ -42,48 +151,25 @@ export class BusinessConfigService {
       });
 
       return {
-        id: updatedConfig.id,
-        businessName: updatedConfig.businessName,
-        contactNumber: updatedConfig.contactNumber,
-        email: updatedConfig.email,
-        address: updatedConfig.address
-      };
-    } else {
-      // Si no existe, crear un nuevo registro
-      const newConfig = await this.prisma.businessConfig.create({
+        statusCode: HttpStatus.OK,
+        message: 'Business config updated successfully',
         data: {
-          businessName,
-          contactNumber,
-          email,
-          address
+          id: updatedConfig.id,
+          businessName: updatedConfig.businessName,
+          contactNumber: updatedConfig.contactNumber,
+          email: updatedConfig.email,
+          address: updatedConfig.address
         }
-      });
-
-      // Registrar la auditoría de la creación
-      await this.prisma.audit.create({
-        data: {
-          action: AuditActionType.CREATE,
-          entityId: newConfig.id,
-          entityType: 'businessConfig',
-          performedById: user.id
-        }
-      });
-
-      return {
-        id: newConfig.id,
-        businessName: newConfig.businessName,
-        contactNumber: newConfig.contactNumber,
-        email: newConfig.email,
-        address: newConfig.address
       };
+    } catch (error) {
+      this.logger.error(`Error updating business config: ${error.message}`, error.stack);
+
+      if (error instanceof BadRequestException || error instanceof NotFoundException) {
+        throw error;
+      }
+
+      handleException(error, 'Error updating business config');
     }
-  }
-
-  async update(id: string, updateBusinessConfigDto: UpdateBusinessConfigDto) {
-    return `This action updates a #${id} ${updateBusinessConfigDto} businessConfig`;
-  }
-  findAll() {
-    return `This action returns all businessConfig`;
   }
 
   findOne(id: number) {
