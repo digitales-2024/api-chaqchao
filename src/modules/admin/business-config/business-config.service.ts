@@ -183,6 +183,37 @@ export class BusinessConfigService {
   }
 
   /**
+   * Mostrar todos los BusinessConfig
+   * @returns Lista de BusinessConfig
+   */
+  async findAll(): Promise<BusinessConfigData[]> {
+    try {
+      const businessConfigsDB = await this.prisma.businessConfig.findMany({
+        select: {
+          id: true,
+          businessName: true,
+          contactNumber: true,
+          email: true,
+          address: true
+        }
+      });
+
+      // Mapeo al tipo BusinessConfigData
+      const businessConfigs = businessConfigsDB.map((config) => ({
+        id: config.id,
+        businessName: config.businessName,
+        contactNumber: config.contactNumber,
+        email: config.email,
+        address: config.address
+      }));
+
+      return businessConfigs;
+    } catch (error) {
+      this.logger.error('Error getting businessConfigs');
+      handleException(error, 'Error getting businessConfigs');
+    }
+  }
+  /**
    * Mostrar BusinessConfig por id
    * @param id Id del bsinessConfig
    * @returns BusinessConfig encontrado
