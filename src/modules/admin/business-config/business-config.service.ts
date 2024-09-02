@@ -1,5 +1,6 @@
 import {
   BadRequestException,
+  HttpException,
   HttpStatus,
   Injectable,
   Logger,
@@ -34,12 +35,14 @@ export class BusinessConfigService {
       const existingConfig = await this.prisma.businessConfig.findFirst();
 
       if (existingConfig) {
-        // Si existe, devolver un mensaje indicando que ya existe un registro
-        return {
-          statusCode: HttpStatus.CONFLICT,
-          message: 'A business config already exists',
-          data: null
-        };
+        throw new HttpException(
+          {
+            message: 'A business config already exists',
+            error: 'Bad Request',
+            statusCode: HttpStatus.BAD_REQUEST
+          },
+          HttpStatus.BAD_REQUEST
+        );
       } else {
         // Si no existe, crear un nuevo registro
         const newConfig = await this.prisma.businessConfig.create({
@@ -76,11 +79,18 @@ export class BusinessConfigService {
     } catch (error) {
       this.logger.error(`Error creating business config: ${error.message}`, error.stack);
 
-      if (error instanceof BadRequestException || error instanceof NotFoundException) {
+      if (error instanceof HttpException) {
         throw error;
       }
 
-      handleException(error, 'Error creating business config');
+      throw new HttpException(
+        {
+          message: 'Internal Server Error',
+          error: 'Internal Server Error',
+          statusCode: HttpStatus.INTERNAL_SERVER_ERROR
+        },
+        HttpStatus.INTERNAL_SERVER_ERROR
+      );
     }
   }
 
