@@ -1,22 +1,24 @@
 import { ApiProperty } from '@nestjs/swagger';
 import { DayOfWeek } from '@prisma/client';
-import { IsDate, IsNotEmpty, IsString, IsUUID } from 'class-validator';
+import { Transform } from 'class-transformer';
+import { IsNotEmpty, IsString, IsUUID } from 'class-validator';
 
 export class CreateBusinessHourDto {
   @ApiProperty()
   @IsNotEmpty()
   @IsString()
+  @Transform(({ value }) => value.trim().toUpperCase())
   dayOfWeek: DayOfWeek;
 
   @ApiProperty()
   @IsNotEmpty()
-  @IsDate()
-  openingTime: Date;
+  @IsString()
+  openingTime: string;
 
   @ApiProperty()
   @IsNotEmpty()
-  @IsDate()
-  closingTime: Date;
+  @IsString()
+  closingTime: string;
 
   @ApiProperty()
   @IsNotEmpty()
