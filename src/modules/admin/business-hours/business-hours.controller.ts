@@ -11,7 +11,7 @@ import {
   ApiTags,
   ApiUnauthorizedResponse
 } from '@nestjs/swagger';
-import { BusinessHoursData, HttpResponse, UserData } from 'src/interfaces';
+import { BusinessHoursData, HttpResponse, SimpleBusinessHoursData, UserData } from 'src/interfaces';
 
 @ApiTags('BusinessHours')
 @ApiBearerAuth()
@@ -31,7 +31,7 @@ export class BusinessHoursController {
   create(
     @Body() createBusinessHourDto: CreateBusinessHourDto,
     @GetUser() user: UserData
-  ): Promise<HttpResponse<BusinessHoursData>> {
+  ): Promise<HttpResponse<SimpleBusinessHoursData>> {
     return this.businessHoursService.create(createBusinessHourDto, user);
   }
 
@@ -43,7 +43,7 @@ export class BusinessHoursController {
 
   @ApiOkResponse({ description: 'Get business hour by id' })
   @Get(':id')
-  findOne(@Param('id') id: string): Promise<BusinessHoursData> {
+  findOne(@Param('id') id: string): Promise<SimpleBusinessHoursData> {
     return this.businessHoursService.findOne(id);
   }
 

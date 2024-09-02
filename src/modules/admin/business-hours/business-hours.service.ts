@@ -7,7 +7,7 @@ import {
 } from '@nestjs/common';
 import { CreateBusinessHourDto } from './dto/create-business-hour.dto';
 import { UpdateBusinessHourDto } from './dto/update-business-hour.dto';
-import { BusinessHoursData, HttpResponse, UserData } from 'src/interfaces';
+import { BusinessHoursData, HttpResponse, SimpleBusinessHoursData, UserData } from 'src/interfaces';
 import { PrismaService } from 'src/prisma/prisma.service';
 import { BusinessConfigService } from '../business-config/business-config.service';
 import { AuditActionType, DayOfWeek } from '@prisma/client';
@@ -70,7 +70,7 @@ export class BusinessHoursService {
   async create(
     createBusinessHourDto: CreateBusinessHourDto,
     user: UserData
-  ): Promise<HttpResponse<BusinessHoursData>> {
+  ): Promise<HttpResponse<SimpleBusinessHoursData>> {
     const { dayOfWeek, openingTime, closingTime, businessId } = createBusinessHourDto;
 
     // Validar el valor de dayOfWeek
@@ -142,14 +142,7 @@ export class BusinessHoursService {
             dayOfWeek: newBusinessHour.dayOfWeek,
             openingTime: newBusinessHour.openingTime,
             closingTime: newBusinessHour.closingTime,
-            isOpen: newBusinessHour.isOpen,
-            businessConfig: {
-              id: newBusinessHour.business.id,
-              businessName: newBusinessHour.business.businessName,
-              contactNumber: newBusinessHour.business.contactNumber,
-              email: newBusinessHour.business.email,
-              address: newBusinessHour.business.address
-            }
+            isOpen: newBusinessHour.isOpen
           }
         };
       });
@@ -211,7 +204,7 @@ export class BusinessHoursService {
     }
   }
 
-  async findOne(id: string): Promise<BusinessHoursData> {
+  async findOne(id: string): Promise<SimpleBusinessHoursData> {
     try {
       return await this.findById(id);
     } catch (error) {
@@ -223,7 +216,7 @@ export class BusinessHoursService {
     }
   }
 
-  async findById(id: string): Promise<BusinessHoursData> {
+  async findById(id: string): Promise<SimpleBusinessHoursData> {
     const businessHoursDB = await this.prisma.businessHours.findFirst({
       where: { id },
       select: {
@@ -231,16 +224,7 @@ export class BusinessHoursService {
         dayOfWeek: true,
         openingTime: true,
         closingTime: true,
-        isOpen: true,
-        business: {
-          select: {
-            id: true,
-            businessName: true,
-            contactNumber: true,
-            email: true,
-            address: true
-          }
-        }
+        isOpen: true
       }
     });
 
@@ -258,14 +242,7 @@ export class BusinessHoursService {
       dayOfWeek: businessHoursDB.dayOfWeek,
       openingTime: businessHoursDB.openingTime,
       closingTime: businessHoursDB.closingTime,
-      isOpen: businessHoursDB.isOpen,
-      businessConfig: {
-        id: businessHoursDB.business.id,
-        businessName: businessHoursDB.business.businessName,
-        contactNumber: businessHoursDB.business.contactNumber,
-        email: businessHoursDB.business.email,
-        address: businessHoursDB.business.address
-      }
+      isOpen: businessHoursDB.isOpen
     };
   }
 
