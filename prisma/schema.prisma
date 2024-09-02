@@ -152,8 +152,8 @@ model BusinessHours {
   business   BusinessConfig @relation("businessId", fields: [businessId], references: [id])
 
   dayOfWeek   DayOfWeek
-  openingTime DateTime
-  closingTime DateTime
+  openingTime String
+  closingTime String
   isOpen      Boolean   @default(true)
 
   createdAt DateTime @default(now()) @db.Timestamptz(6)
