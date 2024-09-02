@@ -45,9 +45,10 @@ export class BusinessConfigController {
     return this.businessConfigService.update(id, updateBusinessConfigDto, user);
   }
 
+  @ApiOkResponse({ description: 'Get business config by id' })
   @Get(':id')
-  findOne(@Param('id') id: string) {
-    return this.businessConfigService.findOne(+id);
+  findOne(@Param('id') id: string): Promise<BusinessConfigData> {
+    return this.businessConfigService.findOne(id);
   }
 
   @Delete(':id')

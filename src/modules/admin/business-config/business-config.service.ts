@@ -172,8 +172,53 @@ export class BusinessConfigService {
     }
   }
 
-  findOne(id: number) {
-    return `This action returns a #${id} businessConfig`;
+  /**
+   * Mostrar BusinessConfig por id
+   * @param id Id del bsinessConfig
+   * @returns BusinessConfig encontrado
+   */
+  async findOne(id: string): Promise<BusinessConfigData> {
+    try {
+      return await this.findById(id);
+    } catch (error) {
+      this.logger.error('Error get businessConfig');
+      if (error instanceof BadRequestException) {
+        throw error;
+      }
+      handleException(error, 'Error get businessConfig');
+    }
+  }
+
+  /**
+   * Mostrar BusinessConfig por id
+   * @param id Id del businessConfig
+   * @returns Data del businessConfig
+   */
+  async findById(id: string): Promise<BusinessConfigData> {
+    const businessConfigDB = await this.prisma.businessConfig.findFirst({
+      where: { id },
+      select: {
+        id: true,
+        businessName: true,
+        contactNumber: true,
+        email: true,
+        address: true
+      }
+    });
+
+    // Verificar si el businessConfig existe y está activo
+    if (!businessConfigDB) {
+      throw new BadRequestException('This business does not exist');
+    }
+
+    // Mapeo al tipo BusinessConfigData
+    return {
+      id: businessConfigDB.id,
+      businessName: businessConfigDB.businessName,
+      contactNumber: businessConfigDB.contactNumber,
+      email: businessConfigDB.email,
+      address: businessConfigDB.address
+    };
   }
 
   remove(id: number) {
