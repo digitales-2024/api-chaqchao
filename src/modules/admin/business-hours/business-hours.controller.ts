@@ -35,8 +35,9 @@ export class BusinessHoursController {
     return this.businessHoursService.create(createBusinessHourDto, user);
   }
 
+  @ApiOkResponse({ description: 'Get all business hours' })
   @Get()
-  findAll() {
+  findAll(): Promise<HttpResponse<BusinessHoursData[]>> {
     return this.businessHoursService.findAll();
   }
 

@@ -11,6 +11,7 @@ import { BusinessHoursData, HttpResponse, UserData } from 'src/interfaces';
 import { PrismaService } from 'src/prisma/prisma.service';
 import { BusinessConfigService } from '../business-config/business-config.service';
 import { AuditActionType, DayOfWeek } from '@prisma/client';
+import { handleException } from 'src/utils';
 
 @Injectable()
 export class BusinessHoursService {
@@ -20,6 +21,10 @@ export class BusinessHoursService {
     private readonly businessConfigService: BusinessConfigService
   ) {}
 
+  /**
+   * Validar el formato de la hora
+   * @param time Hora a validar
+   */
   private validateTimeFormat(time: string): void {
     const timeFormat = /^([01]\d|2[0-3]):([0-5]\d)$/;
     if (!timeFormat.test(time)) {
@@ -27,6 +32,11 @@ export class BusinessHoursService {
     }
   }
 
+  /**
+   * Convertir la hora en formato HH:mm a Date
+   * @param time Hora a convertir
+   * @returns Horas y minutos en formato Date
+   */
   private convertToDateTime(time: string): Date {
     const [hours, minutes] = time.split(':').map(Number);
     const date = new Date();
@@ -34,10 +44,15 @@ export class BusinessHoursService {
     return date;
   }
 
+  // Formatear la fecha a ISOString
   private formatDateTime(date: Date): string {
     return date.toISOString();
   }
 
+  /**
+   * Validar el día de la semana
+   * @param dayOfWeek Día de la semana a validar
+   */
   private validateDayOfWeek(dayOfWeek: string): void {
     if (!Object.values(DayOfWeek).includes(dayOfWeek as DayOfWeek)) {
       throw new BadRequestException(
@@ -149,8 +164,55 @@ export class BusinessHoursService {
     }
   }
 
-  findAll() {
-    return `This action returns all businessHours`;
+  /**
+   * Obtener todos los BusinessHours
+   * @returns Todos los BusinessHours
+   */
+  async findAll(): Promise<HttpResponse<BusinessHoursData[]>> {
+    try {
+      const businessHoursDB = await this.prisma.businessHours.findMany({
+        select: {
+          id: true,
+          dayOfWeek: true,
+          openingTime: true,
+          closingTime: true,
+          isOpen: true,
+          business: {
+            select: {
+              id: true,
+              businessName: true,
+              contactNumber: true,
+              email: true,
+              address: true
+            }
+          }
+        }
+      });
+
+      const businessHoursData = businessHoursDB.map((businessHoursDB) => ({
+        id: businessHoursDB.id,
+        dayOfWeek: businessHoursDB.dayOfWeek,
+        openingTime: businessHoursDB.openingTime,
+        closingTime: businessHoursDB.closingTime,
+        isOpen: businessHoursDB.isOpen,
+        businessConfig: {
+          id: businessHoursDB.business.id,
+          businessName: businessHoursDB.business.businessName,
+          contactNumber: businessHoursDB.business.contactNumber,
+          email: businessHoursDB.business.email,
+          address: businessHoursDB.business.address
+        }
+      })) as BusinessHoursData[];
+
+      return {
+        statusCode: 200,
+        message: 'Get all business hours',
+        data: businessHoursData
+      };
+    } catch (error) {
+      this.logger.error('Error getting all business hours');
+      handleException(error, 'Error getting all business hours');
+    }
   }
 
   findOne(id: number) {
