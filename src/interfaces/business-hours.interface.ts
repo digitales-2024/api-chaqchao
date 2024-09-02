@@ -12,3 +12,8 @@ export type BusinessHoursData = Pick<
     address: string;
   };
 };
+
+export type SimpleBusinessHoursData = Pick<
+  BusinessHours,
+  'id' | 'dayOfWeek' | 'openingTime' | 'closingTime' | 'isOpen'
+>;
