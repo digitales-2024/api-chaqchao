@@ -7,7 +7,7 @@ import {
 } from '@nestjs/common';
 import { CreateBusinessHourDto } from './dto/create-business-hour.dto';
 import { UpdateBusinessHourDto } from './dto/update-business-hour.dto';
-import { BusinessHoursData, HttpResponse, SimpleBusinessHoursData, UserData } from 'src/interfaces';
+import { AllBusinessHoursData, BusinessHoursData, HttpResponse, UserData } from 'src/interfaces';
 import { PrismaService } from 'src/prisma/prisma.service';
 import { BusinessConfigService } from '../business-config/business-config.service';
 import { AuditActionType, DayOfWeek } from '@prisma/client';
@@ -70,7 +70,7 @@ export class BusinessHoursService {
   async create(
     createBusinessHourDto: CreateBusinessHourDto,
     user: UserData
-  ): Promise<HttpResponse<SimpleBusinessHoursData>> {
+  ): Promise<HttpResponse<BusinessHoursData>> {
     const { dayOfWeek, openingTime, closingTime, businessId } = createBusinessHourDto;
 
     // Validar el valor de dayOfWeek
@@ -161,7 +161,7 @@ export class BusinessHoursService {
    * Obtener todos los BusinessHours
    * @returns Todos los BusinessHours
    */
-  async findAll(): Promise<BusinessHoursData[]> {
+  async findAll(): Promise<AllBusinessHoursData> {
     try {
       const businessHoursDB = await this.prisma.businessHours.findMany({
         select: {
@@ -182,29 +182,40 @@ export class BusinessHoursService {
         }
       });
 
-      const businessHoursData = businessHoursDB.map((businessHoursDB) => ({
-        id: businessHoursDB.id,
-        dayOfWeek: businessHoursDB.dayOfWeek,
-        openingTime: businessHoursDB.openingTime,
-        closingTime: businessHoursDB.closingTime,
-        isOpen: businessHoursDB.isOpen,
-        businessConfig: {
-          id: businessHoursDB.business.id,
-          businessName: businessHoursDB.business.businessName,
-          contactNumber: businessHoursDB.business.contactNumber,
-          email: businessHoursDB.business.email,
-          address: businessHoursDB.business.address
-        }
-      })) as BusinessHoursData[];
+      // Extraer la información del negocio
+      const businessInfo =
+        businessHoursDB.length > 0
+          ? {
+              id: businessHoursDB[0].business.id,
+              businessName: businessHoursDB[0].business.businessName,
+              contactNumber: businessHoursDB[0].business.contactNumber,
+              email: businessHoursDB[0].business.email,
+              address: businessHoursDB[0].business.address
+            }
+          : null;
 
-      return businessHoursData;
+      // Transformar los datos de los horarios
+      const businessHoursData: BusinessHoursData[] = businessHoursDB.map((businessHour) => ({
+        id: businessHour.id,
+        dayOfWeek: businessHour.dayOfWeek,
+        openingTime: businessHour.openingTime,
+        closingTime: businessHour.closingTime,
+        isOpen: businessHour.isOpen
+      }));
+
+      // Devolver los horarios y la información del negocio al final
+      return {
+        businessHours: businessHoursData,
+        businessInfo: businessInfo
+      };
     } catch (error) {
       this.logger.error('Error getting all business hours');
       handleException(error, 'Error getting all business hours');
+      throw error; // Asegúrate de lanzar el error después de manejarlo
     }
   }
 
-  async findOne(id: string): Promise<SimpleBusinessHoursData> {
+  async findOne(id: string): Promise<BusinessHoursData> {
     try {
       return await this.findById(id);
     } catch (error) {
@@ -216,7 +227,7 @@ export class BusinessHoursService {
     }
   }
 
-  async findById(id: string): Promise<SimpleBusinessHoursData> {
+  async findById(id: string): Promise<BusinessHoursData> {
     const businessHoursDB = await this.prisma.businessHours.findFirst({
       where: { id },
       select: {

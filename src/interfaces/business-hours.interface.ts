@@ -3,8 +3,10 @@ import { BusinessHours } from '@prisma/client';
 export type BusinessHoursData = Pick<
   BusinessHours,
   'id' | 'dayOfWeek' | 'openingTime' | 'closingTime' | 'isOpen'
-> & {
-  businessConfig: {
+>;
+export type AllBusinessHoursData = {
+  businessHours: BusinessHoursData[];
+  businessInfo: {
     id: string;
     businessName: string;
     contactNumber: string;
@@ -12,8 +14,3 @@ export type BusinessHoursData = Pick<
     address: string;
   };
 };
-
-export type SimpleBusinessHoursData = Pick<
-  BusinessHours,
-  'id' | 'dayOfWeek' | 'openingTime' | 'closingTime' | 'isOpen'
->;
