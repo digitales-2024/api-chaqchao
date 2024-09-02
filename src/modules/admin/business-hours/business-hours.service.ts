@@ -168,7 +168,7 @@ export class BusinessHoursService {
    * Obtener todos los BusinessHours
    * @returns Todos los BusinessHours
    */
-  async findAll(): Promise<HttpResponse<BusinessHoursData[]>> {
+  async findAll(): Promise<BusinessHoursData[]> {
     try {
       const businessHoursDB = await this.prisma.businessHours.findMany({
         select: {
@@ -204,22 +204,72 @@ export class BusinessHoursService {
         }
       })) as BusinessHoursData[];
 
-      return {
-        statusCode: 200,
-        message: 'Get all business hours',
-        data: businessHoursData
-      };
+      return businessHoursData;
     } catch (error) {
       this.logger.error('Error getting all business hours');
       handleException(error, 'Error getting all business hours');
     }
   }
 
-  findOne(id: number) {
-    return `This action returns a #${id} businessHour`;
+  async findOne(id: string): Promise<BusinessHoursData> {
+    try {
+      return await this.findById(id);
+    } catch (error) {
+      this.logger.error('Error get business hours');
+      if (error instanceof BadRequestException) {
+        throw error;
+      }
+      handleException(error, 'business hours');
+    }
   }
 
-  update(id: number, updateBusinessHourDto: UpdateBusinessHourDto) {
+  async findById(id: string): Promise<BusinessHoursData> {
+    const businessHoursDB = await this.prisma.businessHours.findFirst({
+      where: { id },
+      select: {
+        id: true,
+        dayOfWeek: true,
+        openingTime: true,
+        closingTime: true,
+        isOpen: true,
+        business: {
+          select: {
+            id: true,
+            businessName: true,
+            contactNumber: true,
+            email: true,
+            address: true
+          }
+        }
+      }
+    });
+
+    // Verificar si el producto existe y está activo
+    if (!businessHoursDB) {
+      throw new BadRequestException('This product does not exist');
+    }
+    if (!!businessHoursDB && !businessHoursDB.isOpen) {
+      throw new BadRequestException('This product exists, but is inactive');
+    }
+
+    // Mapeo al tipo ProductData
+    return {
+      id: businessHoursDB.id,
+      dayOfWeek: businessHoursDB.dayOfWeek,
+      openingTime: businessHoursDB.openingTime,
+      closingTime: businessHoursDB.closingTime,
+      isOpen: businessHoursDB.isOpen,
+      businessConfig: {
+        id: businessHoursDB.business.id,
+        businessName: businessHoursDB.business.businessName,
+        contactNumber: businessHoursDB.business.contactNumber,
+        email: businessHoursDB.business.email,
+        address: businessHoursDB.business.address
+      }
+    };
+  }
+
+  update(id: string, updateBusinessHourDto: UpdateBusinessHourDto) {
     return `This action updates a #${id} ${updateBusinessHourDto} businessHour`;
   }
 

@@ -37,18 +37,19 @@ export class BusinessHoursController {
 
   @ApiOkResponse({ description: 'Get all business hours' })
   @Get()
-  findAll(): Promise<HttpResponse<BusinessHoursData[]>> {
+  findAll(): Promise<BusinessHoursData[]> {
     return this.businessHoursService.findAll();
   }
 
+  @ApiOkResponse({ description: 'Get business hour by id' })
   @Get(':id')
-  findOne(@Param('id') id: string) {
-    return this.businessHoursService.findOne(+id);
+  findOne(@Param('id') id: string): Promise<BusinessHoursData> {
+    return this.businessHoursService.findOne(id);
   }
 
   @Patch(':id')
   update(@Param('id') id: string, @Body() updateBusinessHourDto: UpdateBusinessHourDto) {
-    return this.businessHoursService.update(+id, updateBusinessHourDto);
+    return this.businessHoursService.update(id, updateBusinessHourDto);
   }
 
   @Delete(':id')
