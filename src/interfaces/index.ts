@@ -14,6 +14,7 @@ export { BusinessConfigData } from './business-config.interface';
 export { BusinessHoursData } from './business-hours.interface';
 export { AllBusinessHoursData } from './business-hours.interface';
 export { ClassPriceConfigData } from './classes-config.interface';
-export { ClassScheduleData } from './classes-config.interface';
 export { ClassLanguageData } from './classes-config.interface';
 export { ClassRegistrationData } from './classes-config.interface';
+export { ClassScheduleData } from './classes-config.interface';
+export { ClassConfigData } from './classes-config.interface';

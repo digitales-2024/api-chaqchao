@@ -18,3 +18,9 @@ export type ClassRegistrationData = Pick<
   ClassRegistrationConfig,
   'id' | 'closeBeforeStartInterval' | 'finalRegistrationCloseInterval'
 >;
+
+export type ClassConfigData = {
+  priceConfig: ClassPriceConfigData;
+  languageConfig: ClassLanguageData;
+  registrationConfig: ClassRegistrationData;
+};
