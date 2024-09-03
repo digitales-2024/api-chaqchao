@@ -13,6 +13,7 @@ import { CategoryModule } from './category/category.module';
 import { ProductVariationModule } from './product-variation/product-variation.module';
 import { BusinessConfigModule } from './business-config/business-config.module';
 import { BusinessHoursModule } from './business-hours/business-hours.module';
+import { ClassesConfigModule } from './classes-config/classes-config.module';
 
 @Module({
   imports: [
@@ -27,7 +28,8 @@ import { BusinessHoursModule } from './business-hours/business-hours.module';
     CategoryModule,
     ProductVariationModule,
     BusinessConfigModule,
-    BusinessHoursModule
+    BusinessHoursModule,
+    ClassesConfigModule
   ],
   controllers: [AdminController],
   providers: [AdminService]
