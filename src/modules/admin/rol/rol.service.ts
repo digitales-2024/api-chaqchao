@@ -183,13 +183,17 @@ export class RolService {
                 module: {
                   select: {
                     id: true,
-                    name: true
+                    cod: true,
+                    name: true,
+                    description: true
                   }
                 },
                 permission: {
                   select: {
                     id: true,
-                    name: true
+                    cod: true,
+                    name: true,
+                    description: true
                   }
                 }
               }
@@ -204,7 +208,9 @@ export class RolService {
           modulePermissions: rolDelete.rolPermissions.map((rolPermission) => ({
             module: {
               id: rolPermission.module.id,
-              name: rolPermission.module.name
+              cod: rolPermission.module.cod,
+              name: rolPermission.module.name,
+              description: rolPermission.module.description
             },
             permissions: [rolPermission.permission]
           }))
@@ -248,13 +254,17 @@ export class RolService {
               module: {
                 select: {
                   id: true,
-                  name: true
+                  cod: true,
+                  name: true,
+                  description: true
                 }
               },
               permission: {
                 select: {
                   id: true,
-                  name: true
+                  cod: true,
+                  name: true,
+                  description: true
                 }
               }
             }
@@ -271,7 +281,9 @@ export class RolService {
         modulePermissions: rol.rolPermissions.map((rolPermission) => ({
           module: {
             id: rolPermission.module.id,
-            name: rolPermission.module.name
+            cod: rolPermission.module.cod,
+            name: rolPermission.module.name,
+            description: rolPermission.module.description
           },
           permissions: [rolPermission.permission]
         }))
@@ -324,13 +336,17 @@ export class RolService {
               module: {
                 select: {
                   id: true,
-                  name: true
+                  cod: true,
+                  name: true,
+                  description: true
                 }
               },
               permission: {
                 select: {
                   id: true,
-                  name: true
+                  cod: true,
+                  name: true,
+                  description: true
                 }
               }
             }
@@ -347,7 +363,9 @@ export class RolService {
         modulePermissions: rolDB.rolPermissions.map((rolPermission) => ({
           module: {
             id: rolPermission.module.id,
-            name: rolPermission.module.name
+            cod: rolPermission.module.cod,
+            name: rolPermission.module.name,
+            description: rolPermission.module.description
           },
           permissions: [rolPermission.permission]
         }))
@@ -385,13 +403,17 @@ export class RolService {
               module: {
                 select: {
                   id: true,
-                  name: true
+                  cod: true,
+                  name: true,
+                  description: true
                 }
               },
               permission: {
                 select: {
                   id: true,
-                  name: true
+                  cod: true,
+                  name: true,
+                  description: true
                 }
               }
             }
@@ -408,7 +430,9 @@ export class RolService {
           modulePermissions: rolDB.rolPermissions.map((rolPermission) => ({
             module: {
               id: rolPermission.module.id,
-              name: rolPermission.module.name
+              cod: rolPermission.module.cod,
+              name: rolPermission.module.name,
+              description: rolPermission.module.description
             },
             permissions: [rolPermission.permission]
           }))
@@ -484,7 +508,9 @@ export class RolService {
             },
             select: {
               id: true,
-              name: true
+              cod: true,
+              name: true,
+              description: true
             }
           });
 
@@ -501,7 +527,9 @@ export class RolService {
               },
               select: {
                 id: true,
-                name: true
+                cod: true,
+                name: true,
+                description: true
               }
             });
 
@@ -535,13 +563,17 @@ export class RolService {
                 module: {
                   select: {
                     id: true,
-                    name: true
+                    cod: true,
+                    name: true,
+                    description: true
                   }
                 },
                 permission: {
                   select: {
                     id: true,
-                    name: true
+                    cod: true,
+                    name: true,
+                    description: true
                   }
                 }
               }
@@ -552,7 +584,9 @@ export class RolService {
           assignedPermissions.push({
             module: {
               id: moduleExist.id,
-              name: moduleExist.name
+              cod: moduleExist.cod,
+              name: moduleExist.name,
+              description: moduleExist.description
             },
             permissions: permissions
           });
@@ -610,21 +644,21 @@ export class RolService {
           // Verificar si el módulo existe y obtener su nombre
           const moduleExist = await prisma.module.findUnique({
             where: { id: moduleId },
-            select: { id: true, name: true }
+            select: { id: true, cod: true, name: true, description: true }
           });
 
           if (!moduleExist) {
             throw new BadRequestException('Module not found');
           }
 
-          const permissions: { id: string; name: string }[] = [];
+          const permissions: { id: string; cod: string; name: string; description: string }[] = [];
 
           // Obtener los permisos existentes de la base de datos en una sola consulta
           const existingPermissions = await prisma.permission.findMany({
             where: {
               id: { in: permissionIds }
             },
-            select: { id: true, name: true }
+            select: { id: true, cod: true, name: true, description: true }
           });
 
           const existingPermissionIds = new Set(existingPermissions.map((p) => p.id));
@@ -660,7 +694,7 @@ export class RolService {
             where: { rolId: roleId, moduleId },
             select: {
               permission: {
-                select: { id: true, name: true }
+                select: { id: true, cod: true, name: true, description: true }
               }
             }
           });
@@ -683,7 +717,9 @@ export class RolService {
           updatedPermissions.push({
             module: {
               id: moduleExist.id,
-              name: moduleExist.name
+              cod: moduleExist.cod,
+              name: moduleExist.name,
+              description: moduleExist.description
             },
             permissions
           });
