@@ -1,6 +1,6 @@
 import { ApiProperty } from '@nestjs/swagger';
 import { Transform } from 'class-transformer';
-import { IsNotEmpty, IsString } from 'class-validator';
+import { IsEmail, IsNotEmpty, IsPhoneNumber, IsString } from 'class-validator';
 
 export class CreateBusinessConfigDto {
   @ApiProperty()
@@ -12,11 +12,12 @@ export class CreateBusinessConfigDto {
   @ApiProperty()
   @IsString()
   @IsNotEmpty()
-  @Transform(({ value }) => value.trim().toLowerCase())
+  @IsEmail()
+  @Transform(({ value }) => value.trim())
   email: string;
 
   @ApiProperty()
-  @IsString()
+  @IsPhoneNumber('PE')
   @IsNotEmpty()
   @Transform(({ value }) => value.trim())
   contactNumber: string;

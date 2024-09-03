@@ -1,6 +1,6 @@
 import { ApiProperty, PartialType } from '@nestjs/swagger';
 import { CreateBusinessConfigDto } from './create-business-config.dto';
-import { IsString } from 'class-validator';
+import { IsEmail, IsPhoneNumber, IsString } from 'class-validator';
 import { Transform } from 'class-transformer';
 
 export class UpdateBusinessConfigDto extends PartialType(CreateBusinessConfigDto) {
@@ -11,10 +11,12 @@ export class UpdateBusinessConfigDto extends PartialType(CreateBusinessConfigDto
 
   @ApiProperty()
   @IsString()
-  @Transform(({ value }) => value.trim().toLowerCase)
+  @IsEmail()
+  @Transform(({ value }) => value.trim())
   email?: string;
 
   @ApiProperty()
+  @IsPhoneNumber('PE')
   contactNumber?: string;
 
   @ApiProperty()
