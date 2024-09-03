@@ -33,23 +33,6 @@ export class BusinessHoursService {
   }
 
   /**
-   * Convertir la hora en formato HH:mm a Date
-   * @param time Hora a convertir
-   * @returns Horas y minutos en formato Date
-   */
-  private convertToDateTime(time: string): Date {
-    const [hours, minutes] = time.split(':').map(Number);
-    const date = new Date();
-    date.setUTCHours(hours, minutes, 0, 0);
-    return date;
-  }
-
-  // Formatear la fecha a ISOString
-  private formatDateTime(date: Date): string {
-    return date.toISOString();
-  }
-
-  /**
    * Validar el día de la semana
    * @param dayOfWeek Día de la semana a validar
    */
@@ -79,17 +62,10 @@ export class BusinessHoursService {
     this.validateTimeFormat(openingTime);
     this.validateTimeFormat(closingTime);
 
-    // Convertir las horas a instancias de Date
-    const openingTimeDate = this.convertToDateTime(openingTime);
-    const closingTimeDate = this.convertToDateTime(closingTime);
-
     // Validar que openingTime no sea mayor que closingTime
-    if (openingTimeDate >= closingTimeDate) {
+    if (openingTime >= closingTime) {
       throw new BadRequestException('Opening time must be earlier than closing time.');
     }
-
-    const formattedOpeningTime = this.formatDateTime(openingTimeDate);
-    const formattedClosingTime = this.formatDateTime(closingTimeDate);
 
     try {
       return await this.prisma.$transaction(async (prisma) => {
@@ -115,12 +91,9 @@ export class BusinessHoursService {
         const newBusinessHour = await prisma.businessHours.create({
           data: {
             dayOfWeek,
-            openingTime: formattedOpeningTime,
-            closingTime: formattedClosingTime,
+            openingTime,
+            closingTime,
             businessId
-          },
-          include: {
-            business: true
           }
         });
 
@@ -211,10 +184,15 @@ export class BusinessHoursService {
     } catch (error) {
       this.logger.error('Error getting all business hours');
       handleException(error, 'Error getting all business hours');
-      throw error; // Asegúrate de lanzar el error después de manejarlo
+      throw error;
     }
   }
 
+  /**
+   * Obtener un BusinessHour por id
+   * @param id Id del BusinessHour
+   * @returns BusinessHour encontrado
+   */
   async findOne(id: string): Promise<BusinessHoursData> {
     try {
       return await this.findById(id);
@@ -227,6 +205,11 @@ export class BusinessHoursService {
     }
   }
 
+  /**
+   * Mostrar BusinessHour por id
+   * @param id Id del businessHour
+   * @returns Datos del BusinessHour encontrado
+   */
   async findById(id: string): Promise<BusinessHoursData> {
     const businessHoursDB = await this.prisma.businessHours.findFirst({
       where: { id },
@@ -257,11 +240,111 @@ export class BusinessHoursService {
     };
   }
 
-  update(id: string, updateBusinessHourDto: UpdateBusinessHourDto) {
-    return `This action updates a #${id} ${updateBusinessHourDto} businessHour`;
+  /**
+   * Actualizar un BusinessHour
+   * @param id Id del BusinessHour
+   * @param updateBusinessHourDto Data del BusinessHour a actualizar
+   * @param user Usuario que realiza la actualización
+   * @returns BusinessHour actualizado
+   */
+  async update(
+    id: string,
+    updateBusinessHourDto: UpdateBusinessHourDto,
+    user: UserData
+  ): Promise<HttpResponse<BusinessHoursData>> {
+    const { openingTime, closingTime } = updateBusinessHourDto;
+
+    if (openingTime) {
+      this.validateTimeFormat(openingTime);
+    }
+
+    if (closingTime) {
+      this.validateTimeFormat(closingTime);
+    }
+
+    if (openingTime && closingTime && openingTime >= closingTime) {
+      throw new BadRequestException('Opening time must be earlier than closing time.');
+    }
+
+    try {
+      return await this.prisma.$transaction(async (prisma) => {
+        const existingBusinessHour = await prisma.businessHours.findUnique({
+          where: { id }
+        });
+
+        if (!existingBusinessHour) {
+          throw new NotFoundException('Business hour not found');
+        }
+
+        if (openingTime && !closingTime && openingTime > existingBusinessHour.closingTime) {
+          throw new BadRequestException('Opening time must be earlier than closing time.');
+        }
+
+        if (closingTime && !openingTime && existingBusinessHour.openingTime > closingTime) {
+          throw new BadRequestException('Opening time must be earlier than closing time.');
+        }
+
+        // Verificar si hay cambios
+        const isOpeningTimeChanged =
+          openingTime && openingTime !== existingBusinessHour.openingTime;
+        const isClosingTimeChanged =
+          closingTime && closingTime !== existingBusinessHour.closingTime;
+
+        if (!isOpeningTimeChanged && !isClosingTimeChanged) {
+          return {
+            statusCode: HttpStatus.OK,
+            message: 'Business hours updated successfully',
+            data: {
+              id: existingBusinessHour.id,
+              dayOfWeek: existingBusinessHour.dayOfWeek,
+              openingTime: existingBusinessHour.openingTime,
+              closingTime: existingBusinessHour.closingTime,
+              isOpen: existingBusinessHour.isOpen
+            }
+          };
+        }
+
+        const updatedBusinessHour = await prisma.businessHours.update({
+          where: { id },
+          data: {
+            openingTime: openingTime ?? existingBusinessHour.openingTime,
+            closingTime: closingTime ?? existingBusinessHour.closingTime
+          }
+        });
+
+        await prisma.audit.create({
+          data: {
+            action: AuditActionType.UPDATE,
+            entityId: updatedBusinessHour.id,
+            entityType: 'businessHours',
+            performedById: user.id
+          }
+        });
+
+        return {
+          statusCode: HttpStatus.OK,
+          message: 'Business hours updated successfully',
+          data: {
+            id: updatedBusinessHour.id,
+            dayOfWeek: updatedBusinessHour.dayOfWeek,
+            openingTime: updatedBusinessHour.openingTime,
+            closingTime: updatedBusinessHour.closingTime,
+            isOpen: updatedBusinessHour.isOpen
+          }
+        };
+      });
+    } catch (error) {
+      this.logger.error(`Error updating business hours: ${error.message}`, error.stack);
+
+      if (error instanceof NotFoundException || error instanceof BadRequestException) {
+        throw error;
+      }
+
+      throw new BadRequestException('Error updating business hours');
+    }
   }
 
-  remove(id: number) {
+  /*   remove(id: number) {
     return `This action removes a #${id} businessHour`;
-  }
+  } */
 }
