@@ -11,6 +11,8 @@ import { PermissionsModule } from './permissions/permissions.module';
 import { ProductsModule } from './products/products.module';
 import { CategoryModule } from './category/category.module';
 import { ProductVariationModule } from './product-variation/product-variation.module';
+import { BusinessConfigModule } from './business-config/business-config.module';
+import { BusinessHoursModule } from './business-hours/business-hours.module';
 
 @Module({
   imports: [
@@ -23,7 +25,9 @@ import { ProductVariationModule } from './product-variation/product-variation.mo
     PermissionsModule,
     ProductsModule,
     CategoryModule,
-    ProductVariationModule
+    ProductVariationModule,
+    BusinessConfigModule,
+    BusinessHoursModule
   ],
   controllers: [AdminController],
   providers: [AdminService]
