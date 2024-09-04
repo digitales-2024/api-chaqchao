@@ -11,6 +11,7 @@ import { ClassRegistrationData, HttpResponse, UserData } from 'src/interfaces';
 import { PrismaService } from 'src/prisma/prisma.service';
 import { BusinessConfigService } from '../business-config/business-config.service';
 import { AuditActionType } from '@prisma/client';
+import { handleException } from 'src/utils';
 
 @Injectable()
 export class ClassRegistrationService {
@@ -105,8 +106,50 @@ export class ClassRegistrationService {
     }
   }
 
-  findOne(id: number) {
-    return `This action returns a #${id} classRegistration`;
+  /**
+   * Obtener un class registration por Id
+   * @param id Id del class registration
+   * @returns Class registration
+   */
+  async findOne(id: string): Promise<ClassRegistrationData> {
+    try {
+      return await this.findById(id);
+    } catch (error) {
+      this.logger.error('Error get class registration');
+      if (error instanceof BadRequestException) {
+        throw error;
+      }
+      handleException(error, 'Error get class registration');
+    }
+  }
+
+  /**
+   * Obtener un class registration por Id
+   * @param id Id del class registration
+   * @returns Class registration
+   */
+  async findById(id: string) {
+    const classRegistration = await this.prisma.classRegistrationConfig.findUnique({
+      where: {
+        id
+      },
+      select: {
+        id: true,
+        closeBeforeStartInterval: true,
+        finalRegistrationCloseInterval: true
+      }
+    });
+
+    // Validar si existe el class registration
+    if (!classRegistration) {
+      throw new BadRequestException('Class registration not found');
+    }
+
+    return {
+      id: classRegistration.id,
+      closeBeforeStartInterval: classRegistration.closeBeforeStartInterval,
+      finalRegistrationCloseInterval: classRegistration.finalRegistrationCloseInterval
+    };
   }
 
   update(id: number, updateClassRegistrationDto: UpdateClassRegistrationDto) {

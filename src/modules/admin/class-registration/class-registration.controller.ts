@@ -41,8 +41,8 @@ export class ClassRegistrationController {
 
   @ApiOkResponse({ description: 'Get class registration by Id' })
   @Get(':id')
-  findOne(@Param('id') id: string) {
-    return this.classRegistrationService.findOne(+id);
+  findOne(@Param('id') id: string): Promise<ClassRegistrationData> {
+    return this.classRegistrationService.findOne(id);
   }
 
   @ApiOkResponse({ description: 'Class Registration updated' })
