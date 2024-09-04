@@ -1,4 +1,4 @@
-import { Controller, Post } from '@nestjs/common';
+import { Controller, Patch, Post } from '@nestjs/common';
 import { SeedsService } from './seeds.service';
 import { ApiTags } from '@nestjs/swagger';
 
@@ -12,16 +12,11 @@ export class SeedsController {
 
   @Post()
   initDataBase() {
-    return this.seedsService.generateSuperAdmin();
+    return this.seedsService.generateInit();
   }
 
-  @Post('modules')
-  initModules() {
-    return this.seedsService.generateModules();
-  }
-
-  @Post('permissions')
-  initPermissions() {
-    return this.seedsService.generatePermissions();
+  @Patch()
+  initModulesPermissions() {
+    return this.seedsService.updateModulePermissionsSuperAdmin();
   }
 }
