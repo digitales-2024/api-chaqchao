@@ -32,21 +32,25 @@ export class ClassScheduleController {
     return this.classScheduleService.create(createClassScheduleDto, user);
   }
 
+  @ApiOkResponse({ description: 'Get all class schedules' })
   @Get()
-  findAll() {
+  findAll(): Promise<ClassScheduleData[]> {
     return this.classScheduleService.findAll();
   }
 
+  @ApiOkResponse({ description: 'Get class schedule by id' })
   @Get(':id')
-  findOne(@Param('id') id: string) {
-    return this.classScheduleService.findOne(+id);
+  findOne(@Param('id') id: string): Promise<ClassScheduleData> {
+    return this.classScheduleService.findOne(id);
   }
 
+  @ApiOkResponse({ description: 'Class Schedule updated' })
   @Patch(':id')
   update(@Param('id') id: string, @Body() updateClassScheduleDto: UpdateClassScheduleDto) {
     return this.classScheduleService.update(+id, updateClassScheduleDto);
   }
 
+  @ApiOkResponse({ description: 'Class Schedule deleted' })
   @Delete(':id')
   remove(@Param('id') id: string) {
     return this.classScheduleService.remove(+id);

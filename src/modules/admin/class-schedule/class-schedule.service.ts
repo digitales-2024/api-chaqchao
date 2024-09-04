@@ -11,6 +11,7 @@ import { ClassScheduleData, HttpResponse, UserData } from 'src/interfaces';
 import { AuditActionType } from '@prisma/client';
 import { PrismaService } from 'src/prisma/prisma.service';
 import { BusinessConfigService } from '../business-config/business-config.service';
+import { handleException } from 'src/utils';
 
 @Injectable()
 export class ClassScheduleService {
@@ -88,12 +89,71 @@ export class ClassScheduleService {
     }
   }
 
-  findAll() {
-    return `This action returns all classSchedule`;
+  /**
+   * Obtener todos los class schedule
+   * @returns Todos los class schedule
+   */
+  async findAll(): Promise<ClassScheduleData[]> {
+    try {
+      const classesSchedule = await this.prisma.classSchedule.findMany({
+        select: {
+          id: true,
+          startTime: true
+        }
+      });
+
+      // Mapea los resultados al tipo ClassScheduleData
+      return classesSchedule.map((classSchedule) => ({
+        id: classSchedule.id,
+        startTime: classSchedule.startTime
+      })) as ClassScheduleData[];
+    } catch (error) {
+      this.logger.error('Error getting all class schedules', error.stack);
+      handleException(error, 'Error getting all class schedules');
+    }
   }
 
-  findOne(id: number) {
-    return `This action returns a #${id} classSchedule`;
+  /**
+   * Obtener un class schedule por su id
+   * @param id Id del class schedule
+   * @returns Class schedule encontrado
+   */
+  async findOne(id: string): Promise<ClassScheduleData> {
+    try {
+      return await this.findById(id);
+    } catch (error) {
+      this.logger.error('Error get class schedule');
+      if (error instanceof BadRequestException) {
+        throw error;
+      }
+      handleException(error, 'Error get class schedule');
+    }
+  }
+
+  /**
+   * Actualizar un class schedule
+   * @param id Id del class schedule
+   * @param updateClassScheduleDto Data para actualizar un class schedule
+   */
+  async findById(id: string): Promise<ClassScheduleData> {
+    const classScheduleDB = await this.prisma.classSchedule.findFirst({
+      where: { id },
+      select: {
+        id: true,
+        startTime: true
+      }
+    });
+
+    // Verificar si el class schedule existe y está activo
+    if (!classScheduleDB) {
+      throw new BadRequestException('This class schedule does not exist');
+    }
+
+    // Mapeo al tipo ClassScheduleData
+    return {
+      id: classScheduleDB.id,
+      startTime: classScheduleDB.startTime
+    };
   }
 
   update(id: number, updateClassScheduleDto: UpdateClassScheduleDto) {
