@@ -276,7 +276,49 @@ export class ClassPriceService {
     }
   }
 
-  remove(id: number) {
-    return `This action removes a #${id} classPrice`;
+  /**
+   * Eliminar un class price
+   * @param id Id del class price
+   * @param user Usuario que elimina el class price
+   * @returns Class price eliminado
+   */
+  async remove(id: string, user: UserData): Promise<HttpResponse<ClassPriceConfigData>> {
+    try {
+      return await this.prisma.$transaction(async (prisma) => {
+        const classPrice = await this.findById(id);
+
+        // Eliminar el class price
+        await prisma.classPriceConfig.delete({
+          where: { id }
+        });
+
+        // Registrar la auditoría de la eliminación
+        await prisma.audit.create({
+          data: {
+            action: AuditActionType.DELETE,
+            entityId: classPrice.id,
+            entityType: 'classPriceConfig',
+            performedById: user.id
+          }
+        });
+
+        return {
+          statusCode: HttpStatus.OK,
+          message: 'Class price deleted',
+          data: {
+            id: classPrice.id,
+            classTypeUser: classPrice.classTypeUser,
+            price: classPrice.price,
+            typeCurrency: classPrice.typeCurrency
+          }
+        };
+      });
+    } catch (error) {
+      this.logger.error(`Error deleting class price: ${error.message}`, error.stack);
+      if (error instanceof BadRequestException) {
+        throw error;
+      }
+      throw new BadRequestException('Error deleting class price');
+    }
   }
 }

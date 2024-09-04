@@ -54,7 +54,10 @@ export class ClassPriceController {
 
   @ApiOkResponse({ description: 'Class Price deleted' })
   @Delete(':id')
-  remove(@Param('id') id: string) {
-    return this.classPriceService.remove(+id);
+  remove(
+    @Param('id') id: string,
+    @GetUser() user: UserData
+  ): Promise<HttpResponse<ClassPriceConfigData>> {
+    return this.classPriceService.remove(id, user);
   }
 }
