@@ -44,8 +44,12 @@ export class ClassPriceController {
 
   @ApiOkResponse({ description: 'Class Price updated' })
   @Patch(':id')
-  update(@Param('id') id: string, @Body() updateClassPriceDto: UpdateClassPriceDto) {
-    return this.classPriceService.update(+id, updateClassPriceDto);
+  update(
+    @Param('id') id: string,
+    @Body() updateClassPriceDto: UpdateClassPriceDto,
+    @GetUser() user: UserData
+  ): Promise<HttpResponse<ClassPriceConfigData>> {
+    return this.classPriceService.update(id, updateClassPriceDto, user);
   }
 
   @ApiOkResponse({ description: 'Class Price deleted' })

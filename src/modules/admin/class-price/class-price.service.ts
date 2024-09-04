@@ -183,9 +183,97 @@ export class ClassPriceService {
       typeCurrency: classPrice.typeCurrency
     };
   }
+  /**
+   * Actualizar un class price
+   * @param id Id del class price
+   * @param updateClassPriceDto Data para actualizar un class price
+   * @param user Usuario que actualiza el class price
+   * @returns Class price actualizado
+   */
+  async update(
+    id: string,
+    updateClassPriceDto: UpdateClassPriceDto,
+    user: UserData
+  ): Promise<HttpResponse<ClassPriceConfigData>> {
+    const { classTypeUser, price, typeCurrency } = updateClassPriceDto;
 
-  update(id: number, updateClassPriceDto: UpdateClassPriceDto) {
-    return `This action updates a #${id} ${updateClassPriceDto} classPrice`;
+    // Validar si los datos están presentes
+    if (classTypeUser) {
+      this.validateClassTypeUser(classTypeUser);
+    }
+    if (typeCurrency) {
+      this.validateTypeCurrency(typeCurrency);
+    }
+
+    try {
+      return await this.prisma.$transaction(async (prisma) => {
+        // Validar si existe el class price
+        const classPriceDB = await this.findById(id);
+
+        // Convertir el price a flotante solo si está presente
+        const priceFloat = price ? parseFloat(price.toString()) : classPriceDB.price;
+
+        // Verificar si hay cambios
+        const hasChanges =
+          (classTypeUser && classPriceDB.classTypeUser !== classTypeUser) ||
+          (price && classPriceDB.price !== priceFloat) ||
+          (typeCurrency && classPriceDB.typeCurrency !== typeCurrency);
+
+        if (!hasChanges) {
+          return {
+            statusCode: HttpStatus.OK,
+            message: 'Class price updated',
+            data: {
+              id: classPriceDB.id,
+              classTypeUser: classPriceDB.classTypeUser,
+              price: classPriceDB.price,
+              typeCurrency: classPriceDB.typeCurrency
+            }
+          };
+        }
+
+        // Actualizar el registro de class price
+        const updatedClassPrice = await prisma.classPriceConfig.update({
+          where: {
+            id
+          },
+          data: {
+            ...(classTypeUser && { classTypeUser }),
+            ...(price && { price: priceFloat }),
+            ...(typeCurrency && { typeCurrency })
+          }
+        });
+
+        // Registrar la auditoría de la actualización
+        await prisma.audit.create({
+          data: {
+            action: AuditActionType.UPDATE,
+            entityId: updatedClassPrice.id,
+            entityType: 'classPriceConfig',
+            performedById: user.id
+          }
+        });
+
+        return {
+          statusCode: HttpStatus.OK,
+          message: 'Class price updated',
+          data: {
+            id: updatedClassPrice.id,
+            classTypeUser: updatedClassPrice.classTypeUser,
+            price: updatedClassPrice.price,
+            typeCurrency: updatedClassPrice.typeCurrency
+          }
+        };
+      });
+    } catch (error) {
+      this.logger.error(`Error updating class price: ${error.message}`, error.stack);
+
+      if (error instanceof NotFoundException || error instanceof BadRequestException) {
+        throw error;
+      }
+
+      throw new BadRequestException('Error updating class price');
+    }
   }
 
   remove(id: number) {
