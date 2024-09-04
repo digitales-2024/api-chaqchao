@@ -15,6 +15,7 @@ import { BusinessConfigModule } from './business-config/business-config.module';
 import { BusinessHoursModule } from './business-hours/business-hours.module';
 import { ClassScheduleModule } from './class-schedule/class-schedule.module';
 import { ClassPriceModule } from './class-price/class-price.module';
+import { ClassLanguageModule } from './class-language/class-language.module';
 
 @Module({
   imports: [
@@ -31,7 +32,8 @@ import { ClassPriceModule } from './class-price/class-price.module';
     BusinessConfigModule,
     BusinessHoursModule,
     ClassScheduleModule,
-    ClassPriceModule
+    ClassPriceModule,
+    ClassLanguageModule
   ],
   controllers: [AdminController],
   providers: [AdminService]
