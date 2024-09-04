@@ -11,6 +11,7 @@ import { ClassLanguageData, HttpResponse, UserData } from 'src/interfaces';
 import { PrismaService } from 'src/prisma/prisma.service';
 import { AuditActionType } from '@prisma/client';
 import { BusinessConfigService } from '../business-config/business-config.service';
+import { handleException } from 'src/utils';
 
 @Injectable()
 export class ClassLanguageService {
@@ -100,8 +101,48 @@ export class ClassLanguageService {
     }
   }
 
-  findOne(id: number) {
-    return `This action returns a #${id} classLanguage`;
+  /**
+   * Obtener un class language por id
+   * @param id Id del class language
+   * @returns Class language
+   */
+  async findOne(id: string): Promise<ClassLanguageData> {
+    try {
+      return await this.findById(id);
+    } catch (error) {
+      this.logger.error('Error get class language');
+      if (error instanceof BadRequestException) {
+        throw error;
+      }
+      handleException(error, 'Error get class language');
+    }
+  }
+
+  /**
+   * Obtener un class language por id
+   * @param id Id del class language
+   * @returns Class language
+   */
+  async findById(id: string) {
+    const classLanguage = await this.prisma.classLanguage.findUnique({
+      where: {
+        id
+      },
+      select: {
+        id: true,
+        languageName: true
+      }
+    });
+
+    // Validar si existe el class language
+    if (!classLanguage) {
+      throw new BadRequestException('Class language not found');
+    }
+
+    return {
+      id: classLanguage.id,
+      languageName: classLanguage.languageName
+    };
   }
 
   update(id: number, updateClassLanguageDto: UpdateClassLanguageDto) {

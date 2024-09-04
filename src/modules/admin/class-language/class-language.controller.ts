@@ -38,8 +38,8 @@ export class ClassLanguageController {
 
   @ApiOkResponse({ description: 'Get class language by Id' })
   @Get(':id')
-  findOne(@Param('id') id: string) {
-    return this.classLanguageService.findOne(+id);
+  findOne(@Param('id') id: string): Promise<ClassLanguageData> {
+    return this.classLanguageService.findOne(id);
   }
 
   @ApiOkResponse({ description: 'Class Language updated' })
