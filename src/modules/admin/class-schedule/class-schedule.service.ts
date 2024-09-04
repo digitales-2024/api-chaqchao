@@ -224,7 +224,47 @@ export class ClassScheduleService {
     }
   }
 
-  remove(id: string) {
-    return `This action removes a #${id} classSchedule`;
+  /**
+   * Eliminar un class schedule
+   * @param id Id del class schedule
+   * @param user Usuario que elimina el class schedule
+   * @returns Class schedule eliminado
+   */
+  async remove(id: string, user: UserData): Promise<HttpResponse<ClassScheduleData>> {
+    try {
+      return await this.prisma.$transaction(async (prisma) => {
+        const classSchedule = await this.findById(id);
+
+        // Eliminar el class schedule
+        await prisma.classSchedule.delete({
+          where: { id }
+        });
+
+        // Registrar la auditoría de la eliminación
+        await prisma.audit.create({
+          data: {
+            action: AuditActionType.DELETE,
+            entityId: classSchedule.id,
+            entityType: 'classSchedule',
+            performedById: user.id
+          }
+        });
+
+        return {
+          statusCode: HttpStatus.OK,
+          message: 'Class Schedule deleted',
+          data: {
+            id: classSchedule.id,
+            startTime: classSchedule.startTime
+          }
+        };
+      });
+    } catch (error) {
+      this.logger.error(`Error deleting class schedule: ${error.message}`, error.stack);
+      if (error instanceof BadRequestException) {
+        throw error;
+      }
+      throw new BadRequestException('Error deleting class schedule');
+    }
   }
 }

@@ -56,7 +56,10 @@ export class ClassScheduleController {
 
   @ApiOkResponse({ description: 'Class Schedule deleted' })
   @Delete(':id')
-  remove(@Param('id') id: string) {
-    return this.classScheduleService.remove(id);
+  remove(
+    @Param('id') id: string,
+    @GetUser() user: UserData
+  ): Promise<HttpResponse<ClassScheduleData>> {
+    return this.classScheduleService.remove(id, user);
   }
 }
