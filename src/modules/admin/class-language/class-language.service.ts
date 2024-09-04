@@ -77,8 +77,27 @@ export class ClassLanguageService {
     }
   }
 
-  findAll() {
-    return `This action returns all classLanguage`;
+  /**
+   * Obtener todos los class language
+   * @returns Lista de class language
+   */
+  async findAll(): Promise<ClassLanguageData[]> {
+    try {
+      const classLanguages = await this.prisma.classLanguage.findMany({
+        select: {
+          id: true,
+          languageName: true
+        }
+      });
+
+      return classLanguages.map((classLanguage) => ({
+        id: classLanguage.id,
+        languageName: classLanguage.languageName
+      })) as ClassLanguageData[];
+    } catch (error) {
+      this.logger.error(`Error fetching class language: ${error.message}`, error.stack);
+      throw new BadRequestException('Error fetching class language');
+    }
   }
 
   findOne(id: number) {

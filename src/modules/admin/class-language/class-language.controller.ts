@@ -32,7 +32,7 @@ export class ClassLanguageController {
 
   @ApiOkResponse({ description: 'Get all class languages' })
   @Get()
-  findAll() {
+  findAll(): Promise<ClassLanguageData[]> {
     return this.classLanguageService.findAll();
   }
 
