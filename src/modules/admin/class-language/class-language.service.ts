@@ -53,14 +53,14 @@ export class ClassLanguageService {
           data: {
             action: AuditActionType.CREATE,
             entityId: newClassLanguage.id,
-            entityType: 'classPriceConfig',
+            entityType: 'classLanguage',
             performedById: user.id
           }
         });
 
         return {
           statusCode: HttpStatus.CREATED,
-          message: 'Class price created',
+          message: 'Class language created',
           data: {
             id: newClassLanguage.id,
             languageName: newClassLanguage.languageName
