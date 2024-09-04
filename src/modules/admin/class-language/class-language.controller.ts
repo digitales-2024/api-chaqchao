@@ -44,13 +44,20 @@ export class ClassLanguageController {
 
   @ApiOkResponse({ description: 'Class Language updated' })
   @Patch(':id')
-  update(@Param('id') id: string, @Body() updateClassLanguageDto: UpdateClassLanguageDto) {
-    return this.classLanguageService.update(+id, updateClassLanguageDto);
+  update(
+    @Param('id') id: string,
+    @Body() updateClassLanguageDto: UpdateClassLanguageDto,
+    @GetUser() user: UserData
+  ): Promise<HttpResponse<ClassLanguageData>> {
+    return this.classLanguageService.update(id, updateClassLanguageDto, user);
   }
 
   @ApiOkResponse({ description: 'Class Language deleted' })
   @Delete(':id')
-  remove(@Param('id') id: string) {
-    return this.classLanguageService.remove(+id);
+  remove(
+    @Param('id') id: string,
+    @GetUser() user: UserData
+  ): Promise<HttpResponse<ClassLanguageData>> {
+    return this.classLanguageService.remove(id, user);
   }
 }

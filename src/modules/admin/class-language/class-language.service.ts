@@ -145,11 +145,124 @@ export class ClassLanguageService {
     };
   }
 
-  update(id: number, updateClassLanguageDto: UpdateClassLanguageDto) {
-    return `This action updates a #${id} ${updateClassLanguageDto} classLanguage`;
+  /**
+   * Actualizar un class language
+   * @param id Id del class language
+   * @param updateClassLanguageDto Data para actualizar el class language
+   * @param user Usuario que actualiza el class language
+   * @returns Class language actualizado
+   */
+  async update(
+    id: string,
+    updateClassLanguageDto: UpdateClassLanguageDto,
+    user: UserData
+  ): Promise<HttpResponse<ClassLanguageData>> {
+    const { languageName } = updateClassLanguageDto;
+    try {
+      return await this.prisma.$transaction(async (prisma) => {
+        // Validar si existe el class language
+        const classLanguage = await this.findById(id);
+
+        // Verificar si hay cambios
+        const hasChanges = classLanguage.languageName !== languageName;
+
+        if (!hasChanges || !languageName) {
+          return {
+            statusCode: HttpStatus.OK,
+            message: 'Class language updated',
+            data: {
+              id: classLanguage.id,
+              languageName: classLanguage.languageName
+            }
+          };
+        }
+
+        // Actualizar el class language
+        const updatedClassLanguage = await prisma.classLanguage.update({
+          where: {
+            id
+          },
+          data: {
+            languageName
+          }
+        });
+
+        // Registrar la auditoría de la actualización
+        await prisma.audit.create({
+          data: {
+            action: AuditActionType.UPDATE,
+            entityId: updatedClassLanguage.id,
+            entityType: 'classLanguage',
+            performedById: user.id
+          }
+        });
+
+        return {
+          statusCode: HttpStatus.OK,
+          message: 'Class language updated',
+          data: {
+            id: updatedClassLanguage.id,
+            languageName: updatedClassLanguage.languageName
+          }
+        };
+      });
+    } catch (error) {
+      this.logger.error(`Error updating class language: ${error.message}`, error.stack);
+
+      if (error instanceof NotFoundException || error instanceof BadRequestException) {
+        throw error;
+      }
+
+      throw new BadRequestException('Error updating class language');
+    }
   }
 
-  remove(id: number) {
-    return `This action removes a #${id} classLanguage`;
+  /**
+   * Eliminar un class language
+   * @param id Id del class language
+   * @param user Usuario que elimina el class language
+   * @returns Class language eliminado
+   */
+  async remove(id: string, user: UserData): Promise<HttpResponse<ClassLanguageData>> {
+    try {
+      return await this.prisma.$transaction(async (prisma) => {
+        // Validar si existe el class language
+        const classLanguage = await this.findById(id);
+
+        // Eliminar el class language
+        await prisma.classLanguage.delete({
+          where: {
+            id
+          }
+        });
+
+        // Registrar la auditoría de la eliminación
+        await prisma.audit.create({
+          data: {
+            action: AuditActionType.DELETE,
+            entityId: classLanguage.id,
+            entityType: 'classLanguage',
+            performedById: user.id
+          }
+        });
+
+        return {
+          statusCode: HttpStatus.OK,
+          message: 'Class language deleted',
+          data: {
+            id: classLanguage.id,
+            languageName: classLanguage.languageName
+          }
+        };
+      });
+    } catch (error) {
+      this.logger.error(`Error deleting class language: ${error.message}`, error.stack);
+
+      if (error instanceof NotFoundException || error instanceof BadRequestException) {
+        throw error;
+      }
+
+      throw new BadRequestException('Error deleting class language');
+    }
   }
 }
