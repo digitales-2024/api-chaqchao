@@ -20,7 +20,7 @@ export type ClassRegistrationData = Pick<
 >;
 
 export type ClassConfigData = {
-  priceConfig: ClassPriceConfigData;
-  languageConfig: ClassLanguageData;
-  registrationConfig: ClassRegistrationData;
+  priceConfig: ClassPriceConfigData[];
+  languageConfig: ClassLanguageData[];
+  registrationConfig: ClassRegistrationData[];
 };
