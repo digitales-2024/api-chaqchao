@@ -19,7 +19,7 @@ export class CreateClassPriceDto {
   @IsString()
   @IsNotEmpty()
   @Transform(({ value }) => value.trim().toUpperCase())
-  TypeCurrency: TypeCurrency;
+  typeCurrency: TypeCurrency;
 
   @ApiProperty()
   @IsUUID()
