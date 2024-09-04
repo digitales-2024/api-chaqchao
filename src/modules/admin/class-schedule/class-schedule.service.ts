@@ -156,11 +156,75 @@ export class ClassScheduleService {
     };
   }
 
-  update(id: number, updateClassScheduleDto: UpdateClassScheduleDto) {
-    return `This action updates a #${id} ${updateClassScheduleDto} classSchedule`;
+  /**
+   * Actualizar un class schedule
+   * @param id Id del class schedule
+   * @param updateClassScheduleDto Data para actualizar un class schedule
+   * @param user Usuario que actualiza el class schedule
+   * @returns Class schedule actualizado
+   */
+  async update(
+    id: string,
+    updateClassScheduleDto: UpdateClassScheduleDto,
+    user: UserData
+  ): Promise<HttpResponse<ClassScheduleData>> {
+    const { startTime } = updateClassScheduleDto;
+    if (startTime) {
+      this.validateTimeFormat(startTime);
+    }
+    try {
+      return await this.prisma.$transaction(async (prisma) => {
+        const existingClassSchedule = await this.findById(id);
+
+        // Verificar si hay cambios
+        if (existingClassSchedule.startTime === startTime || !startTime) {
+          return {
+            statusCode: HttpStatus.OK,
+            message: 'Class Schedule updated',
+            data: {
+              id: existingClassSchedule.id,
+              startTime: existingClassSchedule.startTime
+            }
+          };
+        }
+
+        // Actualizar el class schedule
+        const updatedClassSchedule = await prisma.classSchedule.update({
+          where: { id },
+          data: {
+            startTime
+          }
+        });
+
+        // Registrar la auditoría de la actualización
+        await prisma.audit.create({
+          data: {
+            action: AuditActionType.UPDATE,
+            entityId: updatedClassSchedule.id,
+            entityType: 'classSchedule',
+            performedById: user.id
+          }
+        });
+
+        return {
+          statusCode: HttpStatus.OK,
+          message: 'Class Schedule updated',
+          data: {
+            id: updatedClassSchedule.id,
+            startTime: updatedClassSchedule.startTime
+          }
+        };
+      });
+    } catch (error) {
+      this.logger.error(`Error updating class schedule: ${error.message}`, error.stack);
+      if (error instanceof BadRequestException) {
+        throw error;
+      }
+      throw new BadRequestException('Error updating class schedule');
+    }
   }
 
-  remove(id: number) {
+  remove(id: string) {
     return `This action removes a #${id} classSchedule`;
   }
 }

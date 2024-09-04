@@ -46,13 +46,17 @@ export class ClassScheduleController {
 
   @ApiOkResponse({ description: 'Class Schedule updated' })
   @Patch(':id')
-  update(@Param('id') id: string, @Body() updateClassScheduleDto: UpdateClassScheduleDto) {
-    return this.classScheduleService.update(+id, updateClassScheduleDto);
+  update(
+    @Param('id') id: string,
+    @Body() updateClassScheduleDto: UpdateClassScheduleDto,
+    @GetUser() user: UserData
+  ): Promise<HttpResponse<ClassScheduleData>> {
+    return this.classScheduleService.update(id, updateClassScheduleDto, user);
   }
 
   @ApiOkResponse({ description: 'Class Schedule deleted' })
   @Delete(':id')
   remove(@Param('id') id: string) {
-    return this.classScheduleService.remove(+id);
+    return this.classScheduleService.remove(id);
   }
 }
