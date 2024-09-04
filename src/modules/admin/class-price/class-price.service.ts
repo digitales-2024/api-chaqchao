@@ -11,6 +11,7 @@ import { ClassPriceConfigData, HttpResponse, UserData } from 'src/interfaces';
 import { PrismaService } from 'src/prisma/prisma.service';
 import { BusinessConfigService } from '../business-config/business-config.service';
 import { AuditActionType, ClassTypeUser, TypeCurrency } from '@prisma/client';
+import { handleException } from 'src/utils';
 
 @Injectable()
 export class ClassPriceService {
@@ -135,8 +136,52 @@ export class ClassPriceService {
     }
   }
 
-  findOne(id: number) {
-    return `This action returns a #${id} classPrice`;
+  /**
+   * Obtener un class price por su id
+   * @param id Id del class price
+   * @returns Class price
+   */
+  async findOne(id: string): Promise<ClassPriceConfigData> {
+    try {
+      return await this.findById(id);
+    } catch (error) {
+      this.logger.error('Error get class price');
+      if (error instanceof BadRequestException) {
+        throw error;
+      }
+      handleException(error, 'Error get class price');
+    }
+  }
+
+  /**
+   * Buscar un class price por su id
+   * @param id Id del class price
+   * @returns Class price
+   */
+  async findById(id: string) {
+    const classPrice = await this.prisma.classPriceConfig.findUnique({
+      where: {
+        id
+      },
+      select: {
+        id: true,
+        classTypeUser: true,
+        price: true,
+        typeCurrency: true
+      }
+    });
+
+    // Validar si existe el class price
+    if (!classPrice) {
+      throw new BadRequestException('Class price not found');
+    }
+
+    return {
+      id: classPrice.id,
+      classTypeUser: classPrice.classTypeUser,
+      price: classPrice.price,
+      typeCurrency: classPrice.typeCurrency
+    };
   }
 
   update(id: number, updateClassPriceDto: UpdateClassPriceDto) {

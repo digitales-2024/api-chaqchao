@@ -32,14 +32,14 @@ export class ClassPriceController {
 
   @ApiOkResponse({ description: 'Get all class prices' })
   @Get()
-  findAll() {
+  findAll(): Promise<ClassPriceConfigData[]> {
     return this.classPriceService.findAll();
   }
 
   @ApiOkResponse({ description: 'Get class price by id' })
   @Get(':id')
-  findOne(@Param('id') id: string) {
-    return this.classPriceService.findOne(+id);
+  findOne(@Param('id') id: string): Promise<ClassPriceConfigData> {
+    return this.classPriceService.findOne(id);
   }
 
   @ApiOkResponse({ description: 'Class Price updated' })
