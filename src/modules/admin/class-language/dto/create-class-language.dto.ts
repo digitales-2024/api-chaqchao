@@ -7,10 +7,10 @@ export class CreateClassLanguageDto {
   @IsString()
   @Transform(({ value }) => value.trim())
   @IsNotEmpty()
-  languagueName: string;
+  languageName: string;
 
   @ApiProperty()
   @IsUUID()
   @IsNotEmpty()
-  buinessId: string;
+  businessId: string;
 }
