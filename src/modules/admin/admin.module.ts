@@ -14,6 +14,7 @@ import { ProductVariationModule } from './product-variation/product-variation.mo
 import { BusinessConfigModule } from './business-config/business-config.module';
 import { BusinessHoursModule } from './business-hours/business-hours.module';
 import { ClassScheduleModule } from './class-schedule/class-schedule.module';
+import { ClassPriceModule } from './class-price/class-price.module';
 
 @Module({
   imports: [
@@ -29,7 +30,8 @@ import { ClassScheduleModule } from './class-schedule/class-schedule.module';
     ProductVariationModule,
     BusinessConfigModule,
     BusinessHoursModule,
-    ClassScheduleModule
+    ClassScheduleModule,
+    ClassPriceModule
   ],
   controllers: [AdminController],
   providers: [AdminService]
