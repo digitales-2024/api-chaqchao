@@ -77,6 +77,15 @@ export class RolService {
     try {
       const { name, modulePermissions } = updateRolDto;
 
+      // Validar que el rol no sea SUPER_ADMIN
+      const rolIsSuperAdmin = await this.isRolSuperAdmin(id);
+
+      if (rolIsSuperAdmin) {
+        throw new BadRequestException(
+          'It is not possible to update the rol because it is super admin'
+        );
+      }
+
       // Validar que haya datos para actualizar
       if (NoDataUpdate(updateRolDto)) {
         throw new BadRequestException('No data to update');
@@ -239,10 +248,7 @@ export class RolService {
     try {
       const rolsDB = await this.prisma.rol.findMany({
         where: {
-          isActive: true,
-          name: {
-            not: ValidRols.SUPER_ADMIN
-          }
+          isActive: true
         },
         select: {
           id: true,
@@ -274,20 +280,9 @@ export class RolService {
 
       if (!rolsDB) throw new BadRequestException('Rols not found');
 
-      return rolsDB.map((rol) => ({
-        id: rol.id,
-        name: rol.name,
-        description: rol.description,
-        modulePermissions: rol.rolPermissions.map((rolPermission) => ({
-          module: {
-            id: rolPermission.module.id,
-            cod: rolPermission.module.cod,
-            name: rolPermission.module.name,
-            description: rolPermission.module.description
-          },
-          permissions: [rolPermission.permission]
-        }))
-      }));
+      const groupPermissionsByModules = this.groupPermissionsByModules(rolsDB);
+
+      return groupPermissionsByModules;
     } catch (error) {
       this.logger.error('Error getting all rols', error.stack);
       handleException(error, 'Error getting all rols');
@@ -321,10 +316,7 @@ export class RolService {
       const rolDB = await this.prisma.rol.findUnique({
         where: {
           id,
-          isActive: true,
-          name: {
-            not: ValidRols.SUPER_ADMIN
-          }
+          isActive: true
         },
         select: {
           id: true,
@@ -356,20 +348,9 @@ export class RolService {
 
       if (!rolDB) throw new BadRequestException('Rol not found for id');
 
-      return {
-        id: rolDB.id,
-        name: rolDB.name,
-        description: rolDB.description,
-        modulePermissions: rolDB.rolPermissions.map((rolPermission) => ({
-          module: {
-            id: rolPermission.module.id,
-            cod: rolPermission.module.cod,
-            name: rolPermission.module.name,
-            description: rolPermission.module.description
-          },
-          permissions: [rolPermission.permission]
-        }))
-      };
+      const groupedRols = this.groupPermissionsByModules([rolDB]);
+
+      return groupedRols[0];
     } catch (error) {
       this.logger.error(`Error getting a rol for id: ${id}`, error.stack);
       if (error instanceof BadRequestException) {
@@ -651,7 +632,12 @@ export class RolService {
             throw new BadRequestException('Module not found');
           }
 
-          const permissions: { id: string; cod: string; name: string; description: string }[] = [];
+          const permissions: {
+            id: string;
+            cod: string;
+            name: string;
+            description: string;
+          }[] = [];
 
           // Obtener los permisos existentes de la base de datos en una sola consulta
           const existingPermissions = await prisma.permission.findMany({
@@ -747,5 +733,37 @@ export class RolService {
       }
       handleException(error, 'Error updating permissions to rol');
     }
+  }
+
+  /**
+   * Agrupar los permisos por módulo
+   * @param permissions Permisos a agrupar
+   * @returns Permisos agrupados por módulo
+   */
+  private groupPermissionsByModules(rolsDB: any): RolPermissions[] {
+    const groupedRols = rolsDB.map((rol) => {
+      const modulesMap = new Map();
+
+      rol.rolPermissions.forEach((rp) => {
+        const moduleId = rp.module.id;
+        if (!modulesMap.has(moduleId)) {
+          modulesMap.set(moduleId, {
+            ...rp.module,
+            permissions: []
+          });
+        }
+
+        modulesMap.get(moduleId).permissions.push(rp.permission);
+      });
+
+      return {
+        id: rol.id,
+        name: rol.name,
+        description: rol.description,
+        modulePermissions: Array.from(modulesMap.values())
+      };
+    });
+
+    return groupedRols;
   }
 }
