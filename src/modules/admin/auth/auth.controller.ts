@@ -1,22 +1,28 @@
-import { Controller, Post, Body } from '@nestjs/common';
+import { Controller, Post, Body, Res, Req } from '@nestjs/common';
 import { AuthService } from './auth.service';
 import { LoginAuthDto } from './dto';
 import { UpdatePasswordDto } from './dto/update-password.dto';
 import { ApiCreatedResponse, ApiInternalServerErrorResponse, ApiTags } from '@nestjs/swagger';
-import { UserDataLogin } from 'src/interfaces';
+import { Response } from 'express';
 
 @ApiTags('Auth')
+@ApiInternalServerErrorResponse({
+  description: 'Internal server error'
+})
 @Controller({ path: 'auth', version: '1' })
 export class AuthController {
   constructor(private readonly authService: AuthService) {}
 
   @ApiCreatedResponse({ description: 'Login user' })
-  @ApiInternalServerErrorResponse({
-    description: 'Internal server error | You must change your password'
-  })
   @Post('login')
-  async login(@Body() loginAuthDto: LoginAuthDto): Promise<UserDataLogin> {
-    return this.authService.login(loginAuthDto);
+  async login(@Body() loginAuthDto: LoginAuthDto, @Res() res: Response): Promise<void> {
+    return this.authService.login(loginAuthDto, res);
+  }
+
+  @ApiCreatedResponse({ description: 'Logout user' })
+  @Post('logout')
+  async logout(@Req() req: Request, @Res() res: Response): Promise<void> {
+    return this.authService.logout(req, res);
   }
 
   @ApiCreatedResponse({ description: 'Update password' })

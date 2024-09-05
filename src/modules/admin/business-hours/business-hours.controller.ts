@@ -5,7 +5,6 @@ import { UpdateBusinessHourDto } from './dto/update-business-hour.dto';
 import { Auth, GetUser } from '../auth/decorators';
 import {
   ApiBadRequestResponse,
-  ApiBearerAuth,
   ApiInternalServerErrorResponse,
   ApiOkResponse,
   ApiTags,
@@ -14,7 +13,6 @@ import {
 import { AllBusinessHoursData, BusinessHoursData, HttpResponse, UserData } from 'src/interfaces';
 
 @ApiTags('BusinessHours')
-@ApiBearerAuth()
 @ApiUnauthorizedResponse({ description: 'Unauthorized' })
 @ApiInternalServerErrorResponse({ description: 'Internal server error' })
 @ApiBadRequestResponse({ description: 'Bad request' })

@@ -5,7 +5,6 @@ import { BusinessConfigData, HttpResponse, UserData } from 'src/interfaces';
 import { Auth, GetUser } from '../auth/decorators';
 import {
   ApiBadRequestResponse,
-  ApiBearerAuth,
   ApiInternalServerErrorResponse,
   ApiOkResponse,
   ApiTags,
@@ -14,7 +13,6 @@ import {
 import { UpdateBusinessConfigDto } from './dto/update-business-config.dto';
 
 @ApiTags('BusinessConfig')
-@ApiBearerAuth()
 @ApiUnauthorizedResponse({ description: 'Unauthorized' })
 @ApiInternalServerErrorResponse({ description: 'Internal server error' })
 @ApiBadRequestResponse({ description: 'Bad request' })

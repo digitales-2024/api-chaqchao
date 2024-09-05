@@ -1,15 +1,9 @@
 import { Controller, Post, Body } from '@nestjs/common';
 import { AuditService } from './audit.service';
 import { CreateAuditDto } from './dto/create-audit.dto';
-import {
-  ApiBearerAuth,
-  ApiCreatedResponse,
-  ApiTags,
-  ApiUnauthorizedResponse
-} from '@nestjs/swagger';
+import { ApiCreatedResponse, ApiTags, ApiUnauthorizedResponse } from '@nestjs/swagger';
 import { Auth } from '../auth/decorators';
 
-@ApiBearerAuth()
 @ApiUnauthorizedResponse({ description: 'Unauthorized' })
 @ApiTags('Audit')
 @Auth()

@@ -6,7 +6,6 @@ import { Auth, GetUser } from '../auth/decorators';
 import { HttpResponse, ProductData, UserData } from 'src/interfaces';
 import {
   ApiBadRequestResponse,
-  ApiBearerAuth,
   ApiCreatedResponse,
   ApiOkResponse,
   ApiTags,
@@ -14,7 +13,6 @@ import {
 } from '@nestjs/swagger';
 
 @ApiTags('Products')
-@ApiBearerAuth()
 @ApiBadRequestResponse({ description: 'Bad Request' })
 @ApiUnauthorizedResponse({ description: 'Unauthorized' })
 @Auth()

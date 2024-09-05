@@ -4,7 +4,6 @@ import { CreateClassLanguageDto } from './dto/create-class-language.dto';
 import { UpdateClassLanguageDto } from './dto/update-class-language.dto';
 import {
   ApiBadRequestResponse,
-  ApiBearerAuth,
   ApiOkResponse,
   ApiTags,
   ApiUnauthorizedResponse
@@ -13,7 +12,6 @@ import { Auth, GetUser } from '../auth/decorators';
 import { ClassLanguageData, HttpResponse, UserData } from 'src/interfaces';
 
 @ApiTags('Class Language')
-@ApiBearerAuth()
 @ApiBadRequestResponse({ description: 'Bad Request' })
 @ApiUnauthorizedResponse({ description: 'Unauthorized' })
 @Auth()

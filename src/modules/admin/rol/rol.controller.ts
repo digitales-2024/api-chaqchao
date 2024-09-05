@@ -5,7 +5,6 @@ import { Auth } from '../auth/decorators';
 import { UpdateRolDto } from './dto/update-rol.dto';
 import {
   ApiBadRequestResponse,
-  ApiBearerAuth,
   ApiBody,
   ApiCreatedResponse,
   ApiInternalServerErrorResponse,
@@ -19,7 +18,6 @@ import { RolPermissions } from 'src/interfaces/rol.type';
 @ApiTags('Rol')
 @ApiUnauthorizedResponse({ description: 'Unauthorized' })
 @ApiInternalServerErrorResponse({ description: 'Internal server error' })
-@ApiBearerAuth()
 @Controller({ path: 'rol', version: '1' })
 @Auth()
 export class RolController {
