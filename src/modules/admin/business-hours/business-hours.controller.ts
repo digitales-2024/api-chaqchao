@@ -47,6 +47,7 @@ export class BusinessHoursController {
     return this.businessHoursService.findOne(id);
   }
 
+  @ApiOkResponse({ description: 'Business hours updated successfully' })
   @Patch(':id')
   update(
     @Param('id') id: string,
