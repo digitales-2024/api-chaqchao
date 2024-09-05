@@ -12,8 +12,8 @@ import { handleException } from 'src/utils';
 import { JwtPayload } from './interfaces/jwt-payload.interface';
 import { JwtService } from '@nestjs/jwt';
 import { UpdatePasswordDto } from './dto/update-password.dto';
-import { RolService } from '../rol/rol.service';
 import { UserDataLogin } from 'src/interfaces';
+import { Response } from 'express';
 
 @Injectable()
 export class AuthService {
@@ -21,11 +21,15 @@ export class AuthService {
 
   constructor(
     private readonly userService: UsersService,
-    private readonly rolService: RolService,
     private readonly jwtService: JwtService
   ) {}
 
-  async login(loginAuthDto: LoginAuthDto): Promise<UserDataLogin> {
+  /**
+   * Inicia la sesión del usuario
+   * @param loginAuthDto  Datos para iniciar sesión
+   * @param res  Respuesta HTTP
+   */
+  async login(loginAuthDto: LoginAuthDto, res: Response): Promise<void> {
     try {
       const { email, password } = loginAuthDto;
 
@@ -49,14 +53,26 @@ export class AuthService {
         throw new ForbiddenException('You must change your password');
       }
 
-      return {
+      // Genera el token
+      const token = this.getJwtToken({ id: userDB.id });
+
+      // Configura la cookie HttpOnly
+      res.cookie('access_token', token, {
+        httpOnly: true,
+        secure: process.env.NODE_ENV === 'production',
+        sameSite: 'strict',
+        path: '/',
+        maxAge: 1000 * 60 * 60 * 24 * 30, // 30 días
+        expires: new Date(Date.now() + 1000 * 60 * 60 * 24 * 30) // 30 días
+      });
+
+      res.json({
         id: userDB.id,
         name: userDB.name,
         email: userDB.email,
         phone: userDB.phone,
-        roles: userDB.roles,
-        token: this.getJwtToken({ id: userDB.id })
-      };
+        roles: userDB.roles
+      });
     } catch (error) {
       this.logger.error(`Error logging in for email: ${loginAuthDto.email}`, error.stack);
       if (error instanceof UnauthorizedException) {
@@ -70,6 +86,21 @@ export class AuthService {
       }
       handleException(error, 'Error logging in');
     }
+  }
+
+  /**
+   * Cierra la sesión del usuario
+   * @param res Respuesta HTTP
+   */
+  async logout(req: Request, res: Response): Promise<void> {
+    // Borra la cookie que contiene el token JWT
+    res.cookie('access_token', '', {
+      httpOnly: true,
+      expires: new Date(0) // Establece la fecha de expiración a una fecha pasada para eliminar la cookie
+    });
+
+    // Enviar una respuesta de éxito
+    res.status(200).json({ message: 'Logout successful' });
   }
 
   /**
