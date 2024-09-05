@@ -47,8 +47,12 @@ export class ClassRegistrationController {
 
   @ApiOkResponse({ description: 'Class Registration updated' })
   @Patch(':id')
-  update(@Param('id') id: string, @Body() updateClassRegistrationDto: UpdateClassRegistrationDto) {
-    return this.classRegistrationService.update(+id, updateClassRegistrationDto);
+  update(
+    @Param('id') id: string,
+    @Body() updateClassRegistrationDto: UpdateClassRegistrationDto,
+    @GetUser() user: UserData
+  ): Promise<HttpResponse<ClassRegistrationData>> {
+    return this.classRegistrationService.update(id, updateClassRegistrationDto, user);
   }
 
   @ApiOkResponse({ description: 'Class Registration deleted' })
