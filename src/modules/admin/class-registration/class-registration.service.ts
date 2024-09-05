@@ -252,7 +252,53 @@ export class ClassRegistrationService {
     }
   }
 
-  remove(id: number) {
-    return `This action removes a #${id} classRegistration`;
+  /**
+   * Eliminar un class registration
+   * @param id Id del class registration
+   * @param user Usuario que elimina el class registration
+   * @returns Class registration eliminado
+   */
+  async remove(id: string, user: UserData): Promise<HttpResponse<ClassRegistrationData>> {
+    try {
+      return await this.prisma.$transaction(async (prisma) => {
+        // Validar si existe el class registration
+        const classRegistration = await this.findById(id);
+
+        // Eliminar el class registration
+        await prisma.classRegistrationConfig.delete({
+          where: {
+            id
+          }
+        });
+
+        // Registrar la auditoría de la eliminación
+        await prisma.audit.create({
+          data: {
+            action: AuditActionType.DELETE,
+            entityId: classRegistration.id,
+            entityType: 'classRegistrationConfig',
+            performedById: user.id
+          }
+        });
+
+        return {
+          statusCode: HttpStatus.OK,
+          message: 'Class registration deleted',
+          data: {
+            id: classRegistration.id,
+            closeBeforeStartInterval: classRegistration.closeBeforeStartInterval,
+            finalRegistrationCloseInterval: classRegistration.finalRegistrationCloseInterval
+          }
+        };
+      });
+    } catch (error) {
+      this.logger.error(`Error deleting class registration: ${error.message}`, error.stack);
+
+      if (error instanceof NotFoundException || error instanceof BadRequestException) {
+        throw error;
+      }
+
+      throw new BadRequestException('Error deleting class registration');
+    }
   }
 }

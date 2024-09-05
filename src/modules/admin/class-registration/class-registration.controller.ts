@@ -57,7 +57,10 @@ export class ClassRegistrationController {
 
   @ApiOkResponse({ description: 'Class Registration deleted' })
   @Delete(':id')
-  remove(@Param('id') id: string) {
-    return this.classRegistrationService.remove(+id);
+  remove(
+    @Param('id') id: string,
+    @GetUser() user: UserData
+  ): Promise<HttpResponse<ClassRegistrationData>> {
+    return this.classRegistrationService.remove(id, user);
   }
 }
