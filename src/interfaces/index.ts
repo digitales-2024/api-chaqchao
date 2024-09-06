@@ -20,3 +20,4 @@ export { ClassLanguageData } from './classes-config.interface';
 export { ClassRegistrationData } from './classes-config.interface';
 export { ClassScheduleData } from './classes-config.interface';
 export { ClassConfigData } from './classes-config.interface';
+export { ClientData } from './client.interface';
