@@ -47,8 +47,8 @@ model Rol {
   // Relación con UserRol
   rolUsers UserRol[] @relation("RolId")
 
-  // Relación con Module_Permissions
-  rolPermissions Module_Permissions[] @relation("RolId")
+  // Relación con RolModulePermissions
+  rolModulePermissions RolModulePermissions[] @relation("RolId")
 
   @@unique([name, isActive])
 }
@@ -76,8 +76,8 @@ model Permission {
   createdAt DateTime @default(now()) @db.Timestamptz(6)
   updatedAt DateTime @updatedAt
 
-  // Relación con Module_Permissions
-  permissionModule Module_Permissions[] @relation("PermissionId")
+  // Relación con ModulePermissions
+  permissionModule ModulePermissions[] @relation("PermissionId")
 
   @@unique([cod, name])
 }
@@ -91,25 +91,39 @@ model Module {
   createdAt DateTime @default(now()) @db.Timestamptz(6)
   updatedAt DateTime @updatedAt
 
-  // Relación con Module_Permissions
-  modulePermissions Module_Permissions[] @relation("ModuleId")
+  // Relación con ModulePermissions
+  modulePermissions ModulePermissions[] @relation("ModuleId")
 
   @@unique([cod, name])
 }
 
-model Module_Permissions {
+model ModulePermissions {
   id           String     @id @unique @default(uuid())
   module       Module     @relation("ModuleId", fields: [moduleId], references: [id])
   moduleId     String
   permission   Permission @relation("PermissionId", fields: [permissionId], references: [id])
-  permissionId String
-  rol          Rol        @relation("RolId", fields: [rolId], references: [id])
-  rolId        String
+  permissionId String  
 
   createdAt DateTime @default(now()) @db.Timestamptz(6)
   updatedAt DateTime @updatedAt
 
-  @@unique([moduleId, permissionId, rolId])
+  // Relación con RolModulePermissions
+  rolModulePermissions RolModulePermissions[] @relation("ModulePermissionsId")
+
+  @@unique([moduleId, permissionId])
+}
+
+model RolModulePermissions{
+  id String @id @unique @default(uuid())
+  rol          Rol        @relation("RolId", fields: [rolId], references: [id])
+  rolId        String
+  modulePermissions ModulePermissions @relation("ModulePermissionsId", fields: [modulePermissionsId], references: [id])
+  modulePermissionsId String
+
+  createdAt DateTime @default(now()) @db.Timestamptz(6)
+  updatedAt DateTime @updatedAt  
+
+  @@unique([rolId, modulePermissionsId])
 }
 
 model Audit {
