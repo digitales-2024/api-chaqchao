@@ -4,7 +4,6 @@ import { CreateClassPriceDto } from './dto/create-class-price.dto';
 import { UpdateClassPriceDto } from './dto/update-class-price.dto';
 import {
   ApiBadRequestResponse,
-  ApiBearerAuth,
   ApiOkResponse,
   ApiTags,
   ApiUnauthorizedResponse
@@ -13,7 +12,6 @@ import { Auth, GetUser } from '../auth/decorators';
 import { ClassPriceConfigData, HttpResponse, UserData } from 'src/interfaces';
 
 @ApiTags('Class Price')
-@ApiBearerAuth()
 @ApiBadRequestResponse({ description: 'Bad Request' })
 @ApiUnauthorizedResponse({ description: 'Unauthorized' })
 @Auth()

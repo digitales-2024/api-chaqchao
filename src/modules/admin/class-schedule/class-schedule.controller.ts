@@ -4,7 +4,6 @@ import { CreateClassScheduleDto } from './dto/create-class-schedule.dto';
 import { UpdateClassScheduleDto } from './dto/update-class-schedule.dto';
 import {
   ApiBadRequestResponse,
-  ApiBearerAuth,
   ApiOkResponse,
   ApiTags,
   ApiUnauthorizedResponse
@@ -13,7 +12,6 @@ import { Auth, GetUser } from '../auth/decorators';
 import { ClassScheduleData, HttpResponse, UserData } from 'src/interfaces';
 
 @ApiTags('Class Schedule')
-@ApiBearerAuth()
 @ApiBadRequestResponse({ description: 'Bad Request' })
 @ApiUnauthorizedResponse({ description: 'Unauthorized' })
 @Auth()

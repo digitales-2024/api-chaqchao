@@ -2,7 +2,6 @@ import { Controller, Get, Param } from '@nestjs/common';
 import { ModulesService } from './modules.service';
 import {
   ApiBadRequestResponse,
-  ApiBearerAuth,
   ApiOkResponse,
   ApiTags,
   ApiUnauthorizedResponse
@@ -10,7 +9,6 @@ import {
 import { Auth } from '../auth/decorators';
 
 @ApiTags('Modules')
-@ApiBearerAuth()
 @ApiUnauthorizedResponse({ description: 'Unauthorized' })
 @ApiBadRequestResponse({ description: 'Bad request' })
 @Auth()

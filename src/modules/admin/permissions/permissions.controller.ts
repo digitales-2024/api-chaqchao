@@ -3,14 +3,12 @@ import { PermissionsService } from './permissions.service';
 import { Auth } from '../auth/decorators';
 import {
   ApiBadRequestResponse,
-  ApiBearerAuth,
   ApiOkResponse,
   ApiTags,
   ApiUnauthorizedResponse
 } from '@nestjs/swagger';
 
 @ApiTags('Permissions')
-@ApiBearerAuth()
 @ApiUnauthorizedResponse({ description: 'Unauthorized' })
 @ApiBadRequestResponse({ description: 'Bad request' })
 @Auth()
