@@ -12,8 +12,7 @@ import {
   ApiTags,
   ApiUnauthorizedResponse
 } from '@nestjs/swagger';
-import { HttpResponse } from 'src/interfaces';
-import { RolPermissions } from 'src/interfaces/rol.type';
+import { HttpResponse, Rol, RolPermissions } from 'src/interfaces';
 
 @ApiTags('Rol')
 @ApiUnauthorizedResponse({ description: 'Unauthorized' })
@@ -27,7 +26,7 @@ export class RolController {
   @ApiBadRequestResponse({ description: 'Rol already exists and schema errors' })
   @ApiBody({ type: CreateRolDto })
   @Post()
-  create(@Body() createRolDto: CreateRolDto): Promise<HttpResponse<RolPermissions>> {
+  create(@Body() createRolDto: CreateRolDto): Promise<HttpResponse<Rol>> {
     return this.rolService.create(createRolDto);
   }
 
@@ -59,7 +58,7 @@ export class RolController {
   @ApiBadRequestResponse({ description: 'Rol no found' })
   @ApiOkResponse({ description: 'Rol found' })
   @Get(':id')
-  findOne(@Param('id') id: string): Promise<RolPermissions> {
+  findOne(@Param('id') id: string): Promise<Rol | null> {
     return this.rolService.findById(id);
   }
 }
