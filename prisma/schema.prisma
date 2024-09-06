@@ -99,9 +99,9 @@ model Module {
 
 model ModulePermissions {
   id           String     @id @unique @default(uuid())
-  module       Module     @relation("ModuleId", fields: [moduleId], references: [id])
+  module       Module     @relation("ModuleId", fields: [moduleId], references: [id], onDelete: Cascade)
   moduleId     String
-  permission   Permission @relation("PermissionId", fields: [permissionId], references: [id])
+  permission   Permission @relation("PermissionId", fields: [permissionId], references: [id], onDelete: Cascade)
   permissionId String  
 
   createdAt DateTime @default(now()) @db.Timestamptz(6)
@@ -115,9 +115,9 @@ model ModulePermissions {
 
 model RolModulePermissions{
   id String @id @unique @default(uuid())
-  rol          Rol        @relation("RolId", fields: [rolId], references: [id])
+  rol          Rol        @relation("RolId", fields: [rolId], references: [id], onDelete: Cascade)
   rolId        String
-  modulePermissions ModulePermissions @relation("ModulePermissionsId", fields: [modulePermissionsId], references: [id])
+  modulePermissions ModulePermissions @relation("ModulePermissionsId", fields: [modulePermissionsId], references: [id], onDelete: Cascade)
   modulePermissionsId String
 
   createdAt DateTime @default(now()) @db.Timestamptz(6)
