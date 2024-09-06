@@ -288,10 +288,10 @@ model ProductVariation {
 model Client {
   id          String  @id @unique @default(uuid())
   name        String
-  email       String
+  email       String @unique
   phone       String?
-  password    String
-  birthDate   DateTime
+  password    String?
+  birthDate   DateTime?
   isGoogleAuth Boolean?
   token String?
   lastLogin DateTime @default(now()) @db.Timestamptz(6)
