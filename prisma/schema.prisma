@@ -284,3 +284,19 @@ model ProductVariation {
   product   Product @relation("productId", fields: [productId], references: [id])
   productId String
 }
+
+model Client {
+  id          String  @id @unique @default(uuid())
+  name        String
+  email       String
+  phone       String?
+  password    String
+  birthDate   DateTime
+  isGoogleAuth Boolean?
+  token String?
+  lastLogin DateTime @default(now()) @db.Timestamptz(6)
+  isActive    Boolean @default(true)
+
+  createdAt DateTime @default(now()) @db.Timestamptz(6)
+  updatedAt DateTime @updatedAt
+}
