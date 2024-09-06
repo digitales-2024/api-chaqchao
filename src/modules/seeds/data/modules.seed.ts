@@ -35,15 +35,5 @@ export const modulesSeed: Module[] = [
     cod: 'BNSS',
     name: 'Business',
     description: 'This is the business module'
-  },
-  {
-    cod: 'STK',
-    name: 'Stock',
-    description: 'This is the stock module'
-  },
-  {
-    cod: 'PRV',
-    name: 'Providers',
-    description: 'This is the providers module'
   }
 ];
