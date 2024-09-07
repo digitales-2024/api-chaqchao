@@ -58,7 +58,7 @@ export class RolController {
   @ApiBadRequestResponse({ description: 'Rol no found' })
   @ApiOkResponse({ description: 'Rol found' })
   @Get(':id')
-  findOne(@Param('id') id: string): Promise<Rol | null> {
+  findOne(@Param('id') id: string): Promise<RolPermissions> {
     return this.rolService.findById(id);
   }
 }
