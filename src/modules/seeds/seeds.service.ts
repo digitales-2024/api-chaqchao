@@ -1,4 +1,11 @@
-import { BadRequestException, HttpStatus, Injectable, Logger } from '@nestjs/common';
+import {
+  BadRequestException,
+  ConflictException,
+  HttpStatus,
+  Injectable,
+  Logger,
+  NotFoundException
+} from '@nestjs/common';
 import { PrismaService } from 'src/prisma/prisma.service';
 import { rolSuperAdminSeed, superAdminSeed } from './data/superadmin.seed';
 import { handleException } from 'src/utils';
@@ -19,104 +26,138 @@ export class SeedsService {
    */
   async generateInit(): Promise<HttpResponse<UserData>> {
     try {
-      const { password } = superAdminSeed;
-
-      // Hash la contraseña del super admin
-      const hashedPassword = await bcrypt.hash(password, 10);
-
-      // Verificar si ya existe el super admin
-      const superAdminExists = await this.prisma.user.findFirst({
-        where: {
-          email: superAdminSeed.email
-        }
-      });
-
-      if (superAdminExists) {
-        throw new BadRequestException('Super admin already exists');
+      // Verificar si los módulos ya están creados
+      const existingModules = await this.prisma.module.findMany();
+      if (existingModules.length > 0) {
+        throw new ConflictException('Database already seeded');
       }
 
-      //Sacamos los modulos y permisos
-      const modulesDB = await this.prisma.module.findMany();
-      const permissionsDB = await this.prisma.permission.findMany();
-
-      //Sacamos todos los modulos del seed que no estan en la base de datos
-      const modulesNotInDB = modulesSeed.filter(
-        (module) => !modulesDB.some((m) => m.cod === module.cod)
-      );
-
-      //Sacamos todos los permisos del seed que no estan en la base de datos
-      const permissionsNotInDB = permissionsSeed.filter(
-        (permission) => !permissionsDB.some((p) => p.cod === permission.cod)
-      );
-
-      // Crear el super admin con su rol super admin y los modulos y permisos
-      const superAdmin = await this.prisma.$transaction(async (prisma) => {
-        // Crear el super admin
-        const superAdmin = await prisma.user.create({
-          data: {
-            ...superAdminSeed,
-            password: hashedPassword
-          }
+      // Iniciar una transacción
+      const result = await this.prisma.$transaction(async (prisma) => {
+        // Crear módulos
+        await prisma.module.createMany({
+          data: modulesSeed,
+          skipDuplicates: true
         });
 
-        // Crear el rol super admin
-        const rolSuperAdmin = await prisma.rol.create({
+        // Crear permisos
+        await prisma.permission.createMany({
+          data: permissionsSeed,
+          skipDuplicates: true
+        });
+
+        // Obtener módulos y permisos creados para usarlos en relaciones
+        const modulesList = await prisma.module.findMany();
+        const permissionsList = await prisma.permission.findMany();
+
+        // Crear rol superadmin
+        const superadminRole = await prisma.rol.create({
           data: rolSuperAdminSeed
         });
 
-        // Asignar el rol super admin al super admin
-        await prisma.userRol.create({
-          data: {
-            userId: superAdmin.id,
-            rolId: rolSuperAdmin.id
-          }
-        });
+        // Preparar las asignaciones de permisos a módulos
+        const modulePermissions = [];
 
-        // Creamos todos los modulos que no estan en la base de datos
-        const modulesCreate = await prisma.module.createManyAndReturn({
-          data: modulesNotInDB
-        });
+        // Dividir permisos en específicos y generales
+        const specificPermissionsMap = new Map<string, string[]>(); // key: moduleId, value: permissionIds
+        const generalPermissions = [];
 
-        // Creamos todos los permisos que no estan en la base de datos
-        const permissionsCreate = await prisma.permission.createManyAndReturn({
-          data: permissionsNotInDB
-        });
-
-        // Asignar todos los modulos y permisos al rol super admin
-        for (const module of modulesCreate) {
-          //Obtener los permisos del modulo
-          const permissionsModule = permissionsCreate.filter((permission) =>
+        permissionsList.forEach((permission) => {
+          const isSpecificPermission = modulesList.some((module) =>
             permission.cod.includes(module.cod)
           );
 
-          await prisma.module_Permissions.createMany({
-            data: permissionsModule.map((permission) => ({
-              rolId: rolSuperAdmin.id,
+          if (isSpecificPermission) {
+            // Permisos específicos
+            modulesList.forEach((module) => {
+              if (permission.cod.includes(module.cod)) {
+                if (!specificPermissionsMap.has(module.id)) {
+                  specificPermissionsMap.set(module.id, []);
+                }
+                specificPermissionsMap.get(module.id).push(permission.id);
+              }
+            });
+          } else {
+            // Permisos generales
+            generalPermissions.push(permission.id);
+          }
+        });
+
+        // Asignar permisos generales a todos los módulos
+        modulesList.forEach((module) => {
+          generalPermissions.forEach((permissionId) => {
+            modulePermissions.push({
               moduleId: module.id,
-              permissionId: permission.id
-            }))
+              permissionId: permissionId
+            });
           });
-        }
+        });
+
+        // Asignar permisos específicos a módulos específicos
+        specificPermissionsMap.forEach((permissionIds, moduleId) => {
+          permissionIds.forEach((permissionId) => {
+            modulePermissions.push({
+              moduleId: moduleId,
+              permissionId: permissionId
+            });
+          });
+        });
+
+        // Crear relaciones entre módulos y permisos
+        const createdModulePermissions = await prisma.modulePermissions.createManyAndReturn({
+          data: modulePermissions,
+          skipDuplicates: true
+        });
+
+        // Asignar permisos del módulo al rol superadmin
+        const rolModulePermissionEntries = createdModulePermissions.map((modulePermission) => ({
+          rolId: superadminRole.id,
+          modulePermissionsId: modulePermission.id
+        }));
+
+        await prisma.rolModulePermissions.createMany({
+          data: rolModulePermissionEntries,
+          skipDuplicates: true
+        });
+
+        // Crear usuario superadmin y asignarle el rol
+        const superadminUser = await prisma.user.create({
+          data: {
+            ...superAdminSeed,
+            password: await bcrypt.hash(superAdminSeed.password, 10),
+            userRols: {
+              create: {
+                rolId: superadminRole.id
+              }
+            }
+          },
+          select: {
+            id: true,
+            name: true,
+            email: true,
+            phone: true
+          }
+        });
 
         return {
-          id: superAdmin.id,
-          name: superAdmin.name,
-          email: superAdmin.email,
-          phone: superAdmin.phone,
-          roles: [
-            {
-              id: rolSuperAdmin.id,
-              name: rolSuperAdminSeed.name
-            }
-          ]
+          message: 'Super admin created successfully',
+          statusCode: HttpStatus.CREATED,
+          data: {
+            id: superadminUser.id,
+            name: superadminUser.name,
+            email: superadminUser.email,
+            phone: superadminUser.phone,
+            roles: [
+              {
+                id: superadminRole.id,
+                name: superadminRole.name
+              }
+            ]
+          }
         };
       });
 
-      return {
-        message: 'Super admin created successfully',
-        statusCode: HttpStatus.CREATED,
-        data: superAdmin
-      };
+      return result;
     } catch (error) {
       this.logger.error(`Error generating super admin ${superAdminSeed.email}`, error.stack);
       if (error instanceof BadRequestException) {
@@ -130,164 +171,118 @@ export class SeedsService {
    * Actualizar todos los modulos con sus permisos y asignarlos a SUPER_ADMIN
    * @returns Datos actualizados
    */
-  async updateModulePermissionsSuperAdmin(): Promise<Omit<HttpResponse, 'data'>> {
+  async updateDataSeed(): Promise<any> {
     try {
-      // Buscamos si el rol super admin existe
-      const rolSuperAdmin = await this.prisma.rol.findFirst({
-        where: {
-          name: rolSuperAdminSeed.name
-        }
+      // Verificar si el superadmin existe
+      const superadminRole = await this.prisma.rol.findFirst({
+        where: { name: rolSuperAdminSeed.name }
       });
 
-      if (!rolSuperAdmin) {
-        throw new BadRequestException('Rol SuperAdmin not created');
+      if (!superadminRole) {
+        throw new NotFoundException('Superadmin role does not exist');
       }
 
-      //Sacamos los modulos y permisos de la base de datos
-      const modulesDB = await this.prisma.module.findMany();
-      const permissionsDB = await this.prisma.permission.findMany();
+      // Obtener módulos existentes y permisos existentes
+      const existingModules = await this.prisma.module.findMany();
+      const existingPermissions = await this.prisma.permission.findMany();
 
-      //Sacamos todos los modulos del seed que no estan en la base de datos
-      const modulesNotInDB = modulesSeed.filter(
-        (module) => !modulesDB.some((m) => m.cod === module.cod)
-      );
-      console.log(
-        '🚀 ~ SeedsService ~ updateModulePermissionsSuperAdmin ~ modulesNotInDB:',
-        modulesNotInDB
-      );
+      // Mapear módulos y permisos existentes por su código
+      const existingModulesMap = new Map(existingModules.map((m) => [m.cod, m]));
+      const existingPermissionsMap = new Map(existingPermissions.map((p) => [p.cod, p]));
 
-      //Sacamos todos los permisos del seed que no estan en la base de datos
-      const permissionsSeedNotInDB = permissionsSeed.filter(
-        (permission) => !permissionsDB.some((p) => p.cod === permission.cod)
-      );
+      // Filtrar módulos y permisos para añadir
+      const modulesToAdd = modulesSeed.filter((m) => !existingModulesMap.has(m.cod));
+      const permissionsToAdd = permissionsSeed.filter((p) => !existingPermissionsMap.has(p.cod));
 
-      //Vemos que los permisos del seed que no estan en la base de datos tengan un modulo que si este en la base de datos o en el seed de modulos
-      const permissionsNotInDBOrSeedWithModule = permissionsSeedNotInDB.filter((permission) => {
-        const module =
-          modulesDB.find((m) => permission.cod.includes(m.cod)) ||
-          modulesSeed.find((m) => permission.cod.includes(m.cod));
-        return module;
-      });
-      console.log(
-        '🚀 ~ SeedsService ~ permissionsNotInDBOrSeedWithModule ~ permissionsNotInDBOrSeedWithModule:',
-        permissionsNotInDBOrSeedWithModule
+      // Filtrar módulos y permisos para eliminar
+      const modulesToRemove = existingModules.filter(
+        (m) => !modulesSeed.some((seed) => seed.cod === m.cod)
+      );
+      const permissionsToRemove = existingPermissions.filter(
+        (p) => !permissionsSeed.some((seed) => seed.cod === p.cod)
       );
 
-      //Sacamos los modulos de los permisos que se van a agregar
-      const modulesPermissions = permissionsNotInDBOrSeedWithModule.map(
-        (permission) =>
-          modulesDB.find((m) => permission.cod.includes(m.cod)) ||
-          modulesSeed.find((m) => permission.cod.includes(m.cod))
-      );
-      console.log(
-        '🚀 ~ SeedsService ~ updateModulePermissionsSuperAdmin ~ modulesPermissions:',
-        modulesPermissions
-      );
-
-      //Agrupamos los modulos que sacamos antes solo aquellos que si estan en la base de datos
-      const modulesDBPermissions = modulesPermissions.filter((module) =>
-        modulesDB.some((m) => m.cod === module.cod)
-      );
-      console.log(
-        '🚀 ~ SeedsService ~ updateModulePermissionsSuperAdmin ~ modulesDBPermissions:',
-        modulesDBPermissions
-      );
-
-      //Agrupamos los modulos que sacamos antes solo aquellos que no estan en la base de datos
-      const modulesNotInDBPermissions = modulesPermissions.filter(
-        (module) => !modulesDB.some((m) => m.cod === module.cod)
-      );
-      console.log(
-        '🚀 ~ SeedsService ~ updateModulePermissionsSuperAdmin ~ modulesNotInDBPermissions:',
-        modulesNotInDBPermissions
-      );
-
-      //Separamos aquellos permisos que su modulo esta la base de datos y en otro arreglo los que no
-      const permissionsInDB = permissionsNotInDBOrSeedWithModule.filter((permission) =>
-        modulesDB.some((module) => permission.cod.includes(module.cod))
-      );
-      console.log(
-        '🚀 ~ SeedsService ~ updateModulePermissionsSuperAdmin ~ permissionsInDB:',
-        permissionsInDB
-      );
-
-      const permissionsNotInDB = permissionsNotInDBOrSeedWithModule.filter(
-        (permission) => !permissionsInDB.some((p) => p.cod === permission.cod)
-      );
-      console.log(
-        '🚀 ~ SeedsService ~ updateModulePermissionsSuperAdmin ~ permissionsNotInDB:',
-        permissionsNotInDB
-      );
-
-      //Si no hay modulos o permisos a actualizar
-      if (!modulesNotInDB.length && !permissionsNotInDBOrSeedWithModule.length) {
-        return {
-          message: 'Modules and permissions already updated',
-          statusCode: HttpStatus.OK
-        };
-      }
-
-      // Actualizar los modulos y permisos
+      // Iniciar transacción para añadir y eliminar datos
       await this.prisma.$transaction(async (prisma) => {
-        // Creamos todos los modulos que no estan en la base de datos
-        const modulesCreate = await prisma.module.createManyAndReturn({
-          data: modulesNotInDB
-        });
-
-        // Creamos todos los permisos que no estan en la base de datos
-        const permissionsCreate = await prisma.permission.createManyAndReturn({
-          data: permissionsNotInDBOrSeedWithModule
-        });
-
-        //Asignamos los permisos a los modulos que si estan en la base de datos
-        for (const module of modulesDBPermissions) {
-          //Obtenemos los permisos del modulo
-          const permissionsModule = permissionsCreate.filter((permission) =>
-            permission.cod.includes(module.cod)
-          );
-
-          //Buscamos el modulo en la base de datos
-          const moduleDB = modulesDB.find((m) => m.cod === module.cod);
-
-          await prisma.module_Permissions.createMany({
-            data: permissionsModule.map((permission) => ({
-              rolId: rolSuperAdmin.id,
-              moduleId: moduleDB.id,
-              permissionId: permission.id
-            }))
+        // Añadir nuevos módulos
+        if (modulesToAdd.length) {
+          await prisma.module.createMany({
+            data: modulesToAdd,
+            skipDuplicates: true
           });
         }
 
-        //Asignamos los permisos a los modulos que no estan en la base de datos
-        for (const module of modulesNotInDBPermissions) {
-          //Obtenemos los permisos del modulo
-          const permissionsModule = permissionsCreate.filter((permission) =>
-            permission.cod.includes(module.cod)
-          );
-
-          //Buscamos el modulo en los modulos creados
-          const moduleCreated = modulesCreate.find((m) => m.cod === module.cod);
-
-          await prisma.module_Permissions.createMany({
-            data: permissionsModule.map((permission) => ({
-              rolId: rolSuperAdmin.id,
-              moduleId: moduleCreated.id,
-              permissionId: permission.id
-            }))
+        // Añadir nuevos permisos
+        if (permissionsToAdd.length) {
+          await prisma.permission.createMany({
+            data: permissionsToAdd,
+            skipDuplicates: true
           });
         }
+
+        // Eliminar módulos no deseados
+        if (modulesToRemove.length) {
+          for (const module of modulesToRemove) {
+            await prisma.module.delete({
+              where: { id: module.id }
+            });
+            await prisma.modulePermissions.deleteMany({
+              where: { moduleId: module.id }
+            });
+          }
+        }
+
+        // Eliminar permisos no deseados
+        if (permissionsToRemove.length) {
+          for (const permission of permissionsToRemove) {
+            await prisma.permission.delete({
+              where: { id: permission.id }
+            });
+            await prisma.modulePermissions.deleteMany({
+              where: { permissionId: permission.id }
+            });
+          }
+        }
+
+        // Actualizar asignaciones de permisos a módulos y rol superadmin
+        const allModules = await prisma.module.findMany();
+        const allPermissions = await prisma.permission.findMany();
+
+        const newModulePermissions = allModules.flatMap((module) =>
+          allPermissions.map((permission) => ({
+            moduleId: module.id,
+            permissionId: permission.id
+          }))
+        );
+
+        // Actualizar modulePermissions
+        const newModulePermissionsCreate = await prisma.modulePermissions.createManyAndReturn({
+          data: newModulePermissions,
+          skipDuplicates: true
+        });
+
+        // Actualizar rolModulePermissions
+        const rolModulePermissions = newModulePermissionsCreate.map((mp) => ({
+          rolId: superadminRole.id,
+          modulePermissionsId: mp.id
+        }));
+
+        await prisma.rolModulePermissions.createMany({
+          data: rolModulePermissions,
+          skipDuplicates: true
+        });
       });
 
       return {
-        message: 'Modules and permissions updated successfully',
+        message: 'Database updated successfully',
         statusCode: HttpStatus.OK
       };
     } catch (error) {
-      this.logger.error('Error updating all data', error.stack);
-      if (error instanceof BadRequestException) {
+      this.logger.error('Error updating database seed', error.stack);
+      if (error instanceof NotFoundException) {
         throw error;
       }
-      handleException(error, 'Error updating all data');
+      handleException(error, 'Error updating database seed');
     }
   }
 }

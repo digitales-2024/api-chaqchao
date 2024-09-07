@@ -1,14 +1,13 @@
 import { PartialType } from '@nestjs/mapped-types';
 import { CreateRolDto } from './create-rol.dto';
 import { ApiPropertyOptional } from '@nestjs/swagger';
-import { ModulePermissions } from 'src/interfaces';
 
 export class UpdateRolDto extends PartialType(CreateRolDto) {
   @ApiPropertyOptional({
     description: 'Name of the rol',
     example: 'admin'
   })
-  name: string;
+  name?: string;
 
   @ApiPropertyOptional({
     description: 'Description of the rol',
@@ -20,5 +19,5 @@ export class UpdateRolDto extends PartialType(CreateRolDto) {
     description: 'Permissions of the rol',
     example: ['1', '2']
   })
-  modulePermissions?: ModulePermissions[];
+  rolPermissions?: string[];
 }

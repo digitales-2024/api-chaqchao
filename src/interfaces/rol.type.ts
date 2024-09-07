@@ -1,5 +1,6 @@
 import { Rol as RolPrisma } from '@prisma/client';
-import { ModulePermissionsData } from './module-permissions.interface';
+import { Permission } from './permission.interface';
+import { Module } from './module.interface';
 
 export type Rol = Pick<RolPrisma, 'id' | 'name' | 'description'>;
 
@@ -7,5 +8,19 @@ export type RolPermissions = {
   id: string;
   name: string;
   description?: string;
-  modulePermissions: ModulePermissionsData[];
+  rolPermissions: RolModulesPermissions[];
 };
+
+export interface ModulePermissionDto {
+  moduleId: string;
+  permissionIds: string[];
+}
+
+export interface RolModulesPermissions {
+  module: Module;
+  permissions: Permission[];
+}
+export interface RolModulePermissions {
+  rolId: string;
+  modulePermissionsId: string;
+}

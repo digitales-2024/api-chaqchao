@@ -1,7 +1,6 @@
 import { ApiProperty } from '@nestjs/swagger';
 import { Transform } from 'class-transformer';
 import { IsArray, IsNotEmpty, IsString } from 'class-validator';
-import { ModulePermissions } from 'src/interfaces';
 
 export class CreateRolDto {
   @ApiProperty({
@@ -23,5 +22,5 @@ export class CreateRolDto {
 
   @IsArray()
   @IsNotEmpty()
-  modulePermissions: ModulePermissions[];
+  modulePermissions: string[];
 }
