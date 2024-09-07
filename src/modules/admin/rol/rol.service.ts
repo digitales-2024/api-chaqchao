@@ -244,7 +244,7 @@ export class RolService {
 
           if (!acc[moduleId]) {
             acc[moduleId] = {
-              ...module,
+              module,
               permissions: []
             };
           }
@@ -278,35 +278,12 @@ export class RolService {
     }
   }
 
-  private isNoDataUpdate(updateRolDto: UpdateRolDto): boolean {
-    // Implementa la lógica para verificar si no hay datos para actualizar
-    return !updateRolDto.name && !updateRolDto.description && !updateRolDto.modulePermissions;
-  }
-
-  /**
-   * Verifica si un rol es el rol de superadministrador.
-   * @param id Id del rol a verificar
-   * @returns True si el rol es el rol de superadministrador, false en caso contrario
-   */
-  async isRolSuperAdmin(id: string): Promise<boolean> {
-    const superAdminRoleName = 'SUPER_ADMIN'; // O usa una constante o configuración
-
-    // Buscar el rol por id
-    const role = await this.prisma.rol.findUnique({
-      where: { id },
-      select: { name: true }
-    });
-
-    // Verificar si el rol existe y si es el rol de superadministrador
-    return role ? role.name === superAdminRoleName : false;
-  }
-
   /**
    * Eliminar un rol existente en la base de datos por su id
    * @param id Id del rol a eliminar
    * @returns  Datos del rol eliminado
    */
-  async remove(id: string): Promise<HttpResponse<any>> {
+  async remove(id: string): Promise<HttpResponse<RolPermissions>> {
     try {
       // Validar fuera de la transacción
       const rolIsSuperAdmin = await this.isRolSuperAdmin(id);
@@ -322,15 +299,8 @@ export class RolService {
       }
 
       // Inicia la transacción
-      const removeRol = await this.prisma.$transaction(async (prisma) => {
-        // Eliminar primero las relaciones en RoleModulePermission
-        await prisma.rolModulePermissions.deleteMany({
-          where: {
-            rolId: id
-          }
-        });
-
-        // Luego eliminar el rol
+      const removedRol = await this.prisma.$transaction(async (prisma) => {
+        // Eliminar el rol, y las relaciones en RolModulePermissions se eliminarán automáticamente por la cascada
         const rolDelete = await prisma.rol.delete({
           where: { id },
           select: {
@@ -370,7 +340,7 @@ export class RolService {
           id: rolDelete.id,
           name: rolDelete.name,
           description: rolDelete.description,
-          modulePermissions: rolDelete.rolModulePermissions.map((rolModulePermission) => ({
+          rolPermissions: rolDelete.rolModulePermissions.map((rolModulePermission) => ({
             module: {
               id: rolModulePermission.modulePermissions.module.id,
               cod: rolModulePermission.modulePermissions.module.cod,
@@ -385,7 +355,7 @@ export class RolService {
       return {
         statusCode: HttpStatus.OK,
         message: 'Rol deleted',
-        data: removeRol
+        data: removedRol
       };
     } catch (error) {
       this.logger.error(`Error deleting a rol for id: ${id}`, error.stack);
@@ -447,7 +417,7 @@ export class RolService {
           id: role.id,
           name: role.name,
           description: role.description,
-          modulePermissions: Array.from(modulesMap.values())
+          rolPermissions: Array.from(modulesMap.values())
         };
       });
 
@@ -459,40 +429,105 @@ export class RolService {
   }
 
   /**
-   * Verificar si el rol ya existe en la base de datos
-   * @param name Nombre del rol
+   * Encuentra un rol por su id y devuelve los datos del rol con módulos y permisos
+   * @param id Id del rol a buscar
+   * @returns Datos del rol encontrado con módulos y permisos agrupados
    */
-  async checkExitByName(name: string): Promise<boolean> {
-    const rolDB = await this.prisma.rol.findUnique({
-      where: {
-        name_isActive: {
-          name,
-          isActive: true
+  async findById(id: string): Promise<RolPermissions> {
+    try {
+      // Buscar el rol por ID en la base de datos, incluyendo módulos y permisos
+      const role = await this.prisma.rol.findUnique({
+        where: { id },
+        include: {
+          rolModulePermissions: {
+            include: {
+              modulePermissions: {
+                include: {
+                  module: true, // Incluye el módulo relacionado
+                  permission: true // Incluye el permiso relacionado
+                }
+              }
+            }
+          }
         }
-      }
-    });
+      });
 
-    return !!rolDB;
+      // Verificar si el rol existe
+      if (!role) {
+        throw new NotFoundException(`Role not found`);
+      }
+
+      // Agrupar permisos por módulos
+      const modulesMap = new Map<string, { module: any; permissions: any[] }>();
+
+      role.rolModulePermissions.forEach((rolModulePermission) => {
+        const moduleId = rolModulePermission.modulePermissions.module.id;
+
+        if (!modulesMap.has(moduleId)) {
+          modulesMap.set(moduleId, {
+            module: {
+              id: rolModulePermission.modulePermissions.module.id,
+              cod: rolModulePermission.modulePermissions.module.cod,
+              name: rolModulePermission.modulePermissions.module.name,
+              description: rolModulePermission.modulePermissions.module.description
+            },
+            permissions: []
+          });
+        }
+
+        modulesMap.get(moduleId)?.permissions.push({
+          id: rolModulePermission.modulePermissions.permission.id,
+          cod: rolModulePermission.modulePermissions.permission.cod,
+          name: rolModulePermission.modulePermissions.permission.name,
+          description: rolModulePermission.modulePermissions.permission.description
+        });
+      });
+
+      // Estructurar la respuesta final con rol, módulos y permisos
+      return {
+        id: role.id,
+        name: role.name,
+        description: role.description,
+        rolPermissions: Array.from(modulesMap.values())
+      };
+    } catch (error) {
+      // Manejo del error en caso de que ocurra una excepción durante la búsqueda
+      this.logger.error(`Error finding role with id: ${id}`, error.stack);
+
+      if (error instanceof NotFoundException) {
+        throw error;
+      }
+
+      throw new BadRequestException('Error finding role. Please try again.');
+    }
   }
 
   /**
-   * Encuentra un rol por su id
-   * @param id Id del rol a buscar
-   * @returns Datos del rol encontrado
+   * Verificar si no hay datos para actualizar
+   * @param updateRolDto Datos del rol a actualizar
+   * @returns  True si no hay datos para actualizar, false en caso contrario
    */
-  async findById(id: string): Promise<Rol | null> {
-    try {
-      // Buscar el rol por ID en la base de datos
-      const role = await this.prisma.rol.findUnique({
-        where: { id }
-      });
+  private isNoDataUpdate(updateRolDto: UpdateRolDto): boolean {
+    // Implementa la lógica para verificar si no hay datos para actualizar
+    return !updateRolDto.name && !updateRolDto.description && !updateRolDto.modulePermissions;
+  }
 
-      return role;
-    } catch (error) {
-      // Manejar el error si ocurre alguna excepción durante la búsqueda
-      this.logger.error(`Error finding role with id: ${id}`, error.stack);
-      throw new BadRequestException('Error finding role. Please try again.');
-    }
+  /**
+   * Verifica si un rol es el rol de superadministrador.
+   * @param id Id del rol a verificar
+   * @returns True si el rol es el rol de superadministrador, false en caso contrario
+   */
+  async isRolSuperAdmin(id: string): Promise<boolean> {
+    const superAdminRoleName = 'SUPER_ADMIN'; // O usa una constante o configuración
+
+    // Buscar el rol por id
+    const role = await this.prisma.rol.findUnique({
+      where: { id },
+      select: { name: true }
+    });
+
+    // Verificar si el rol existe y si es el rol de superadministrador
+    return role ? role.name === superAdminRoleName : false;
   }
 
   /**
@@ -518,31 +553,9 @@ export class RolService {
   }
 
   /**
-  //  * Verificar si el rol es superadmin
-  //  * @param id Id del rol a verificar si es superadmin
-  //  */
-  // async isRolSuperAdmin(id: string): Promise<boolean> {
-  //   const userRolDB = await this.prisma.rol.findUnique({
-  //     where: {
-  //       id
-  //     },
-  //     select: {
-  //       name: true
-  //     }
-  //   });
-
-  //   if (!userRolDB) {
-  //     throw new BadRequestException('Rol super admin not found');
-  //   }
-
-  //   return !!(userRolDB.name === ValidRols.SUPER_ADMIN);
-  // }
-
-  /**
    * Verificar si el rol está en uso
    * @param id Id del rol a verificar si esta en uso
    */
-
   async rolIsUsed(id: string): Promise<boolean> {
     const rolIsUsed = await this.prisma.userRol.findFirst({
       where: {
@@ -552,200 +565,5 @@ export class RolService {
     });
 
     return !!rolIsUsed;
-  }
-
-  /**
-   * Actualizar los permisos de un rol existente
-   * @param roleId Id del rol al que se le actualizarán los permisos
-   * @param modulePermissions Permisos a actualizar al rol
-   * @returns Datos del rol con los permisos actualizados
-   */
-  // async updatePermissionsToRol(
-  //   roleId: string,
-  //   modulePermissions: ModulePermissions[]
-  // ): Promise<ModulePermissionsData[]> {
-  //   try {
-  //     // Eliminar módulos duplicados y fusionar permisos
-  //     const uniqueModulePermissions: Record<string, Set<string>> = {};
-
-  //     for (const { moduleId, permissionIds } of modulePermissions) {
-  //       if (!uniqueModulePermissions[moduleId]) {
-  //         uniqueModulePermissions[moduleId] = new Set(permissionIds);
-  //       } else {
-  //         permissionIds.forEach((permissionId) =>
-  //           uniqueModulePermissions[moduleId].add(permissionId)
-  //         );
-  //       }
-  //     }
-
-  //     return await this.prisma.$transaction(async (prisma) => {
-  //       const updatedPermissions: ModulePermissionsData[] = [];
-
-  //       // Obtener todos los módulos asignados actualmente al rol
-  //       const currentModulePermissions = await prisma.modulePermissions.findMany({
-  //         where: { rolId: roleId },
-  //         select: { moduleId: true }
-  //       });
-  //       const currentModuleIds = new Set(currentModulePermissions.map((mp) => mp.moduleId));
-
-  //       // Iterar sobre los módulos y permisos únicos a actualizar
-  //       for (const moduleId of Object.keys(uniqueModulePermissions)) {
-  //         const permissionIds = Array.from(uniqueModulePermissions[moduleId]);
-
-  //         // Verificar si el módulo existe y obtener su nombre
-  //         const moduleExist = await prisma.module.findUnique({
-  //           where: { id: moduleId },
-  //           select: { id: true, cod: true, name: true, description: true }
-  //         });
-
-  //         if (!moduleExist) {
-  //           throw new BadRequestException('Module not found');
-  //         }
-
-  //         const permissions: {
-  //           id: string;
-  //           cod: string;
-  //           name: string;
-  //           description: string;
-  //         }[] = [];
-
-  //         // Obtener los permisos existentes de la base de datos en una sola consulta
-  //         const existingPermissions = await prisma.permission.findMany({
-  //           where: {
-  //             id: { in: permissionIds }
-  //           },
-  //           select: { id: true, cod: true, name: true, description: true }
-  //         });
-
-  //         const existingPermissionIds = new Set(existingPermissions.map((p) => p.id));
-
-  //         // Solo crear relaciones para permisos que no existen ya para este rol y módulo
-  //         for (const permission of existingPermissions) {
-  //           const existingRelation = await prisma.modulePermissions.findUnique({
-  //             where: {
-  //               moduleId_permissionId_rolId: {
-  //                 moduleId,
-  //                 permissionId: permission.id,
-  //                 rolId: roleId
-  //               }
-  //             }
-  //           });
-
-  //           // Crear la relación si no existe
-  //           if (!existingRelation) {
-  //             await prisma.modulePermissions.create({
-  //               data: {
-  //                 moduleId: moduleExist.id,
-  //                 permissionId: permission.id,
-  //                 rolId: roleId
-  //               }
-  //             });
-  //           }
-
-  //           permissions.push(permission);
-  //         }
-
-  //         // Eliminar permisos que ya no están en la lista
-  //         const modulePermissionsDB = await prisma.modulePermissions.findMany({
-  //           where: { rolId: roleId, moduleId },
-  //           select: {
-  //             permission: {
-  //               select: { id: true, cod: true, name: true, description: true }
-  //             }
-  //           }
-  //         });
-
-  //         for (const modulePermission of modulePermissionsDB) {
-  //           if (!existingPermissionIds.has(modulePermission.permission.id)) {
-  //             await prisma.modulePermissions.delete({
-  //               where: {
-  //                 moduleId_permissionId_rolId: {
-  //                   moduleId,
-  //                   permissionId: modulePermission.permission.id,
-  //                   rolId: roleId
-  //                 }
-  //               }
-  //             });
-  //           }
-  //         }
-
-  //         // Añadir al listado de permisos actualizados
-  //         updatedPermissions.push({
-  //           module: {
-  //             id: moduleExist.id,
-  //             cod: moduleExist.cod,
-  //             name: moduleExist.name,
-  //             description: moduleExist.description
-  //           },
-  //           permissions
-  //         });
-
-  //         // Remover el módulo del set de módulos actuales ya que está presente en la actualización
-  //         currentModuleIds.delete(moduleId);
-  //       }
-
-  //       // Eliminar los módulos que ya no están en la lista de actualización
-  //       for (const moduleId of currentModuleIds) {
-  //         await prisma.modulePermissions.deleteMany({
-  //           where: {
-  //             rolId: roleId,
-  //             moduleId: moduleId
-  //           }
-  //         });
-  //       }
-
-  //       return updatedPermissions;
-  //     });
-  //   } catch (error) {
-  //     this.logger.error(`Error updating permissions to rol for id: ${roleId}`, error.stack);
-  //     if (error instanceof BadRequestException) {
-  //       throw error;
-  //     }
-  //     handleException(error, 'Error updating permissions to rol');
-  //   }
-  // }
-
-  /**
-   * Agrupar los permisos por módulo
-   * @param rolsDB Roles con permisos a agrupar
-   * @returns Roles con permisos agrupados por módulo
-   */
-  private groupPermissionsByModules(rolsDB: any[]): any[] {
-    return rolsDB.map((rol) => {
-      // Crear un mapa para almacenar módulos con sus permisos
-      const modulesMap = new Map<string, { module; permissions }>();
-
-      // Recorrer los permisos del rol
-      rol.rolModulePermissions.forEach((rolPermission: any) => {
-        const moduleId = rolPermission.modulePermissions.module.id;
-
-        // Verificar si el módulo ya existe en el mapa
-        if (!modulesMap.has(moduleId)) {
-          // Si no existe, agregarlo al mapa con una lista de permisos vacía
-          modulesMap.set(moduleId, {
-            module: {
-              id: rolPermission.module.id,
-              cod: rolPermission.module.cod,
-              name: rolPermission.module.name,
-              description: rolPermission.module.description
-            },
-            permissions: []
-          });
-        }
-
-        // Agregar el permiso al módulo correspondiente
-        modulesMap.get(moduleId)?.permissions.push(rolPermission.permission);
-      });
-
-      // Convertir el mapa en una lista de módulos con permisos
-      const modulePermissions = Array.from(modulesMap.values());
-
-      return {
-        id: rol.id,
-        name: rol.name,
-        description: rol.description,
-        modulePermissions: modulePermissions
-      };
-    });
   }
 }
