@@ -1,43 +1,136 @@
-import { Injectable, Logger } from '@nestjs/common';
-import { ClientData } from 'src/interfaces';
+import {
+  Injectable,
+  Logger,
+  HttpStatus,
+  NotFoundException,
+  UnauthorizedException,
+  ForbiddenException,
+  InternalServerErrorException
+} from '@nestjs/common';
+import { HttpResponse } from 'src/interfaces';
 import { PrismaService } from 'src/prisma/prisma.service';
-/* import { CreateAuthDto } from './dto/create-auth.dto';
-import { UpdateAuthDto } from './dto/update-auth.dto'; */
+import { JwtService } from '@nestjs/jwt';
+import { ClientDataLogin, ClientGoogleData, ClientPayload } from 'src/interfaces/client.interface';
+import { handleException } from 'src/utils';
 
 @Injectable()
 export class AuthService {
   private readonly logger = new Logger(AuthService.name);
-  constructor(private readonly prisma: PrismaService) {}
 
-  async validateUser(client: ClientData) {
-    console.log('AuthService');
-    console.log(client);
-    const clientDB = await this.prisma.client.findUnique({
-      where: {
-        email: client.email
+  constructor(
+    private readonly prisma: PrismaService,
+    private readonly jwtService: JwtService
+  ) {}
+
+  /**
+   * Genera un token JWT
+   * @param payload Payload para generar el token
+   * @returns Token generado
+   */
+  private getJwtToken(payload: { id: string }): string {
+    return this.jwtService.sign(payload);
+  }
+
+  /**
+   * Login de un cliente con cuenta de Google
+   * @param client Datos del cliente de Google
+   * @returns Cliente autenticado
+   */
+  async validateUser(client: ClientGoogleData): Promise<HttpResponse<ClientDataLogin>> {
+    try {
+      this.logger.log('AuthService: Validating user');
+      this.logger.log(client);
+
+      // Buscar cliente en la base de datos por correo electrónico
+      let clientDB = await this.prisma.client.findUnique({
+        where: {
+          email: client.email,
+          isGoogleAuth: true
+        }
+      });
+
+      // Si no existe, crear un nuevo cliente
+      if (!clientDB) {
+        this.logger.log(`Creando nuevo cliente: ${client.name} (${client.email})`);
+        clientDB = await this.prisma.client.create({
+          data: {
+            name: client.name,
+            email: client.email,
+            isGoogleAuth: true,
+            token: client.token
+          }
+        });
       }
-    });
-    if (clientDB) {
-      return clientDB;
+
+      // Generar el token JWT usando el id del usuario
+      const token = this.getJwtToken({ id: clientDB.id });
+
+      // Retornar la respuesta con los datos del usuario y el token
+      return {
+        statusCode: HttpStatus.CREATED,
+        message: 'User authenticated successfully',
+        data: {
+          id: clientDB.id,
+          name: clientDB.name,
+          email: clientDB.email,
+          token: token
+        }
+      };
+    } catch (error) {
+      this.logger.error('Error validating user', error.stack);
+      if (error instanceof NotFoundException) {
+        throw new NotFoundException('Client not found or could not be created');
+      }
+      if (error instanceof UnauthorizedException) {
+        throw new UnauthorizedException('Unauthorized access');
+      }
+      if (error instanceof ForbiddenException) {
+        throw new ForbiddenException('Access is forbidden');
+      }
+      throw new InternalServerErrorException('An unexpected error occurred');
     }
   }
-  /*   create(createAuthDto: CreateAuthDto) {
-    return 'This action adds a new auth';
-  }
 
-  findAll() {
-    return `This action returns all auth`;
-  }
+  /**
+   * Mostar un cliente por su id
+   * @param id Id del cliente
+   * @returns Cliente encontrado
+   */
+  async findById(id: string): Promise<ClientPayload> {
+    try {
+      const clientDB = await this.prisma.client.findUnique({
+        where: { id, isActive: true },
+        select: {
+          id: true,
+          name: true,
+          email: true,
+          phone: true,
+          birthDate: true,
+          isGoogleAuth: true,
+          lastLogin: true,
+          isActive: true
+        }
+      });
 
-  findOne(id: number) {
-    return `This action returns a #${id} auth`;
+      if (!clientDB) {
+        throw new NotFoundException('Client not found');
+      }
+      return {
+        id: clientDB.id,
+        name: clientDB.name,
+        email: clientDB.email,
+        phone: clientDB.phone,
+        birthDate: clientDB.birthDate,
+        isGoogleAuth: clientDB.isGoogleAuth,
+        isActive: clientDB.isActive,
+        lastLogin: clientDB.lastLogin
+      };
+    } catch (error) {
+      this.logger.error(`Error finding client for id: ${id}`, error.stack);
+      if (error instanceof NotFoundException) {
+        throw error;
+      }
+      handleException(error, 'Error finding client');
+    }
   }
-
-  update(id: number, updateAuthDto: UpdateAuthDto) {
-    return `This action updates a #${id} auth`;
-  }
-
-  remove(id: number) {
-    return `This action removes a #${id} auth`;
-  } */
 }
