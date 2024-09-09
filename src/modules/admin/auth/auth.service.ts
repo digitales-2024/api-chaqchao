@@ -12,7 +12,6 @@ import { handleException } from 'src/utils';
 import { JwtPayload } from './interfaces/jwt-payload.interface';
 import { JwtService } from '@nestjs/jwt';
 import { UpdatePasswordDto } from './dto/update-password.dto';
-import { UserDataLogin } from 'src/interfaces';
 import { Response } from 'express';
 
 @Injectable()
@@ -92,7 +91,7 @@ export class AuthService {
    * Cierra la sesión del usuario
    * @param res Respuesta HTTP
    */
-  async logout(req: Request, res: Response): Promise<void> {
+  async logout(res: Response): Promise<void> {
     // Borra la cookie que contiene el token JWT
     res.cookie('access_token', '', {
       httpOnly: true,
@@ -108,7 +107,7 @@ export class AuthService {
    * @param updatePasswordDto Datos para actualizar la contraseña
    * @returns Datos del usuario logueado
    */
-  async updatePasswordTemp(updatePasswordDto: UpdatePasswordDto): Promise<UserDataLogin> {
+  async updatePasswordTemp(updatePasswordDto: UpdatePasswordDto, res: Response): Promise<void> {
     try {
       const { email, password, newPassword, confirmPassword } = updatePasswordDto;
 
@@ -134,14 +133,26 @@ export class AuthService {
 
       await this.userService.updatePasswordTemp(userDB.id, updatePasswordDto);
 
-      return {
+      // Genera el token
+      const token = this.getJwtToken({ id: userDB.id });
+
+      // Configura la cookie HttpOnly
+      res.cookie('access_token', token, {
+        httpOnly: true,
+        secure: process.env.NODE_ENV === 'production',
+        sameSite: 'strict',
+        path: '/',
+        maxAge: 1000 * 60 * 60 * 24 * 30, // 30 días
+        expires: new Date(Date.now() + 1000 * 60 * 60 * 24 * 30) // 30 días
+      });
+
+      res.json({
         id: userDB.id,
         name: userDB.name,
         email: userDB.email,
         phone: userDB.phone,
-        roles: userDB.roles,
-        token: this.getJwtToken({ id: userDB.id })
-      };
+        roles: userDB.roles
+      });
     } catch (error) {
       this.logger.error('Error updating password', error.stack);
       handleException(error, 'Error updating password');
