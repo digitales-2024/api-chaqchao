@@ -1,13 +1,15 @@
-import { Controller, Get, Res, Req, UseGuards, HttpStatus } from '@nestjs/common';
+import { Controller, Get, Res, Req, UseGuards, HttpStatus, Post, Body } from '@nestjs/common';
 import { Response, Request } from 'express';
 import { AuthService } from './auth.service';
 import { GoogleAuthGuard } from './utils/guards.utils';
 import { AuthGuard } from '@nestjs/passport';
 import { GetClient } from './decorators/get-client.decorator';
-import { ClientData } from 'src/interfaces';
-import { ApiOkResponse } from '@nestjs/swagger';
+import { ClientData, ClientDataLogin } from 'src/interfaces';
+import { ApiOkResponse, ApiTags } from '@nestjs/swagger';
 import { ConfigService } from '@nestjs/config';
+import { LoginAuthClientDto } from './dto/login-auth-client.dto';
 
+@ApiTags('Auth Client')
 @Controller({ path: 'auth/client', version: '1' })
 export class AuthController {
   constructor(
@@ -23,7 +25,7 @@ export class AuthController {
     return res.redirect(googleAuthUrl);
   }
 
-  @ApiOkResponse({ description: 'User authenticated successfully' })
+  @ApiOkResponse({ description: 'Client authenticated successfully' })
   @Get('google/redirect')
   @UseGuards(GoogleAuthGuard)
   async handleRedirect(@Req() req: Request, @Res() res: Response) {
@@ -31,7 +33,7 @@ export class AuthController {
       const { user } = req;
       return res.status(HttpStatus.CREATED).json({
         statusCode: HttpStatus.CREATED,
-        message: 'User authenticated successfully',
+        message: 'Client authenticated successfully',
         data: user
       });
     } else {
@@ -47,5 +49,11 @@ export class AuthController {
   @UseGuards(AuthGuard('client-jwt'))
   getClientProfile(@GetClient() client: ClientData) {
     return client;
+  }
+
+  @ApiOkResponse({ description: 'Client authenticated successfully' })
+  @Post('login')
+  async login(@Body() loginAuthClientDto: LoginAuthClientDto): Promise<ClientDataLogin> {
+    return this.authService.login(loginAuthClientDto);
   }
 }
