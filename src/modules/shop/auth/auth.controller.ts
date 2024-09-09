@@ -4,10 +4,11 @@ import { AuthService } from './auth.service';
 import { GoogleAuthGuard } from './utils/guards.utils';
 import { AuthGuard } from '@nestjs/passport';
 import { GetClient } from './decorators/get-client.decorator';
-import { ClientData, ClientDataLogin } from 'src/interfaces';
+import { ClientData, ClientDataLogin, HttpResponse } from 'src/interfaces';
 import { ApiOkResponse, ApiTags } from '@nestjs/swagger';
 import { ConfigService } from '@nestjs/config';
 import { LoginAuthClientDto } from './dto/login-auth-client.dto';
+import { CreateClientDto } from './dto/create-client.dto';
 
 @ApiTags('Auth Client')
 @Controller({ path: 'auth/client', version: '1' })
@@ -55,5 +56,11 @@ export class AuthController {
   @Post('login')
   async login(@Body() loginAuthClientDto: LoginAuthClientDto): Promise<ClientDataLogin> {
     return this.authService.login(loginAuthClientDto);
+  }
+
+  @ApiOkResponse({ description: 'Client successfully registered' })
+  @Post('register')
+  async register(@Body() createClientDto: CreateClientDto): Promise<HttpResponse<ClientData>> {
+    return this.authService.create(createClientDto);
   }
 }

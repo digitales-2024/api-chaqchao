@@ -5,7 +5,8 @@ import {
   NotFoundException,
   UnauthorizedException,
   ForbiddenException,
-  InternalServerErrorException
+  InternalServerErrorException,
+  BadRequestException
 } from '@nestjs/common';
 import { HttpResponse } from 'src/interfaces';
 import { PrismaService } from 'src/prisma/prisma.service';
@@ -19,6 +20,7 @@ import {
 import { handleException } from 'src/utils';
 import { LoginAuthClientDto } from './dto/login-auth-client.dto';
 import * as bcrypt from 'bcrypt';
+import { CreateClientDto } from './dto/create-client.dto';
 
 @Injectable()
 export class AuthService {
@@ -215,6 +217,150 @@ export class AuthService {
         throw error;
       }
       handleException(error, 'Error logging in');
+    }
+  }
+
+  async checkEmailExist(email: string): Promise<boolean> {
+    const clientDB = await this.prisma.client.findUnique({
+      where: {
+        email,
+        isActive: true
+      }
+    });
+
+    return !!clientDB;
+  }
+
+  async checkEmailInactive(email: string): Promise<boolean> {
+    const clientDB = await this.prisma.client.findUnique({
+      where: {
+        email,
+        isActive: false
+      }
+    });
+
+    return !!clientDB;
+  }
+
+  async findByEmailInactive(email: string): Promise<ClientData> {
+    const clientDB = await this.prisma.client.findUnique({
+      where: {
+        email,
+        isActive: false
+      },
+      select: {
+        id: true,
+        name: true,
+        email: true
+      }
+    });
+
+    if (!clientDB) {
+      throw new NotFoundException('Clirnt not found');
+    }
+
+    return {
+      id: clientDB.id,
+      name: clientDB.name,
+      email: clientDB.email
+    };
+  }
+
+  async findByEmailRegisteredGoogle(email: string): Promise<boolean> {
+    const clientDB = await this.prisma.client.findUnique({
+      where: {
+        email,
+        isGoogleAuth: true
+      }
+    });
+
+    if (clientDB) {
+      if (clientDB.isGoogleAuth && !clientDB.isActive) {
+        throw new BadRequestException('This client is registered with Google Auth but is inactive');
+      }
+      throw new BadRequestException('This client is registered with Google Auth');
+    }
+
+    return !!clientDB;
+  }
+
+  async create(createClientDto: CreateClientDto): Promise<HttpResponse<ClientData>> {
+    try {
+      const newClient = await this.prisma.$transaction(async (prisma) => {
+        const { email, password, ...dataClient } = createClientDto;
+
+        const existEmailGoogle = await this.findByEmailRegisteredGoogle(email);
+        if (existEmailGoogle) {
+          throw new BadRequestException('Email already exists with Google Auth');
+        }
+
+        // Verificamos si el email ya existe y este activo
+        const existEmail = await this.checkEmailExist(email);
+
+        if (existEmail) {
+          throw new BadRequestException('Email already exists');
+        }
+
+        // Verificamos si el email ya existe y esta inactivo
+        const inactiveEmail = await this.checkEmailInactive(email);
+
+        if (inactiveEmail) {
+          throw new BadRequestException({
+            statusCode: HttpStatus.CONFLICT,
+            message: 'Email already exists',
+            data: {
+              id: (await this.findByEmailInactive(email)).id
+            }
+          });
+        }
+
+        // Encriptamos la contraseña
+        const hashedPassword = await bcrypt.hash(password, 10);
+
+        // Creamos el usuario
+        const newClient = await prisma.client.create({
+          data: {
+            email,
+            ...dataClient,
+            password: hashedPassword,
+            isGoogleAuth: false
+          },
+          select: {
+            id: true,
+            name: true,
+            email: true,
+            phone: true
+          }
+        });
+
+        if (!newClient) {
+          throw new Error('Failed to create new client');
+        }
+
+        return {
+          ...newClient
+        };
+      });
+
+      if (!newClient) {
+        throw new Error('Transaction failed, newClient is null');
+      }
+
+      return {
+        statusCode: HttpStatus.CREATED,
+        message: 'Client created',
+        data: {
+          id: newClient.id,
+          name: newClient.name,
+          email: newClient.email
+        }
+      };
+    } catch (error) {
+      this.logger.error(`Error creating a user for email: ${createClientDto.email}`, error.stack);
+      if (error instanceof BadRequestException) {
+        throw error;
+      }
+      handleException(error, 'Error creating a user');
     }
   }
 }
