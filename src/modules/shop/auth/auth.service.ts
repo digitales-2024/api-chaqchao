@@ -220,6 +220,11 @@ export class AuthService {
     }
   }
 
+  /**
+   * Verificar si el email ya esta registrado
+   * @param email Email del cliente
+   * @returns Cliente encontrado
+   */
   async checkEmailExist(email: string): Promise<boolean> {
     const clientDB = await this.prisma.client.findUnique({
       where: {
@@ -231,6 +236,11 @@ export class AuthService {
     return !!clientDB;
   }
 
+  /**
+   * Verificar si el email ya esta registrado
+   * @param email Email del cliente
+   * @returns Cliente encontrado
+   */
   async checkEmailInactive(email: string): Promise<boolean> {
     const clientDB = await this.prisma.client.findUnique({
       where: {
@@ -242,6 +252,11 @@ export class AuthService {
     return !!clientDB;
   }
 
+  /**
+   * Verificar si el email ya esta registrado
+   * @param email Email del cliente
+   * @returns Cliente encontrado
+   */
   async findByEmailInactive(email: string): Promise<ClientData> {
     const clientDB = await this.prisma.client.findUnique({
       where: {
@@ -266,6 +281,11 @@ export class AuthService {
     };
   }
 
+  /**
+   * Verificar si el email ya esta registrado con Google Auth
+   * @param email Email del cliente
+   * @returns Email registrado con Google Auth
+   */
   async findByEmailRegisteredGoogle(email: string): Promise<boolean> {
     const clientDB = await this.prisma.client.findUnique({
       where: {
@@ -284,6 +304,11 @@ export class AuthService {
     return !!clientDB;
   }
 
+  /**
+   * Crear un nuevo cliente
+   * @param createClientDto Datos para crear un cliente
+   * @returns Cliente creado
+   */
   async create(createClientDto: CreateClientDto): Promise<HttpResponse<ClientData>> {
     try {
       const newClient = await this.prisma.$transaction(async (prisma) => {
@@ -341,10 +366,6 @@ export class AuthService {
           ...newClient
         };
       });
-
-      if (!newClient) {
-        throw new Error('Transaction failed, newClient is null');
-      }
 
       return {
         statusCode: HttpStatus.CREATED,
