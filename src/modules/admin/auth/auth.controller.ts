@@ -1,4 +1,4 @@
-import { Controller, Post, Body, Res, Req } from '@nestjs/common';
+import { Controller, Post, Body, Res } from '@nestjs/common';
 import { AuthService } from './auth.service';
 import { LoginAuthDto } from './dto';
 import { UpdatePasswordDto } from './dto/update-password.dto';
@@ -21,13 +21,16 @@ export class AuthController {
 
   @ApiCreatedResponse({ description: 'Logout user' })
   @Post('logout')
-  async logout(@Req() req: Request, @Res() res: Response): Promise<void> {
-    return this.authService.logout(req, res);
+  async logout(@Res() res: Response): Promise<void> {
+    return this.authService.logout(res);
   }
 
   @ApiCreatedResponse({ description: 'Update password' })
   @Post('update-password')
-  async updatePassword(@Body() updatePasswordDto: UpdatePasswordDto) {
-    return this.authService.updatePasswordTemp(updatePasswordDto);
+  async updatePassword(
+    @Body() updatePasswordDto: UpdatePasswordDto,
+    @Res() res: Response
+  ): Promise<void> {
+    return this.authService.updatePasswordTemp(updatePasswordDto, res);
   }
 }
