@@ -5,14 +5,14 @@ import { Injectable, UnauthorizedException } from '@nestjs/common';
 import { ClientData } from 'src/interfaces';
 import { PrismaService } from 'src/prisma/prisma.service';
 import { ConfigService } from '@nestjs/config';
-import { AuthService } from '../auth.service';
+import { ClientService } from '../../client/client.service';
 
 @Injectable()
 export class ClientJwtStrategy extends PassportStrategy(Strategy, 'client-jwt') {
   constructor(
     private readonly prisma: PrismaService,
     private readonly configService: ConfigService,
-    private readonly authService: AuthService
+    private readonly clientService: ClientService
   ) {
     super({
       secretOrKey: configService.get('JWT_SECRET'),
@@ -27,7 +27,7 @@ export class ClientJwtStrategy extends PassportStrategy(Strategy, 'client-jwt') 
    */
   async validate(payload: { id: string }): Promise<ClientData> {
     const { id } = payload;
-    const client = await this.authService.findById(id);
+    const client = await this.clientService.findById(id);
 
     if (!client) {
       throw new UnauthorizedException('Client is not active or does not exist');
