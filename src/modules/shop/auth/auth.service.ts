@@ -11,16 +11,12 @@ import {
 import { HttpResponse } from 'src/interfaces';
 import { PrismaService } from 'src/prisma/prisma.service';
 import { JwtService } from '@nestjs/jwt';
-import {
-  ClientData,
-  ClientDataLogin,
-  ClientGoogleData,
-  ClientPayload
-} from 'src/interfaces/client.interface';
+import { ClientData, ClientDataLogin, ClientGoogleData } from 'src/interfaces/client.interface';
 import { handleException } from 'src/utils';
 import { LoginAuthClientDto } from './dto/login-auth-client.dto';
 import * as bcrypt from 'bcrypt';
 import { CreateClientDto } from './dto/create-client.dto';
+import { ClientService } from '../client/client.service';
 
 @Injectable()
 export class AuthService {
@@ -28,7 +24,8 @@ export class AuthService {
 
   constructor(
     private readonly prisma: PrismaService,
-    private readonly jwtService: JwtService
+    private readonly jwtService: JwtService,
+    private readonly clientService: ClientService
   ) {}
 
   /**
@@ -101,84 +98,6 @@ export class AuthService {
   }
 
   /**
-   * Mostar un cliente por su id
-   * @param id Id del cliente
-   * @returns Cliente encontrado
-   */
-  async findById(id: string): Promise<ClientPayload> {
-    try {
-      const clientDB = await this.prisma.client.findUnique({
-        where: { id, isActive: true },
-        select: {
-          id: true,
-          name: true,
-          email: true,
-          phone: true,
-          birthDate: true,
-          isGoogleAuth: true,
-          lastLogin: true,
-          isActive: true
-        }
-      });
-
-      if (!clientDB) {
-        throw new NotFoundException('Client not found');
-      }
-      return {
-        id: clientDB.id,
-        name: clientDB.name,
-        email: clientDB.email,
-        phone: clientDB.phone,
-        birthDate: clientDB.birthDate,
-        isGoogleAuth: clientDB.isGoogleAuth,
-        isActive: clientDB.isActive,
-        lastLogin: clientDB.lastLogin
-      };
-    } catch (error) {
-      this.logger.error(`Error finding client for id: ${id}`, error.stack);
-      if (error instanceof NotFoundException) {
-        throw error;
-      }
-      handleException(error, 'Error finding client');
-    }
-  }
-
-  /**
-   * Buscar un cliente por su email
-   * @param email Email del cliente
-   * @returns Cliente encontrado
-   */
-  async findByEmail(email: string): Promise<
-    ClientData & {
-      password: string;
-    }
-  > {
-    const clientDB = await this.prisma.client.findUnique({
-      where: {
-        email,
-        isActive: true
-      },
-      select: {
-        id: true,
-        name: true,
-        email: true,
-        password: true
-      }
-    });
-
-    if (!clientDB) {
-      throw new NotFoundException('Client not found');
-    }
-
-    return {
-      id: clientDB.id,
-      name: clientDB.name,
-      email: clientDB.email,
-      password: clientDB.password
-    };
-  }
-
-  /**
    * Iniciar sesión de un cliente sin cuenta de google
    * @param loginAuthClientDto Datos para iniciar sesión
    * @returns Cliente autenticado
@@ -188,7 +107,7 @@ export class AuthService {
       const { email, password } = loginAuthClientDto;
 
       // Buscamos el usuario por email
-      const clientDB = await this.findByEmail(email);
+      const clientDB = await this.clientService.findByEmail(email);
 
       if (!clientDB) {
         throw new NotFoundException('Client not registered');
@@ -221,90 +140,6 @@ export class AuthService {
   }
 
   /**
-   * Verificar si el email ya esta registrado
-   * @param email Email del cliente
-   * @returns Cliente encontrado
-   */
-  async checkEmailExist(email: string): Promise<boolean> {
-    const clientDB = await this.prisma.client.findUnique({
-      where: {
-        email,
-        isActive: true
-      }
-    });
-
-    return !!clientDB;
-  }
-
-  /**
-   * Verificar si el email ya esta registrado
-   * @param email Email del cliente
-   * @returns Cliente encontrado
-   */
-  async checkEmailInactive(email: string): Promise<boolean> {
-    const clientDB = await this.prisma.client.findUnique({
-      where: {
-        email,
-        isActive: false
-      }
-    });
-
-    return !!clientDB;
-  }
-
-  /**
-   * Verificar si el email ya esta registrado
-   * @param email Email del cliente
-   * @returns Cliente encontrado
-   */
-  async findByEmailInactive(email: string): Promise<ClientData> {
-    const clientDB = await this.prisma.client.findUnique({
-      where: {
-        email,
-        isActive: false
-      },
-      select: {
-        id: true,
-        name: true,
-        email: true
-      }
-    });
-
-    if (!clientDB) {
-      throw new NotFoundException('Clirnt not found');
-    }
-
-    return {
-      id: clientDB.id,
-      name: clientDB.name,
-      email: clientDB.email
-    };
-  }
-
-  /**
-   * Verificar si el email ya esta registrado con Google Auth
-   * @param email Email del cliente
-   * @returns Email registrado con Google Auth
-   */
-  async findByEmailRegisteredGoogle(email: string): Promise<boolean> {
-    const clientDB = await this.prisma.client.findUnique({
-      where: {
-        email,
-        isGoogleAuth: true
-      }
-    });
-
-    if (clientDB) {
-      if (clientDB.isGoogleAuth && !clientDB.isActive) {
-        throw new BadRequestException('This client is registered with Google Auth but is inactive');
-      }
-      throw new BadRequestException('This client is registered with Google Auth');
-    }
-
-    return !!clientDB;
-  }
-
-  /**
    * Crear un nuevo cliente
    * @param createClientDto Datos para crear un cliente
    * @returns Cliente creado
@@ -314,27 +149,27 @@ export class AuthService {
       const newClient = await this.prisma.$transaction(async (prisma) => {
         const { email, password, ...dataClient } = createClientDto;
 
-        const existEmailGoogle = await this.findByEmailRegisteredGoogle(email);
+        const existEmailGoogle = await this.clientService.findByEmailRegisteredGoogle(email);
         if (existEmailGoogle) {
           throw new BadRequestException('Email already exists with Google Auth');
         }
 
         // Verificamos si el email ya existe y este activo
-        const existEmail = await this.checkEmailExist(email);
+        const existEmail = await this.clientService.checkEmailExist(email);
 
         if (existEmail) {
           throw new BadRequestException('Email already exists');
         }
 
         // Verificamos si el email ya existe y esta inactivo
-        const inactiveEmail = await this.checkEmailInactive(email);
+        const inactiveEmail = await this.clientService.checkEmailInactive(email);
 
         if (inactiveEmail) {
           throw new BadRequestException({
             statusCode: HttpStatus.CONFLICT,
             message: 'Email already exists',
             data: {
-              id: (await this.findByEmailInactive(email)).id
+              id: (await this.clientService.findByEmailInactive(email)).id
             }
           });
         }
