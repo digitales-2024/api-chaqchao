@@ -6,6 +6,7 @@ import { PrismaModule } from 'src/prisma/prisma.module';
 import { JwtModule } from '@nestjs/jwt';
 import { ConfigModule, ConfigService } from '@nestjs/config';
 import { ClientJwtStrategy } from './utils/client-jwt.utils';
+import { ClientModule } from '../client/client.module';
 
 @Module({
   controllers: [AuthController],
@@ -19,7 +20,8 @@ import { ClientJwtStrategy } from './utils/client-jwt.utils';
         secret: configService.get('JWT_SECRET'),
         signOptions: { expiresIn: configService.get('JWT_EXPIRES_IN') }
       })
-    })
+    }),
+    ClientModule
   ]
 })
 export class AuthModule {}
