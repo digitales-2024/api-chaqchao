@@ -42,11 +42,8 @@ export class AuthService {
    * @param client Datos del cliente de Google
    * @returns Cliente autenticado
    */
-  async validateUser(client: ClientGoogleData): Promise<HttpResponse<ClientDataLogin>> {
+  async validateUserGoogle(client: ClientGoogleData): Promise<HttpResponse<ClientDataLogin>> {
     try {
-      this.logger.log('AuthService: Validating user');
-      this.logger.log(client);
-
       // Buscar cliente en la base de datos por correo electrónico
       let clientDB = await this.prisma.client.findUnique({
         where: {
@@ -54,6 +51,18 @@ export class AuthService {
           isGoogleAuth: true
         }
       });
+      // Verificamos si el email ya existe y esta inactivo
+      const inactiveEmail = await this.clientService.checkEmailInactive(client.email);
+
+      if (inactiveEmail) {
+        throw new BadRequestException({
+          statusCode: HttpStatus.CONFLICT,
+          message: 'Email already exists, but is inactive',
+          data: {
+            id: (await this.clientService.findByEmailInactive(client.email)).id
+          }
+        });
+      }
 
       // Si no existe, crear un nuevo cliente
       if (!clientDB) {
@@ -66,6 +75,11 @@ export class AuthService {
             token: client.token
           }
         });
+      } else {
+        await this.clientService.updateLastLogin(clientDB.id);
+        if (clientDB.token !== client.token) {
+          await this.clientService.updateToken(clientDB.id, client.token);
+        }
       }
 
       // Generar el token JWT usando el id del usuario
@@ -117,6 +131,7 @@ export class AuthService {
       if (!bcrypt.compareSync(password, clientDB.password)) {
         throw new UnauthorizedException('Password incorrect');
       }
+      await this.clientService.updateLastLogin(clientDB.id);
 
       return {
         id: clientDB.id,
@@ -167,7 +182,7 @@ export class AuthService {
         if (inactiveEmail) {
           throw new BadRequestException({
             statusCode: HttpStatus.CONFLICT,
-            message: 'Email already exists',
+            message: 'Email already exists, but is inactive',
             data: {
               id: (await this.clientService.findByEmailInactive(email)).id
             }
