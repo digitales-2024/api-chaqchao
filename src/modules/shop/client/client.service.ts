@@ -154,7 +154,7 @@ export class ClientService {
     });
 
     if (!clientDB) {
-      throw new NotFoundException('Clirnt not found');
+      throw new NotFoundException('Client not found');
     }
 
     return {
@@ -185,5 +185,32 @@ export class ClientService {
     }
 
     return !!clientDB;
+  }
+
+  /**
+   * Actualizar la fecha de último login del cliente
+   * @param id Id del cliente
+   */
+  async updateLastLogin(id: string): Promise<void> {
+    await this.prisma.client.update({
+      where: { id },
+      data: {
+        lastLogin: new Date()
+      }
+    });
+  }
+
+  /**
+   * Actualizar el token de refresco del cliente
+   * @param id Id del cliente
+   * @param token Token de refresco
+   */
+  async updateToken(id: string, token: string): Promise<void> {
+    await this.prisma.client.update({
+      where: { id },
+      data: {
+        token
+      }
+    });
   }
 }
