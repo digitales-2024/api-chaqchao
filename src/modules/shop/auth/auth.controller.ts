@@ -1,4 +1,14 @@
-import { Controller, Get, Res, Req, UseGuards, HttpStatus, Post, Body } from '@nestjs/common';
+import {
+  Controller,
+  Get,
+  Res,
+  Req,
+  UseGuards,
+  HttpStatus,
+  Post,
+  Body,
+  Query
+} from '@nestjs/common';
 import { Response, Request } from 'express';
 import { AuthService } from './auth.service';
 import { GoogleAuthGuard } from './utils/guards.utils';
@@ -10,6 +20,7 @@ import { ConfigService } from '@nestjs/config';
 import { LoginAuthClientDto } from './dto/login-auth-client.dto';
 import { CreateClientDto } from './dto/create-client.dto';
 import { ForgotPasswordClientDto } from './dto/forgot-password-client.dto';
+import { ResetPasswordClientDto } from './dto/reset-password-client.dto';
 
 @ApiTags('Auth Client')
 @Controller({ path: 'auth/client', version: '1' })
@@ -71,5 +82,14 @@ export class AuthController {
     @Body() forgotPasswordClientDto: ForgotPasswordClientDto
   ): Promise<HttpResponse<string>> {
     return this.authService.forgotPassword(forgotPasswordClientDto);
+  }
+
+  @ApiOkResponse({ description: 'Password reset successfully' })
+  @Post('reset-password')
+  async resetPassword(
+    @Query('token') token: string,
+    @Body() resetPasswordClientDto: ResetPasswordClientDto
+  ): Promise<HttpResponse<string>> {
+    return this.authService.resetPassword(token, resetPasswordClientDto);
   }
 }

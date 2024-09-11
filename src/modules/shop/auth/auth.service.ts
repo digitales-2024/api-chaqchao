@@ -20,6 +20,7 @@ import { ClientService } from '../client/client.service';
 import { ForgotPasswordClientDto } from './dto/forgot-password-client.dto';
 import { TypedEventEmitter } from 'src/event-emitter/typed-event-emitter.class';
 import { ConfigService } from '@nestjs/config';
+import { ResetPasswordClientDto } from './dto/reset-password-client.dto';
 
 @Injectable()
 export class AuthService {
@@ -240,6 +241,11 @@ export class AuthService {
     }
   }
 
+  /**
+   * Enviar un correo electrónico para restablecer la contraseña
+   * @param forgotPasswordClientDto Datos para restablecer la contraseña
+   * @returns Email enviado
+   */
   async forgotPassword(
     forgotPasswordClientDto: ForgotPasswordClientDto
   ): Promise<HttpResponse<string>> {
@@ -278,6 +284,63 @@ export class AuthService {
     } catch (error) {
       this.logger.error(`Error sending email to: ${forgotPasswordClientDto.email}`, error.stack);
       handleException(error, 'Error sending email');
+    }
+  }
+
+  /**
+   * Restablecer la contraseña de un cliente
+   * @param token Token para restablecer la contraseña
+   * @param resetPasswordClientDto Datos para restablecer la contraseña
+   * @returns Contraseña restablecida
+   */
+  async resetPassword(
+    token: string,
+    resetPasswordClientDto: ResetPasswordClientDto
+  ): Promise<HttpResponse<string>> {
+    try {
+      const { password, confirmPassword } = resetPasswordClientDto;
+      const payload = this.jwtService.verify(token, {
+        secret: this.configService.get<string>('JWT_SECRET')
+      });
+
+      const clientDB = await this.clientService.findById(payload.id);
+
+      if (!clientDB) {
+        throw new NotFoundException('Client not found');
+      }
+
+      if (password !== confirmPassword) {
+        throw new BadRequestException('Passwords do not match');
+      }
+
+      const hashedPassword = await bcrypt.hash(password, 10);
+
+      await this.prisma.client.update({
+        where: {
+          id: clientDB.id
+        },
+        data: {
+          password: hashedPassword
+        }
+      });
+
+      return {
+        statusCode: HttpStatus.OK,
+        message: 'Password reset successfully',
+        data: `Password reset successfully for ${clientDB.email}`
+      };
+    } catch (error) {
+      if (error instanceof NotFoundException || error instanceof BadRequestException) {
+        throw error;
+      }
+      if (error.name === 'TokenExpiredError') {
+        throw new BadRequestException('Token has expired');
+      } else if (error.name === 'JsonWebTokenError') {
+        throw new BadRequestException('Invalid token');
+      } else {
+        this.logger.error(`Error resetting password`, error.stack);
+        throw new BadRequestException('Error resetting password');
+      }
     }
   }
 }
