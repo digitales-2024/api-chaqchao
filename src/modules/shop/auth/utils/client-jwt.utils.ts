@@ -1,16 +1,13 @@
-// client-jwt.strategy.ts
 import { PassportStrategy } from '@nestjs/passport';
 import { ExtractJwt, Strategy } from 'passport-jwt';
 import { Injectable, UnauthorizedException } from '@nestjs/common';
 import { ClientData } from 'src/interfaces';
-import { PrismaService } from 'src/prisma/prisma.service';
 import { ConfigService } from '@nestjs/config';
 import { ClientService } from '../../client/client.service';
 
 @Injectable()
 export class ClientJwtStrategy extends PassportStrategy(Strategy, 'client-jwt') {
   constructor(
-    private readonly prisma: PrismaService,
     private readonly configService: ConfigService,
     private readonly clientService: ClientService
   ) {
