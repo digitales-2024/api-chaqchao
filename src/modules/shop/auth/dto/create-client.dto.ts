@@ -1,6 +1,15 @@
 import { ApiProperty } from '@nestjs/swagger';
 import { Transform } from 'class-transformer';
-import { IsDate, IsEmail, IsNotEmpty, IsPhoneNumber, IsString } from 'class-validator';
+import {
+  IsDate,
+  IsEmail,
+  IsNotEmpty,
+  IsPhoneNumber,
+  IsString,
+  Matches,
+  MaxLength,
+  MinLength
+} from 'class-validator';
 
 export class CreateClientDto {
   @ApiProperty({
@@ -9,6 +18,7 @@ export class CreateClientDto {
   })
   @IsString()
   @IsNotEmpty()
+  @Transform(({ value }) => value.trim())
   name: string;
 
   @ApiProperty({
@@ -18,6 +28,7 @@ export class CreateClientDto {
   @IsString()
   @IsEmail()
   @IsNotEmpty()
+  @Transform(({ value }) => value.trim())
   email: string;
 
   @ApiProperty({
@@ -26,11 +37,19 @@ export class CreateClientDto {
   })
   @IsString()
   @IsNotEmpty()
+  @MinLength(6)
+  @MaxLength(50)
+  @Matches(/(?:(?=.*\d)|(?=.*\W+))(?![.\n])(?=.*[A-Z])(?=.*[a-z]).*$/, {
+    message:
+      'the password is too weak, it must contain at least one uppercase letter, one lowercase letter, one number'
+  })
+  @Transform(({ value }) => value.trim())
   password: string;
 
   @ApiProperty({
     name: 'phone',
-    description: 'Client phone'
+    description: 'Client phone',
+    required: false
   })
   @IsPhoneNumber(null)
   @Transform(({ value }) => value.trim())
@@ -38,7 +57,8 @@ export class CreateClientDto {
 
   @ApiProperty({
     name: 'birthdate',
-    description: 'Client birthdate'
+    description: 'Client birthdate',
+    required: false
   })
   @IsDate()
   @Transform(({ value }) => new Date(value))
