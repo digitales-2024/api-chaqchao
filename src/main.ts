@@ -2,10 +2,15 @@ import { NestFactory } from '@nestjs/core';
 import { AppModule } from './app.module';
 import { ValidationPipe, VersioningType } from '@nestjs/common';
 import { DocumentBuilder, SwaggerModule } from '@nestjs/swagger';
+import * as cookieParser from 'cookie-parser';
 
 async function bootstrap() {
   const app = await NestFactory.create(AppModule);
-  app.enableCors();
+  app.enableCors({
+    origin: process.env.WEB_URL,
+    credentials: true
+  });
+  app.use(cookieParser());
 
   app.enableVersioning({
     type: VersioningType.URI
@@ -24,7 +29,6 @@ async function bootstrap() {
     .setTitle('Chaqchao API')
     .setDescription('API for Chaqchao')
     .setVersion('1.0')
-    .addBearerAuth()
     .build();
   const document = SwaggerModule.createDocument(app, config);
 

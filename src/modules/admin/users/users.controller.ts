@@ -7,7 +7,6 @@ import { UpdateUserDto } from './dto';
 import { SendEmailDto } from './dto/send-email.dto';
 import {
   ApiBadRequestResponse,
-  ApiBearerAuth,
   ApiCreatedResponse,
   ApiInternalServerErrorResponse,
   ApiOkResponse,
@@ -17,7 +16,6 @@ import {
 import { HttpResponse, UserData, UserDataLogin } from 'src/interfaces';
 
 @ApiTags('Users')
-@ApiBearerAuth()
 @ApiUnauthorizedResponse({ description: 'Unauthorized' })
 @ApiInternalServerErrorResponse({ description: 'Internal server error' })
 @ApiBadRequestResponse({ description: 'Bad request' })

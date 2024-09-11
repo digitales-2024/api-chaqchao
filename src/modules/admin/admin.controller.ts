@@ -4,7 +4,6 @@ import { AdminService } from './admin.service';
 import { UpdatePasswordDto } from './auth/dto/update-password.dto';
 import {
   ApiBadRequestResponse,
-  ApiBearerAuth,
   ApiOkResponse,
   ApiTags,
   ApiUnauthorizedResponse
@@ -12,7 +11,6 @@ import {
 import { HttpResponse, UserData } from 'src/interfaces';
 
 @ApiTags('Admin')
-@ApiBearerAuth()
 @ApiUnauthorizedResponse({
   description: 'Unauthorized'
 })

@@ -16,7 +16,7 @@ export class SeedsController {
   }
 
   @Patch()
-  initModulesPermissions() {
-    return this.seedsService.updateModulePermissionsSuperAdmin();
+  updateDataBase() {
+    return this.seedsService.updateDataSeed();
   }
 }

@@ -4,7 +4,6 @@ import { CreateClassRegistrationDto } from './dto/create-class-registration.dto'
 import { UpdateClassRegistrationDto } from './dto/update-class-registration.dto';
 import {
   ApiBadRequestResponse,
-  ApiBearerAuth,
   ApiOkResponse,
   ApiTags,
   ApiUnauthorizedResponse
@@ -13,7 +12,6 @@ import { Auth, GetUser } from '../auth/decorators';
 import { ClassRegistrationData, HttpResponse, UserData } from 'src/interfaces';
 
 @ApiTags('Class Registration')
-@ApiBearerAuth()
 @ApiBadRequestResponse({ description: 'Bad Request' })
 @ApiUnauthorizedResponse({ description: 'Unauthorized' })
 @Auth()
