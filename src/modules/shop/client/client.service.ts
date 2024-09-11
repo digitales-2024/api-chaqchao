@@ -1,6 +1,12 @@
-import { BadRequestException, Injectable, Logger, NotFoundException } from '@nestjs/common';
+import {
+  BadRequestException,
+  HttpStatus,
+  Injectable,
+  Logger,
+  NotFoundException
+} from '@nestjs/common';
 import { UpdateClientDto } from './dto/update-client.dto';
-import { ClientData, ClientPayload } from 'src/interfaces';
+import { ClientData, ClientDataUpdate, ClientPayload, HttpResponse } from 'src/interfaces';
 import { handleException } from 'src/utils';
 import { PrismaService } from 'src/prisma/prisma.service';
 
@@ -9,19 +15,74 @@ export class ClientService {
   private readonly logger = new Logger(ClientService.name);
   constructor(private readonly prisma: PrismaService) {}
 
-  findAll() {
-    return `This action returns all client`;
-  }
-
-  findOne(id: number) {
+  findOne(id: string) {
     return `This action returns a #${id} client`;
   }
 
-  update(id: number, updateClientDto: UpdateClientDto) {
-    return `This action updates a #${id} ${updateClientDto} client`;
+  async update(
+    id: string,
+    updateClientDto: UpdateClientDto
+  ): Promise<HttpResponse<ClientDataUpdate>> {
+    const { name, phone, birthDate } = updateClientDto;
+
+    try {
+      const clientDB = await this.findById(id);
+      if (!clientDB) {
+        throw new NotFoundException('Client not found');
+      }
+
+      // Validar si hay cambios
+      const noChanges =
+        name === clientDB.name &&
+        phone === clientDB.phone &&
+        birthDate?.toISOString() === clientDB.birthDate?.toISOString();
+
+      if (noChanges) {
+        return {
+          statusCode: HttpStatus.OK,
+          message: 'Client updated successfully',
+          data: {
+            id: clientDB.id,
+            name: clientDB.name,
+            phone: clientDB.phone,
+            birthDate: clientDB.birthDate
+          }
+        };
+      }
+
+      // Construir el objeto de actualización dinámicamente
+      const updateData: any = {};
+      if (name !== clientDB.name) updateData.name = name;
+      if (phone !== clientDB.phone) updateData.phone = phone;
+      if (birthDate?.toISOString() !== clientDB.birthDate?.toISOString())
+        updateData.birthDate = birthDate;
+
+      // Transacción para realizar la actualización
+      const updatedClient = await this.prisma.$transaction(async (prisma) => {
+        return prisma.client.update({
+          where: { id },
+          data: updateData,
+          select: {
+            id: true,
+            name: true,
+            phone: true,
+            birthDate: true
+          }
+        });
+      });
+
+      return {
+        statusCode: HttpStatus.OK,
+        message: 'Client updated successfully',
+        data: updatedClient
+      };
+    } catch (error) {
+      this.logger.error(`Error updating client for id: ${id}`, error.stack);
+      handleException(error, 'Error updating client');
+    }
   }
 
-  remove(id: number) {
+  remove(id: string) {
     return `This action removes a #${id} client`;
   }
 
