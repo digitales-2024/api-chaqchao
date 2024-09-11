@@ -104,6 +104,39 @@ export class ClientService {
   }
 
   /**
+   * Buscar un cliente por su email
+   * @param email Email del cliente
+   * @returns Cliente encontrado
+   */
+  async findByEmailInformation(email: string): Promise<ClientData> {
+    const clientDB = await this.prisma.client.findUnique({
+      where: {
+        email,
+        isActive: true
+      },
+      select: {
+        id: true,
+        name: true,
+        email: true,
+        isGoogleAuth: true
+      }
+    });
+
+    if (!clientDB) {
+      throw new NotFoundException('Client not found');
+    }
+    if (clientDB.isGoogleAuth && clientDB) {
+      throw new BadRequestException('This client is registered with Google Auth');
+    }
+
+    return {
+      id: clientDB.id,
+      name: clientDB.name,
+      email: clientDB.email
+    };
+  }
+
+  /**
    * Verificar si el email ya esta registrado
    * @param email Email del cliente
    * @returns Cliente encontrado
