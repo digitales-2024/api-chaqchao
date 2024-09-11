@@ -12,3 +12,5 @@ export type ClientPayload = Pick<
   Client,
   'id' | 'name' | 'email' | 'phone' | 'birthDate' | 'isGoogleAuth' | 'lastLogin' | 'isActive'
 >;
+
+export type ClientDataUpdate = Pick<Client, 'id' | 'name' | 'phone' | 'birthDate'>;

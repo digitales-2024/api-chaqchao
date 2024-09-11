@@ -24,3 +24,4 @@ export { ClientData } from './client.interface';
 export { ClientGoogleData } from './client.interface';
 export { ClientDataLogin } from './client.interface';
 export { ClientPayload } from './client.interface';
+export { ClientDataUpdate } from './client.interface';
