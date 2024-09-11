@@ -17,6 +17,9 @@ import { LoginAuthClientDto } from './dto/login-auth-client.dto';
 import * as bcrypt from 'bcrypt';
 import { CreateClientDto } from './dto/create-client.dto';
 import { ClientService } from '../client/client.service';
+import { ForgotPasswordClientDto } from './dto/forgot-password-client.dto';
+import { TypedEventEmitter } from 'src/event-emitter/typed-event-emitter.class';
+import { ConfigService } from '@nestjs/config';
 
 @Injectable()
 export class AuthService {
@@ -25,7 +28,9 @@ export class AuthService {
   constructor(
     private readonly prisma: PrismaService,
     private readonly jwtService: JwtService,
-    private readonly clientService: ClientService
+    private readonly clientService: ClientService,
+    private readonly eventEmitter: TypedEventEmitter,
+    private readonly configService: ConfigService
   ) {}
 
   /**
@@ -232,6 +237,47 @@ export class AuthService {
         throw error;
       }
       handleException(error, 'Error creating a user');
+    }
+  }
+
+  async forgotPassword(
+    forgotPasswordClientDto: ForgotPasswordClientDto
+  ): Promise<HttpResponse<string>> {
+    try {
+      const { email } = forgotPasswordClientDto;
+      const clientDB = await this.clientService.findByEmailInformation(email);
+      // Generar el token JWT con expiración de 5 minutos
+      const payload = { id: clientDB.id };
+      const token = this.jwtService.sign(payload, {
+        secret: this.configService.get<string>('JWT_SECRET'),
+        expiresIn: this.configService.get<string>('JWT_RESET_PASSWORD_EXPIRES_IN')
+      });
+
+      const link = `http://localhost:3000/api/v1/auth/client/reset-password?token=${token}`;
+      console.log(link);
+
+      const emailResponse = await this.eventEmitter.emitAsync('client.forgot-password', {
+        name: clientDB.name.toUpperCase(),
+        email,
+        link
+      });
+
+      if (emailResponse.every((response) => response === true)) {
+        return {
+          statusCode: HttpStatus.OK,
+          message: `Email sent successfully`,
+          data: forgotPasswordClientDto.email
+        };
+      } else {
+        return {
+          statusCode: HttpStatus.BAD_REQUEST,
+          message: `Failed to send email`,
+          data: forgotPasswordClientDto.email
+        };
+      }
+    } catch (error) {
+      this.logger.error(`Error sending email to: ${forgotPasswordClientDto.email}`, error.stack);
+      handleException(error, 'Error sending email');
     }
   }
 }

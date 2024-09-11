@@ -9,6 +9,7 @@ import { ApiOkResponse, ApiTags } from '@nestjs/swagger';
 import { ConfigService } from '@nestjs/config';
 import { LoginAuthClientDto } from './dto/login-auth-client.dto';
 import { CreateClientDto } from './dto/create-client.dto';
+import { ForgotPasswordClientDto } from './dto/forgot-password-client.dto';
 
 @ApiTags('Auth Client')
 @Controller({ path: 'auth/client', version: '1' })
@@ -62,5 +63,13 @@ export class AuthController {
   @Post('register')
   async register(@Body() createClientDto: CreateClientDto): Promise<HttpResponse<ClientData>> {
     return this.authService.create(createClientDto);
+  }
+
+  @ApiOkResponse({ description: 'Email sent successfully' })
+  @Post('forgot-password')
+  async forgotPassword(
+    @Body() forgotPasswordClientDto: ForgotPasswordClientDto
+  ): Promise<HttpResponse<string>> {
+    return this.authService.forgotPassword(forgotPasswordClientDto);
   }
 }
