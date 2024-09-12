@@ -2,10 +2,6 @@ import { Client } from '@prisma/client';
 
 export type ClientGoogleData = Pick<Client, 'name' | 'email' | 'token'>;
 
-export type ClientDataLogin = Pick<Client, 'id' | 'name' | 'email'> & {
-  token: string;
-};
-
 export type ClientData = Pick<Client, 'id' | 'name' | 'email'>;
 
 export type ClientPayload = Pick<
