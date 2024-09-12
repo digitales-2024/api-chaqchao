@@ -11,7 +11,7 @@ import {
 import { HttpResponse } from 'src/interfaces';
 import { PrismaService } from 'src/prisma/prisma.service';
 import { JwtService } from '@nestjs/jwt';
-import { ClientData, ClientDataLogin, ClientGoogleData } from 'src/interfaces/client.interface';
+import { ClientData, ClientGoogleData } from 'src/interfaces/client.interface';
 import { handleException } from 'src/utils';
 import { LoginAuthClientDto } from './dto/login-auth-client.dto';
 import * as bcrypt from 'bcrypt';
@@ -21,6 +21,7 @@ import { ForgotPasswordClientDto } from './dto/forgot-password-client.dto';
 import { TypedEventEmitter } from 'src/event-emitter/typed-event-emitter.class';
 import { ConfigService } from '@nestjs/config';
 import { ResetPasswordClientDto } from './dto/reset-password-client.dto';
+import { Response } from 'express';
 
 @Injectable()
 export class AuthService {
@@ -48,7 +49,7 @@ export class AuthService {
    * @param client Datos del cliente de Google
    * @returns Cliente autenticado
    */
-  async validateUserGoogle(client: ClientGoogleData): Promise<HttpResponse<ClientDataLogin>> {
+  async validateUserGoogle(client: ClientGoogleData, res: Response): Promise<void> {
     try {
       // Buscar cliente en la base de datos por correo electrónico
       let clientDB = await this.prisma.client.findUnique({
@@ -89,19 +90,25 @@ export class AuthService {
       }
 
       // Generar el token JWT usando el id del usuario
-      const token = this.getJwtToken({ id: clientDB.id });
+      const token = this.jwtService.sign({ id: clientDB.id });
 
-      // Retornar la respuesta con los datos del usuario y el token
-      return {
-        statusCode: HttpStatus.CREATED,
-        message: 'User authenticated successfully',
-        data: {
-          id: clientDB.id,
-          name: clientDB.name,
-          email: clientDB.email,
-          token: token
-        }
-      };
+      // Configura la cookie HttpOnly
+      res.cookie('access_token', token, {
+        httpOnly: true,
+        secure: process.env.NODE_ENV === 'production',
+        sameSite: 'strict',
+        path: '/',
+        maxAge: 1000 * 60 * 60 * 24 * 30, // 30 días
+        expires: new Date(Date.now() + 1000 * 60 * 60 * 24 * 30) // 30 días
+      });
+
+      /*       // Retornar la respuesta con los datos del usuario
+      res.json({
+        id: clientDB.id,
+        name: clientDB.name,
+        email: clientDB.email
+      }); */
+      res.redirect(this.configService.get<string>('WEB_URL_GOOGLE'));
     } catch (error) {
       this.logger.error('Error validating user', error.stack);
       if (error instanceof NotFoundException) {
@@ -122,7 +129,7 @@ export class AuthService {
    * @param loginAuthClientDto Datos para iniciar sesión
    * @returns Cliente autenticado
    */
-  async login(loginAuthClientDto: LoginAuthClientDto): Promise<ClientDataLogin> {
+  async login(loginAuthClientDto: LoginAuthClientDto, res: Response): Promise<void> {
     try {
       const { email, password } = loginAuthClientDto;
 
@@ -139,12 +146,23 @@ export class AuthService {
       }
       await this.clientService.updateLastLogin(clientDB.id);
 
-      return {
+      const token = this.getJwtToken({ id: clientDB.id });
+
+      // Configura la cookie HttpOnly
+      res.cookie('access_token', token, {
+        httpOnly: true,
+        secure: process.env.NODE_ENV === 'production',
+        sameSite: 'strict',
+        path: '/',
+        maxAge: 1000 * 60 * 60 * 24 * 30, // 30 días
+        expires: new Date(Date.now() + 1000 * 60 * 60 * 24 * 30) // 30 días
+      });
+
+      res.json({
         id: clientDB.id,
         name: clientDB.name,
-        email: clientDB.email,
-        token: this.getJwtToken({ id: clientDB.id })
-      };
+        email: clientDB.email
+      });
     } catch (error) {
       this.logger.error(`Error logging in for email: ${loginAuthClientDto.email}`, error.stack);
       if (error instanceof UnauthorizedException) {
@@ -342,5 +360,20 @@ export class AuthService {
         throw new BadRequestException('Error resetting password');
       }
     }
+  }
+
+  /**
+   * Cierra la sesión del cliente
+   * @param res Respuesta HTTP
+   */
+  async logout(res: Response): Promise<void> {
+    // Borra la cookie que contiene el token JWT
+    res.cookie('access_token', '', {
+      httpOnly: true,
+      expires: new Date(0) // Establece la fecha de expiración a una fecha pasada para eliminar la cookie
+    });
+
+    // Enviar una respuesta de éxito
+    res.status(200).json({ message: 'Logout successful' });
   }
 }
