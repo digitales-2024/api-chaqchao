@@ -15,10 +15,29 @@ export class ClientService {
   private readonly logger = new Logger(ClientService.name);
   constructor(private readonly prisma: PrismaService) {}
 
-  findOne(id: string) {
-    return `This action returns a #${id} client`;
+  /**
+   * Buscar un cliente por su id
+   * @param id Id del cliente
+   * @returns Cliente encontrado
+   */
+  async findOne(id: string): Promise<ClientPayload> {
+    try {
+      return await this.findById(id);
+    } catch (error) {
+      this.logger.error('Error get client', error.stack);
+      if (error instanceof BadRequestException) {
+        throw error;
+      }
+      handleException(error, 'Error get client');
+    }
   }
 
+  /**
+   * Actualizar un cliente
+   * @param id Id del cliente
+   * @param updateClientDto Data del cliente a actualizar
+   * @returns Cliente actualizado
+   */
   async update(
     id: string,
     updateClientDto: UpdateClientDto
