@@ -1,4 +1,4 @@
-import { Controller, Get, Body, Patch, Param, Delete } from '@nestjs/common';
+import { Controller, Get, Body, Patch, Param, Res, Delete } from '@nestjs/common';
 import { ClientService } from './client.service';
 import { UpdateClientDto } from './dto/update-client.dto';
 import { ClientDataUpdate, ClientPayload, HttpResponse } from 'src/interfaces';
@@ -9,8 +9,11 @@ import {
   ApiTags,
   ApiUnauthorizedResponse
 } from '@nestjs/swagger';
+import { ClientAuth } from '../auth/decorators/client-auth.decorator';
+import { Response } from 'express';
 
-@ApiTags('Client shop')
+@ClientAuth()
+@ApiTags('Client Shop')
 @ApiUnauthorizedResponse({ description: 'Unauthorized' })
 @ApiInternalServerErrorResponse({ description: 'Internal server error' })
 @ApiBadRequestResponse({ description: 'Bad request' })
@@ -34,7 +37,8 @@ export class ClientController {
   }
 
   @Delete(':id')
-  remove(@Param('id') id: string) {
-    return this.clientService.remove(id);
+  async remove(@Param('id') id: string, @Res() res: Response) {
+    const result = await this.clientService.remove(id, res);
+    return res.status(result.statusCode).json(result);
   }
 }

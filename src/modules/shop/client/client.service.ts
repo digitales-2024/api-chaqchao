@@ -9,6 +9,7 @@ import { UpdateClientDto } from './dto/update-client.dto';
 import { ClientData, ClientDataUpdate, ClientPayload, HttpResponse } from 'src/interfaces';
 import { handleException } from 'src/utils';
 import { PrismaService } from 'src/prisma/prisma.service';
+import { Response } from 'express';
 
 @Injectable()
 export class ClientService {
@@ -101,8 +102,47 @@ export class ClientService {
     }
   }
 
-  remove(id: string) {
-    return `This action removes a #${id} client`;
+  /**
+   * Eliminar un cliente
+   * @param id Id del cliente
+   * @returns Cliente eliminado
+   */
+  async remove(id: string, res: Response): Promise<HttpResponse<ClientData>> {
+    try {
+      const clientDB = await this.findById(id);
+      if (!clientDB) {
+        throw new NotFoundException('Client not found');
+      }
+
+      await this.prisma.client.update({
+        where: { id },
+        data: {
+          isActive: false
+        }
+      });
+
+      // Eliminar la cookie 'access_token'
+      res.cookie('access_token', '', {
+        httpOnly: true,
+        expires: new Date(0) // Establece la fecha de expiración a una fecha pasada para eliminar la cookie
+      });
+
+      return {
+        statusCode: HttpStatus.OK,
+        message: 'Client removed successfully',
+        data: {
+          id: clientDB.id,
+          name: clientDB.name,
+          email: clientDB.email
+        }
+      };
+    } catch (error) {
+      this.logger.error(`Error removing client for id: ${id}`, error.stack);
+      if (error instanceof NotFoundException || error instanceof BadRequestException) {
+        throw error;
+      }
+      handleException(error, 'Error removing client');
+    }
   }
 
   /**
@@ -111,41 +151,36 @@ export class ClientService {
    * @returns Cliente encontrado
    */
   async findById(id: string): Promise<ClientPayload> {
-    try {
-      const clientDB = await this.prisma.client.findUnique({
-        where: { id, isActive: true },
-        select: {
-          id: true,
-          name: true,
-          email: true,
-          phone: true,
-          birthDate: true,
-          isGoogleAuth: true,
-          lastLogin: true,
-          isActive: true
-        }
-      });
+    const clientDB = await this.prisma.client.findUnique({
+      where: { id },
+      select: {
+        id: true,
+        name: true,
+        email: true,
+        phone: true,
+        birthDate: true,
+        isGoogleAuth: true,
+        lastLogin: true,
+        isActive: true
+      }
+    });
 
-      if (!clientDB) {
-        throw new NotFoundException('Client not found');
-      }
-      return {
-        id: clientDB.id,
-        name: clientDB.name,
-        email: clientDB.email,
-        phone: clientDB.phone,
-        birthDate: clientDB.birthDate,
-        isGoogleAuth: clientDB.isGoogleAuth,
-        isActive: clientDB.isActive,
-        lastLogin: clientDB.lastLogin
-      };
-    } catch (error) {
-      this.logger.error(`Error finding client for id: ${id}`, error.stack);
-      if (error instanceof NotFoundException) {
-        throw error;
-      }
-      handleException(error, 'Error finding client');
+    if (clientDB && !clientDB.isActive) {
+      throw new BadRequestException('Client exist but is inactive');
     }
+    if (!clientDB) {
+      throw new NotFoundException('Client not found');
+    }
+    return {
+      id: clientDB.id,
+      name: clientDB.name,
+      email: clientDB.email,
+      phone: clientDB.phone,
+      birthDate: clientDB.birthDate,
+      isGoogleAuth: clientDB.isGoogleAuth,
+      isActive: clientDB.isActive,
+      lastLogin: clientDB.lastLogin
+    };
   }
 
   /**
