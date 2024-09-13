@@ -114,6 +114,7 @@ export class AuthController {
     return this.authService.resetPassword(token, resetPasswordClientDto);
   }
 
+  @ClientAuth()
   @ApiBadRequestResponse({ description: 'Bad request' })
   @ApiOkResponse({ description: 'Logout client' })
   @Get('logout')
