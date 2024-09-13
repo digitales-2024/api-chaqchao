@@ -280,7 +280,6 @@ export class AuthService {
       });
 
       const link = `http://localhost:3000/api/v1/auth/client/reset-password?token=${token}`;
-      console.log(link);
 
       const emailResponse = await this.eventEmitter.emitAsync('client.forgot-password', {
         name: clientDB.name.toUpperCase(),
