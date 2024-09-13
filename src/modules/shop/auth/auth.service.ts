@@ -133,6 +133,7 @@ export class AuthService {
     try {
       const { email, password } = loginAuthClientDto;
 
+      await this.clientService.findByEmailRegisteredGoogle(email);
       // Buscamos el usuario por email
       const clientDB = await this.clientService.findByEmail(email);
 
