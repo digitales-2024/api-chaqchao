@@ -551,16 +551,14 @@ export class UsersService {
    * Genera una contraseña aleatoria
    * @returns Contraseña aleatoria
    */
-  generatePassword(): HttpResponse<string> {
+  generatePassword(): { password: string } {
     const password = generate({
       length: 10,
       numbers: true
     });
 
     return {
-      statusCode: HttpStatus.OK,
-      message: 'Password generated',
-      data: password
+      password
     };
   }
 

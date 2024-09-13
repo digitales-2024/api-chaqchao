@@ -75,7 +75,7 @@ export class UsersController {
 
   @ApiOkResponse({ description: 'Get new password' })
   @Post('generate-password')
-  generatePassword(): HttpResponse<string> {
+  generatePassword(): { password: string } {
     return this.usersService.generatePassword();
   }
 
