@@ -49,4 +49,37 @@ export class EmailService {
       return false; // Retorna false indicando fallo
     }
   }
+
+  @OnEvent('client.forgot-password')
+  async forgotPassword(data: EventPayloads['client.forgot-password']): Promise<boolean> {
+    const { name, email, link } = data;
+    const subject = `Recuperar contraseña de ${infoBusiness.business}`;
+
+    try {
+      const sendingEmail = await this.mailerService.sendMail({
+        to: email,
+        subject,
+        template: 'forgot-password',
+        context: {
+          name,
+          email,
+          link,
+          business: infoBusiness.business,
+          url: infoBusiness.url,
+          phone: infoBusiness.phone,
+          address: infoBusiness.address,
+          contact: infoBusiness.contact
+        }
+      });
+
+      if (sendingEmail) {
+        return true; // Retorna true indicando éxito
+      } else {
+        return false; // Retorna false indicando fallo
+      }
+    } catch (error) {
+      this.logger.error(error);
+      return false; // Retorna false indicando fallo
+    }
+  }
 }
