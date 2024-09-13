@@ -1,4 +1,4 @@
-import { Controller, Post, Body, Get, Patch, Param, Delete } from '@nestjs/common';
+import { Controller, Post, Body, Get, Patch, Param, Delete, Logger } from '@nestjs/common';
 import { UsersService } from './users.service';
 import { CreateUserDto } from './dto/create-user.dto';
 import { GetUser } from '../auth/decorators/get-user.decorator';
@@ -13,7 +13,8 @@ import {
   ApiTags,
   ApiUnauthorizedResponse
 } from '@nestjs/swagger';
-import { HttpResponse, UserData, UserDataLogin } from 'src/interfaces';
+import { HttpResponse, UserData, UserDataLogin, UserPayload } from 'src/interfaces';
+import { DeleteUsersDto } from './dto/delete-users.dto';
 
 @ApiTags('Users')
 @ApiUnauthorizedResponse({ description: 'Unauthorized' })
@@ -25,6 +26,7 @@ import { HttpResponse, UserData, UserDataLogin } from 'src/interfaces';
 })
 @Auth()
 export class UsersController {
+  private readonly logger = new Logger(UsersController.name);
   constructor(private readonly usersService: UsersService) {}
 
   @ApiCreatedResponse({ description: 'User created' })
@@ -52,7 +54,14 @@ export class UsersController {
     return this.usersService.remove(id, user);
   }
 
-  @ApiOkResponse({ description: 'User deactivated' })
+  @ApiOkResponse({ description: 'Users deactivated' })
+  @Patch('deactivate')
+  deactivate(@Body() users: DeleteUsersDto, @GetUser() user: UserDataLogin) {
+    console.log('🚀 ~ UsersController ~ deactivate ~ DeleteUsersDto:', DeleteUsersDto);
+    return this.usersService.deactivate(users, user);
+  }
+
+  @ApiOkResponse({ description: 'User reactivated' })
   @Patch('reactivate/:id')
   reactivate(
     @Param('id') id: string,
@@ -63,7 +72,7 @@ export class UsersController {
 
   @ApiOkResponse({ description: 'Get all users' })
   @Get()
-  findAll(): Promise<UserData[]> {
+  findAll(): Promise<UserPayload[]> {
     return this.usersService.findAll();
   }
 

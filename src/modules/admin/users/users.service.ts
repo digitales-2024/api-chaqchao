@@ -18,6 +18,7 @@ import { UpdatePasswordDto } from '../auth/dto/update-password.dto';
 import { ValidRols } from '../auth/interfaces';
 import { AuditService } from '../audit/audit.service';
 import { AuditActionType } from '@prisma/client';
+import { DeleteUsersDto } from './dto/delete-users.dto';
 
 @Injectable()
 export class UsersService {
@@ -390,6 +391,124 @@ export class UsersService {
       this.logger.error(`Error deleting a user for id: ${id}`, error.stack);
       handleException(error, 'Error deleting a user');
     }
+  }
+
+  /**
+   * Desactivar todos los usuarios de un arreglo de usuarios
+   * @param users Arreglo de usuarios a desactivar
+   * @param user Usuario que desactiva los usuarios
+   * @returns Retorna un array con los datos de los usuarios desactivados
+   */
+  async deactivate(users: DeleteUsersDto, user: UserData): Promise<void> {
+    console.log('🚀 ~ UsersService ~ deactivate ~ user:', user);
+    console.log('🚀 ~ UsersService ~ deactivate ~ users:', users);
+    // try {
+    //   await this.prisma.$transaction(async (prisma) => {
+    //     const usersDB = await prisma.user.findMany({
+    //       where: {
+    //         id: {
+    //           in: users.ids.map((user) => user)
+    //         }
+    //       },
+    //       select: {
+    //         id: true,
+    //         name: true,
+    //         email: true,
+    //         phone: true,
+    //         isActive: true,
+    //         userRols: {
+    //           select: {
+    //             rol: {
+    //               select: {
+    //                 id: true,
+    //                 name: true
+    //               }
+    //             }
+    //           }
+    //         }
+    //       }
+    //     });
+
+    //     if (usersDB.length === 0) {
+    //       throw new NotFoundException('Users not found');
+    //     }
+
+    //     const usersDesactivated = [];
+
+    //     for (const userDelete of usersDB) {
+    //       // No permitir que el usuario se desactive a sí mismo
+    //       if (userDelete.id === user.id) {
+    //         throw new BadRequestException('You cannot deactivate yourself');
+    //       }
+
+    //       // Verificar si el usuario tiene algún rol de superadmin activo
+    //       const superAdminRoles = await prisma.userRol.findMany({
+    //         where: {
+    //           userId: userDelete.id,
+    //           rol: {
+    //             is: {
+    //               name: ValidRols.SUPER_ADMIN
+    //             }
+    //           }
+    //         }
+    //       });
+
+    //       if (superAdminRoles.length > 0) {
+    //         throw new BadRequestException('You cannot deactivate a superadmin user');
+    //       }
+
+    //       // Marcar el usuario como inactivo
+    //       await prisma.user.update({
+    //         where: { id: userDelete.id },
+    //         data: {
+    //           isActive: false
+    //         }
+    //       });
+
+    //       await this.audit.create({
+    //         entityId: user.id,
+    //         entityType: 'user',
+    //         action: AuditActionType.DELETE,
+    //         performedById: user.id,
+    //         createdAt: new Date()
+    //       });
+
+    //       // Eliminar todos los roles del usuario
+    //       await prisma.userRol.updateMany({
+    //         where: {
+    //           userId: userDelete.id
+    //         },
+    //         data: {
+    //           isActive: false
+    //         }
+    //       });
+
+    //       usersDesactivated.push({
+    //         id: userDelete.id,
+    //         name: userDelete.name,
+    //         email: userDelete.email,
+    //         phone: userDelete.phone,
+    //         roles: userDelete.userRols.map((rol) => {
+    //           return {
+    //             id: rol.rol.id,
+    //             name: rol.rol.name
+    //           };
+    //         })
+    //       });
+    //     }
+
+    //     return usersDesactivated;
+    //   });
+
+    //   return {
+    //     statusCode: HttpStatus.OK,
+    //     message: 'Users desactivated',
+    //     data: 'Users desactivated'
+    //   };
+    // } catch (error) {
+    //   this.logger.error('Error desactivating users', error.stack);
+    //   handleException(error, 'Error desactivating users');
+    // }
   }
 
   /**
