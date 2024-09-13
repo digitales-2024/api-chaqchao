@@ -414,4 +414,51 @@ export class ClientService {
       }
     });
   }
+
+  /**
+   * Activar un cliente
+   * @param id Id del cliente
+   * @returns Cliente activado
+   */
+  async activate(id: string): Promise<HttpResponse<ClientData>> {
+    try {
+      const clientDB = await this.prisma.client.findUnique({
+        where: { id },
+        select: {
+          id: true,
+          name: true,
+          email: true,
+          isActive: true
+        }
+      });
+      if (!clientDB) {
+        throw new NotFoundException('Client not found');
+      }
+      if (clientDB.isActive) {
+        throw new BadRequestException('Client already active');
+      }
+      await this.prisma.client.update({
+        where: { id },
+        data: {
+          isActive: true
+        }
+      });
+
+      return {
+        statusCode: HttpStatus.OK,
+        message: 'Client activated successfully',
+        data: {
+          id: clientDB.id,
+          name: clientDB.name,
+          email: clientDB.email
+        }
+      };
+    } catch (error) {
+      this.logger.error(`Error activating client for id: ${id}`, error.stack);
+      if (error instanceof NotFoundException || error instanceof BadRequestException) {
+        throw error;
+      }
+      handleException(error, 'Error activating client');
+    }
+  }
 }

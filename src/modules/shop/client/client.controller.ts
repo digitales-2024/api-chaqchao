@@ -51,4 +51,10 @@ export class ClientController {
   ): Promise<HttpResponse<ClientData>> {
     return this.clientService.updatePassword(id, updatePasswordClientDto);
   }
+
+  @ApiOkResponse({ description: 'Client activated successfully' })
+  @Patch('activate/:id')
+  async activate(@Param('id') id: string): Promise<HttpResponse<ClientData>> {
+    return this.clientService.activate(id);
+  }
 }
