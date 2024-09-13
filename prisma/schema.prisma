@@ -14,19 +14,303 @@ datasource db {
 }
 
 model User {
-  id String @id @default(uuid()) @unique
-  name String
-  email String @unique
-  password String
-  phone String?
-  lastLogin DateTime
-  isActive Boolean @default(true)
-  createdUser User? @relation("CreatedUsers", fields: [createdBy], references: [id])
-  createdBy String?
-  updatedUser User? @relation("UpdatedUsers", fields: [updatedBy], references: [id])
-  updatedBy String?
-  createdAt DateTime @default(now())
+  id                 String   @id @unique @default(uuid())
+  name               String
+  email              String
+  password           String
+  phone              String?
+  lastLogin          DateTime @default(now()) @db.Timestamptz(6)
+  isActive           Boolean  @default(true)
+  mustChangePassword Boolean  @default(true)
+
+  createdAt DateTime @default(now()) @db.Timestamptz(6)
   updatedAt DateTime @updatedAt
-  createdUsers User[] @relation("CreatedUsers")
-  updatedUsers User[] @relation("UpdatedUsers")
+
+  // Relación con auditorías (acciones realizadas por este usuario)
+  auditsPerformed Audit[] @relation("AuditPerformedBy")
+
+  // Relación con UserRol
+  userRols UserRol[] @relation("UserId")
+
+  @@unique([email, isActive])
+}
+
+model Rol {
+  id          String  @id @unique @default(uuid())
+  name        String
+  description String?
+  isActive    Boolean @default(true)
+
+  createdAt DateTime @default(now()) @db.Timestamptz(6)
+  updatedAt DateTime @updatedAt
+
+  // Relación con UserRol
+  rolUsers UserRol[] @relation("RolId")
+
+  // Relación con RolModulePermissions
+  rolModulePermissions RolModulePermissions[] @relation("RolId")
+
+  @@unique([name, isActive])
+}
+
+model UserRol {
+  id       String  @id @unique @default(uuid())
+  user     User    @relation("UserId", fields: [userId], references: [id])
+  userId   String
+  isActive Boolean @default(true)
+  rol      Rol     @relation("RolId", fields: [rolId], references: [id])
+  rolId    String
+
+  createdAt DateTime @default(now()) @db.Timestamptz(6)
+  updatedAt DateTime @updatedAt
+
+  @@unique([userId, rolId])
+}
+
+model Permission {
+  id          String  @id @unique @default(uuid())
+  cod         String
+  name        String
+  description String?
+
+  createdAt DateTime @default(now()) @db.Timestamptz(6)
+  updatedAt DateTime @updatedAt
+
+  // Relación con ModulePermissions
+  permissionModule ModulePermissions[] @relation("PermissionId")
+
+  @@unique([cod, name])
+}
+
+model Module {
+  id          String  @id @unique @default(uuid())
+  cod         String
+  name        String
+  description String?
+
+  createdAt DateTime @default(now()) @db.Timestamptz(6)
+  updatedAt DateTime @updatedAt
+
+  // Relación con ModulePermissions
+  modulePermissions ModulePermissions[] @relation("ModuleId")
+
+  @@unique([cod, name])
+}
+
+model ModulePermissions {
+  id           String     @id @unique @default(uuid())
+  module       Module     @relation("ModuleId", fields: [moduleId], references: [id], onDelete: Cascade)
+  moduleId     String
+  permission   Permission @relation("PermissionId", fields: [permissionId], references: [id], onDelete: Cascade)
+  permissionId String  
+
+  createdAt DateTime @default(now()) @db.Timestamptz(6)
+  updatedAt DateTime @updatedAt
+
+  // Relación con RolModulePermissions
+  rolModulePermissions RolModulePermissions[] @relation("ModulePermissionsId")
+
+  @@unique([moduleId, permissionId])
+}
+
+model RolModulePermissions{
+  id String @id @unique @default(uuid())
+  rol          Rol        @relation("RolId", fields: [rolId], references: [id], onDelete: Cascade)
+  rolId        String
+  modulePermissions ModulePermissions @relation("ModulePermissionsId", fields: [modulePermissionsId], references: [id], onDelete: Cascade)
+  modulePermissionsId String
+
+  createdAt DateTime @default(now()) @db.Timestamptz(6)
+  updatedAt DateTime @updatedAt  
+
+  @@unique([rolId, modulePermissionsId])
+}
+
+model Audit {
+  id            String          @id @unique @default(uuid())
+  entityId      String
+  entityType    String // Representa el nombre del modelo (ej: User, Rol, etc.)
+  action        AuditActionType // Representa la acción (CREATE, UPDATE, DELETE)
+  performedBy   User            @relation("AuditPerformedBy", fields: [performedById], references: [id])
+  performedById String
+  createdAt     DateTime        @default(now()) @db.Timestamptz(6)
+}
+
+enum AuditActionType {
+  CREATE
+  UPDATE
+  DELETE
+}
+
+model BusinessConfig {
+  id            String @id @unique @default(uuid())
+  businessName  String
+  contactNumber String
+  email         String
+  address       String
+
+  createdAt DateTime @default(now()) @db.Timestamptz(6)
+  updatedAt DateTime @updatedAt
+
+  // Relación uno a muchos con BusinessHours
+  businessHours    BusinessHours[]    @relation("businessId")
+  ClassPriceConfig ClassPriceConfig[] @relation("businessId") 
+  ClassSchedule    ClassSchedule[]    @relation("businessId")
+  ClassLanguage    ClassLanguage[]    @relation("businessId")
+  ClassRegistrationConfig ClassRegistrationConfig[] @relation("businessId")
+
+  @@unique([businessName, email])
+}
+
+model BusinessHours {
+  id String @id @unique @default(uuid())
+
+  // Clave foránea que referencia a BusinessConfig
+  businessId String
+  business   BusinessConfig @relation("businessId", fields: [businessId], references: [id])
+
+  dayOfWeek   DayOfWeek
+  openingTime String
+  closingTime String
+  isOpen      Boolean   @default(true)
+
+  createdAt DateTime @default(now()) @db.Timestamptz(6)
+  updatedAt DateTime @updatedAt
+}
+
+enum DayOfWeek {
+  MONDAY
+  TUESDAY
+  WEDNESDAY
+  THURSDAY
+  FRIDAY
+  SATURDAY
+  SUNDAY
+}
+
+model ClassPriceConfig {
+  id String @id @unique @default(uuid())
+
+  // Clave foránea que referencia a BusinessConfig
+  businessId String
+  business   BusinessConfig @relation("businessId", fields: [businessId], references: [id])
+
+  classTypeUser ClassTypeUser
+  price         Float
+  typeCurrency  TypeCurrency
+
+  createdAt DateTime @default(now()) @db.Timestamptz(6)
+  updatedAt DateTime @updatedAt
+}
+
+enum ClassTypeUser {
+  ADULT
+  CHILD
+}
+
+enum TypeCurrency {
+  SOL
+  DOLAR
+}
+
+model ClassSchedule{
+  id String @id @unique @default(uuid())
+
+  // Clave foránea que referencia a BusinessConfig
+  businessId String
+  business   BusinessConfig @relation("businessId", fields: [businessId], references: [id])
+
+  startTime String
+  createdAt DateTime @default(now()) @db.Timestamptz(6)
+  updatedAt DateTime @updatedAt
+}
+
+model ClassLanguage{
+  id String @id @unique @default(uuid())
+
+  // Clave foránea que referencia a BusinessConfig
+  businessId String
+  business   BusinessConfig @relation("businessId", fields: [businessId], references: [id])
+
+  languageName String
+  createdAt DateTime @default(now()) @db.Timestamptz(6)
+  updatedAt DateTime @updatedAt
+}
+
+model ClassRegistrationConfig{
+  id String @id @unique @default(uuid())
+
+  // Clave foránea que referencia a BusinessConfig
+  businessId String
+  business   BusinessConfig @relation("businessId", fields: [businessId], references: [id])
+
+  closeBeforeStartInterval Int
+  finalRegistrationCloseInterval Int
+  createdAt DateTime @default(now()) @db.Timestamptz(6)
+  updatedAt DateTime @updatedAt
+}
+
+model Product {
+  id          String  @id @unique @default(uuid())
+  name        String
+  description String?
+  price       Float
+  image       String?
+  isAvailable Boolean @default(true)
+  isActive    Boolean @default(true)
+
+  createdAt DateTime @default(now()) @db.Timestamptz(6)
+  updatedAt DateTime @updatedAt
+
+  // Relación con Category
+  category   Category @relation("categoryId", fields: [categoryId], references: [id])
+  categoryId String
+
+  // Relación con ProductVariation
+  productVariations ProductVariation[] @relation("productId")
+}
+
+model Category {
+  id String @id @unique @default(uuid())
+
+  name        String  @unique
+  description String?
+  isActive    Boolean @default(true)
+
+  createdAt DateTime @default(now()) @db.Timestamptz(6)
+  updatedAt DateTime @updatedAt
+
+  // Relación con Product
+  products Product[] @relation("categoryId")
+}
+
+model ProductVariation {
+  id String @id @unique @default(uuid())
+
+  name            String
+  description     String?
+  additionalPrice Float
+
+  createdAt DateTime @default(now()) @db.Timestamptz(6)
+  updatedAt DateTime @updatedAt
+
+  // Relación con Product
+  product   Product @relation("productId", fields: [productId], references: [id])
+  productId String
+}
+
+model Client {
+  id          String  @id @unique @default(uuid())
+  name        String
+  email       String @unique
+  phone       String?
+  password    String?
+  birthDate   DateTime?
+  isGoogleAuth Boolean?
+  token String?
+  lastLogin DateTime @default(now()) @db.Timestamptz(6)
+  isActive    Boolean @default(true)
+
+  createdAt DateTime @default(now()) @db.Timestamptz(6)
+  updatedAt DateTime @updatedAt
 }
