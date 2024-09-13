@@ -108,7 +108,7 @@ export class AuthService {
         name: clientDB.name,
         email: clientDB.email
       }); */
-      res.redirect(this.configService.get<string>('WEB_URL_GOOGLE'));
+      res.redirect(this.configService.get<string>('WEB_URL'));
     } catch (error) {
       this.logger.error('Error validating user', error.stack);
       if (error instanceof NotFoundException) {
