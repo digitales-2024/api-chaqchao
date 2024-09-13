@@ -485,11 +485,8 @@ export class UsersService {
    * Buscar todos los usuarios activos en la base de datos
    * @returns Retorna un array con los datos de los usuarios
    */
-  async findAll(): Promise<UserData[]> {
+  async findAll(): Promise<UserPayload[]> {
     const usersDB = await this.prisma.user.findMany({
-      where: {
-        isActive: true
-      },
       select: {
         id: true,
         name: true,
@@ -497,6 +494,7 @@ export class UsersService {
         phone: true,
         lastLogin: true,
         isActive: true,
+        mustChangePassword: true,
         userRols: {
           select: {
             rol: {
@@ -519,6 +517,9 @@ export class UsersService {
         name: user.name,
         email: user.email,
         phone: user.phone,
+        lastLogin: user.lastLogin,
+        isActive: user.isActive,
+        mustChangePassword: user.mustChangePassword,
         roles: user.userRols.map((rol) => {
           return {
             id: rol.rol.id,
@@ -550,16 +551,14 @@ export class UsersService {
    * Genera una contraseña aleatoria
    * @returns Contraseña aleatoria
    */
-  generatePassword(): HttpResponse<string> {
+  generatePassword(): { password: string } {
     const password = generate({
       length: 10,
       numbers: true
     });
 
     return {
-      statusCode: HttpStatus.OK,
-      message: 'Password generated',
-      data: password
+      password
     };
   }
 

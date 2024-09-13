@@ -374,7 +374,12 @@ export class RolService {
     try {
       // Recupera todos los roles activos con sus permisos asociados
       const roles = await this.prisma.rol.findMany({
-        where: { isActive: true },
+        where: {
+          isActive: true,
+          NOT: {
+            name: ValidRols.SUPER_ADMIN
+          }
+        },
         include: {
           rolModulePermissions: {
             include: {
