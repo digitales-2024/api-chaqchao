@@ -1,7 +1,7 @@
 import { Controller, Get, Body, Patch, Param, Res, Delete } from '@nestjs/common';
 import { ClientService } from './client.service';
 import { UpdateClientDto } from './dto/update-client.dto';
-import { ClientDataUpdate, ClientPayload, HttpResponse } from 'src/interfaces';
+import { ClientData, ClientDataUpdate, ClientPayload, HttpResponse } from 'src/interfaces';
 import {
   ApiBadRequestResponse,
   ApiInternalServerErrorResponse,
@@ -11,6 +11,7 @@ import {
 } from '@nestjs/swagger';
 import { ClientAuth } from '../auth/decorators/client-auth.decorator';
 import { Response } from 'express';
+import { UpdatePasswordClientDto } from './dto/update-password-client.dto';
 
 @ClientAuth()
 @ApiTags('Client Shop')
@@ -40,5 +41,14 @@ export class ClientController {
   async remove(@Param('id') id: string, @Res() res: Response) {
     const result = await this.clientService.remove(id, res);
     return res.status(result.statusCode).json(result);
+  }
+
+  @ApiOkResponse({ description: 'Client password updated sucessfully' })
+  @Patch('password/:id')
+  async updatePassword(
+    @Param('id') id: string,
+    @Body() updatePasswordClientDto: UpdatePasswordClientDto
+  ): Promise<HttpResponse<ClientData>> {
+    return this.clientService.updatePassword(id, updatePasswordClientDto);
   }
 }

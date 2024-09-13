@@ -10,6 +10,8 @@ import { ClientData, ClientDataUpdate, ClientPayload, HttpResponse } from 'src/i
 import { handleException } from 'src/utils';
 import { PrismaService } from 'src/prisma/prisma.service';
 import { Response } from 'express';
+import { UpdatePasswordClientDto } from './dto/update-password-client.dto';
+import * as bcrypt from 'bcrypt';
 
 @Injectable()
 export class ClientService {
@@ -99,6 +101,57 @@ export class ClientService {
     } catch (error) {
       this.logger.error(`Error updating client for id: ${id}`, error.stack);
       handleException(error, 'Error updating client');
+    }
+  }
+
+  /**
+   * Actualizar la contraseña de un cliente
+   * @param id Id del cliente
+   * @param updatePasswordClientDto Data para actualizar la contraseña
+   * @returns Contraseña actualizada
+   */
+  async updatePassword(
+    id: string,
+    updatePasswordClientDto: UpdatePasswordClientDto
+  ): Promise<HttpResponse<ClientData>> {
+    const { password, newPassword, confirmPassword } = updatePasswordClientDto;
+    try {
+      const clientInformation = await this.findById(id);
+      await this.findByEmailRegisteredGoogle(clientInformation.email);
+      const clientDB = await this.findByEmail(clientInformation.email);
+
+      // Comparar la contraseña actual
+      const isPasswordValid = await bcrypt.compare(password, clientDB.password);
+      if (!isPasswordValid) {
+        throw new BadRequestException('Current password is incorrect');
+      }
+
+      // Validar que la nueva contraseña y la confirmación sean iguales
+      if (newPassword !== confirmPassword) {
+        throw new BadRequestException('New password and confirm password do not match');
+      }
+
+      // Encriptar la nueva contraseña
+      const hashedPassword = await bcrypt.hash(newPassword, 10);
+
+      // Actualizar la contraseña en la base de datos
+      await this.prisma.client.update({
+        where: { id },
+        data: { password: hashedPassword }
+      });
+
+      return {
+        statusCode: HttpStatus.OK,
+        message: 'Password updated successfully',
+        data: {
+          id: clientDB.id,
+          name: clientDB.name,
+          email: clientDB.email
+        }
+      };
+    } catch (error) {
+      this.logger.error(`Error updating password client for id: ${id}`, error.stack);
+      handleException(error, 'Error updating password client');
     }
   }
 
