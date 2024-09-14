@@ -55,9 +55,11 @@ export class UsersController {
   }
 
   @ApiOkResponse({ description: 'Users deactivated' })
-  @Patch('deactivate')
-  deactivate(@Body() users: DeleteUsersDto, @GetUser() user: UserDataLogin) {
-    console.log('🚀 ~ UsersController ~ deactivate ~ DeleteUsersDto:', DeleteUsersDto);
+  @Delete('deactivate/all')
+  deactivate(
+    @Body() users: DeleteUsersDto,
+    @GetUser() user: UserDataLogin
+  ): Promise<Omit<HttpResponse, 'data'>> {
     return this.usersService.deactivate(users, user);
   }
 
