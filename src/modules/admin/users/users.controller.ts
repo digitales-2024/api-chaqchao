@@ -74,8 +74,8 @@ export class UsersController {
 
   @ApiOkResponse({ description: 'Get all users' })
   @Get()
-  findAll(): Promise<UserPayload[]> {
-    return this.usersService.findAll();
+  findAll(@GetUser() user: UserPayload): Promise<UserPayload[]> {
+    return this.usersService.findAll(user);
   }
 
   @ApiOkResponse({ description: 'Get user by id' })
