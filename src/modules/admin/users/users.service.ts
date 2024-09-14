@@ -592,33 +592,68 @@ export class UsersService {
 
   /**
    * Buscar todos los usuarios activos en la base de datos
+   * @param user Usuario que busca los usuarios
    * @returns Retorna un array con los datos de los usuarios
    */
-  async findAll(): Promise<UserPayload[]> {
-    const usersDB = await this.prisma.user.findMany({
-      select: {
-        id: true,
-        name: true,
-        email: true,
-        phone: true,
-        lastLogin: true,
-        isActive: true,
-        mustChangePassword: true,
-        userRols: {
-          select: {
-            rol: {
-              select: {
-                id: true,
-                name: true
+  async findAll(user: UserPayload): Promise<UserPayload[]> {
+    // Verificar que el usuario tenga permisos para listar usuarios
+    const canListUsers = user.roles.some((role) => role.name === ValidRols.SUPER_ADMIN);
+
+    let usersDB: any[] = [];
+    if (!canListUsers) {
+      usersDB = await this.prisma.user.findMany({
+        where: {
+          isActive: true
+        },
+        select: {
+          id: true,
+          name: true,
+          email: true,
+          phone: true,
+          lastLogin: true,
+          isActive: true,
+          mustChangePassword: true,
+          userRols: {
+            select: {
+              rol: {
+                select: {
+                  id: true,
+                  name: true
+                }
               }
             }
           }
+        },
+        orderBy: {
+          createdAt: 'desc'
         }
-      },
-      orderBy: {
-        createdAt: 'desc'
-      }
-    });
+      });
+    } else {
+      usersDB = await this.prisma.user.findMany({
+        select: {
+          id: true,
+          name: true,
+          email: true,
+          phone: true,
+          lastLogin: true,
+          isActive: true,
+          mustChangePassword: true,
+          userRols: {
+            select: {
+              rol: {
+                select: {
+                  id: true,
+                  name: true
+                }
+              }
+            }
+          }
+        },
+        orderBy: {
+          createdAt: 'desc'
+        }
+      });
+    }
 
     return usersDB.map((user) => {
       return {
