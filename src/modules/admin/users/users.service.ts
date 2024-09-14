@@ -399,116 +399,106 @@ export class UsersService {
    * @param user Usuario que desactiva los usuarios
    * @returns Retorna un array con los datos de los usuarios desactivados
    */
-  async deactivate(users: DeleteUsersDto, user: UserData): Promise<void> {
-    console.log('🚀 ~ UsersService ~ deactivate ~ user:', user);
-    console.log('🚀 ~ UsersService ~ deactivate ~ users:', users);
-    // try {
-    //   await this.prisma.$transaction(async (prisma) => {
-    //     const usersDB = await prisma.user.findMany({
-    //       where: {
-    //         id: {
-    //           in: users.ids.map((user) => user)
-    //         }
-    //       },
-    //       select: {
-    //         id: true,
-    //         name: true,
-    //         email: true,
-    //         phone: true,
-    //         isActive: true,
-    //         userRols: {
-    //           select: {
-    //             rol: {
-    //               select: {
-    //                 id: true,
-    //                 name: true
-    //               }
-    //             }
-    //           }
-    //         }
-    //       }
-    //     });
+  async deactivate(users: DeleteUsersDto, user: UserData): Promise<Omit<HttpResponse, 'data'>> {
+    try {
+      await this.prisma.$transaction(async (prisma) => {
+        // Buscar los usuarios en la base de datos
+        const usersDB = await prisma.user.findMany({
+          where: {
+            id: { in: users.ids }
+          },
+          select: {
+            id: true,
+            name: true,
+            email: true,
+            phone: true,
+            isActive: true,
+            userRols: {
+              select: {
+                rol: {
+                  select: {
+                    id: true,
+                    name: true
+                  }
+                }
+              }
+            }
+          }
+        });
 
-    //     if (usersDB.length === 0) {
-    //       throw new NotFoundException('Users not found');
-    //     }
+        // Validar que se encontraron usuarios
+        if (usersDB.length === 0) {
+          throw new NotFoundException('Users not found or inactive');
+        }
 
-    //     const usersDesactivated = [];
+        // Validar que ningún usuario sea el mismo que realiza la desactivación
+        if (usersDB.some((u) => u.id === user.id)) {
+          throw new BadRequestException('You cannot deactivate yourself');
+        }
 
-    //     for (const userDelete of usersDB) {
-    //       // No permitir que el usuario se desactive a sí mismo
-    //       if (userDelete.id === user.id) {
-    //         throw new BadRequestException('You cannot deactivate yourself');
-    //       }
+        // Obtener todos los roles de SUPER_ADMIN en una sola consulta
+        const superAdminUsers = await prisma.userRol.findMany({
+          where: {
+            userId: { in: usersDB.map((u) => u.id) },
+            rol: { name: ValidRols.SUPER_ADMIN }
+          },
+          select: { userId: true }
+        });
 
-    //       // Verificar si el usuario tiene algún rol de superadmin activo
-    //       const superAdminRoles = await prisma.userRol.findMany({
-    //         where: {
-    //           userId: userDelete.id,
-    //           rol: {
-    //             is: {
-    //               name: ValidRols.SUPER_ADMIN
-    //             }
-    //           }
-    //         }
-    //       });
+        const superAdminUserIds = new Set(superAdminUsers.map((r) => r.userId));
+        if (usersDB.some((u) => superAdminUserIds.has(u.id))) {
+          throw new BadRequestException('You cannot deactivate a superadmin user');
+        }
 
-    //       if (superAdminRoles.length > 0) {
-    //         throw new BadRequestException('You cannot deactivate a superadmin user');
-    //       }
+        // Desactivar usuarios y eliminar roles
+        const deactivatePromises = usersDB.map(async (userDelete) => {
+          // Desactivar usuario
+          await prisma.user.update({
+            where: { id: userDelete.id },
+            data: { isActive: false }
+          });
 
-    //       // Marcar el usuario como inactivo
-    //       await prisma.user.update({
-    //         where: { id: userDelete.id },
-    //         data: {
-    //           isActive: false
-    //         }
-    //       });
+          // Eliminar roles
+          await prisma.userRol.updateMany({
+            where: { userId: userDelete.id },
+            data: { isActive: false }
+          });
 
-    //       await this.audit.create({
-    //         entityId: user.id,
-    //         entityType: 'user',
-    //         action: AuditActionType.DELETE,
-    //         performedById: user.id,
-    //         createdAt: new Date()
-    //       });
+          // Auditoría
+          await this.audit.create({
+            entityId: user.id,
+            entityType: 'user',
+            action: AuditActionType.DELETE,
+            performedById: user.id,
+            createdAt: new Date()
+          });
 
-    //       // Eliminar todos los roles del usuario
-    //       await prisma.userRol.updateMany({
-    //         where: {
-    //           userId: userDelete.id
-    //         },
-    //         data: {
-    //           isActive: false
-    //         }
-    //       });
+          return {
+            id: userDelete.id,
+            name: userDelete.name,
+            email: userDelete.email,
+            phone: userDelete.phone,
+            roles: userDelete.userRols.map((rol) => ({
+              id: rol.rol.id,
+              name: rol.rol.name
+            }))
+          };
+        });
 
-    //       usersDesactivated.push({
-    //         id: userDelete.id,
-    //         name: userDelete.name,
-    //         email: userDelete.email,
-    //         phone: userDelete.phone,
-    //         roles: userDelete.userRols.map((rol) => {
-    //           return {
-    //             id: rol.rol.id,
-    //             name: rol.rol.name
-    //           };
-    //         })
-    //       });
-    //     }
+        return Promise.all(deactivatePromises);
+      });
 
-    //     return usersDesactivated;
-    //   });
-
-    //   return {
-    //     statusCode: HttpStatus.OK,
-    //     message: 'Users desactivated',
-    //     data: 'Users desactivated'
-    //   };
-    // } catch (error) {
-    //   this.logger.error('Error desactivating users', error.stack);
-    //   handleException(error, 'Error desactivating users');
-    // }
+      return {
+        statusCode: HttpStatus.OK,
+        message: 'Users deactivated successfully'
+      };
+    } catch (error) {
+      this.logger.error('Error deactivating users', error.stack);
+      if (error instanceof NotFoundException || error instanceof BadRequestException) {
+        throw error;
+      }
+      handleException(error, 'Error deactivating users');
+    }
   }
 
   /**
