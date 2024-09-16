@@ -19,6 +19,7 @@ model User {
   email              String
   password           String
   phone              String?
+  isSuperAdmin       Boolean @default(false)
   lastLogin          DateTime @default(now()) @db.Timestamptz(6)
   isActive           Boolean  @default(true)
   mustChangePassword Boolean  @default(true)
