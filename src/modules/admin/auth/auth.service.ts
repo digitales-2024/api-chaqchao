@@ -70,6 +70,7 @@ export class AuthService {
         name: userDB.name,
         email: userDB.email,
         phone: userDB.phone,
+        isSuperAdmin: userDB.isSuperAdmin,
         roles: userDB.roles
       });
     } catch (error) {
@@ -151,6 +152,7 @@ export class AuthService {
         name: userDB.name,
         email: userDB.email,
         phone: userDB.phone,
+        isSuperAdmin: userDB.isSuperAdmin,
         roles: userDB.roles
       });
     } catch (error) {
