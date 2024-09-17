@@ -96,7 +96,8 @@ export class UsersService {
             id: true,
             name: true,
             email: true,
-            phone: true
+            phone: true,
+            isSuperAdmin: true
           }
         });
 
@@ -147,6 +148,7 @@ export class UsersService {
           name: newUser.name,
           email: newUser.email,
           phone: newUser.phone,
+          isSuperAdmin: newUser.isSuperAdmin,
           roles: newUser.roles
         }
       };
@@ -261,6 +263,7 @@ export class UsersService {
             name: true,
             email: true,
             phone: true,
+            isSuperAdmin: true,
             userRols: {
               select: {
                 rol: {
@@ -293,6 +296,7 @@ export class UsersService {
           name: userUpdate.name,
           email: userUpdate.email,
           phone: userUpdate.phone,
+          isSuperAdmin: userUpdate.isSuperAdmin,
           roles: userUpdate.userRols.map((rol) => ({
             id: rol.rol.id,
             name: rol.rol.name
@@ -378,6 +382,7 @@ export class UsersService {
           name: userDB.name,
           email: userDB.email,
           phone: userDB.phone,
+          isSuperAdmin: userDB.isSuperAdmin,
           roles: userDB.roles
         };
       });
@@ -397,7 +402,7 @@ export class UsersService {
    * Desactivar todos los usuarios de un arreglo de usuarios
    * @param users Arreglo de usuarios a desactivar
    * @param user Usuario que desactiva los usuarios
-   * @returns Retorna un array con los datos de los usuarios desactivados
+   * @returns Retorna un mensaje de la desactivación correcta
    */
   async deactivate(users: DeleteUsersDto, user: UserData): Promise<Omit<HttpResponse, 'data'>> {
     try {
@@ -517,6 +522,7 @@ export class UsersService {
             name: true,
             email: true,
             phone: true,
+            isSuperAdmin: true,
             isActive: true,
             userRols: {
               select: {
@@ -570,6 +576,7 @@ export class UsersService {
           name: userDB.name,
           email: userDB.email,
           phone: userDB.phone,
+          isSuperAdmin: userDB.isSuperAdmin,
           roles: userDB.userRols.map((rol) => {
             return {
               id: rol.rol.id,
@@ -587,6 +594,114 @@ export class UsersService {
     } catch (error) {
       this.logger.error(`Error reactivating a user for id: ${id}`, error.stack);
       handleException(error, 'Error reactivating a user');
+    }
+  }
+
+  /**
+   * Reactivar varios usuarios seleccionadors en la base de datos
+   * @param user Usuario que hara la reactivación
+   * @param users Arreglo de los usuarios a reactivar
+   * @return Retorna un mensaje de la reactivacion exitosa
+   */
+  async reactivateAll(user: UserData, users: DeleteUsersDto): Promise<Omit<HttpResponse, 'data'>> {
+    try {
+      await this.prisma.$transaction(async (prisma) => {
+        // Buscar los usuarios en la base de datos
+        const usersDB = await prisma.user.findMany({
+          where: {
+            id: { in: users.ids }
+          },
+          select: {
+            id: true,
+            name: true,
+            email: true,
+            phone: true,
+            isActive: true,
+            userRols: {
+              select: {
+                rol: {
+                  select: {
+                    id: true,
+                    name: true
+                  }
+                }
+              }
+            }
+          }
+        });
+
+        // Validar que se encontraron usuarios
+        if (usersDB.length === 0) {
+          throw new NotFoundException('Users not found or inactive');
+        }
+
+        // Validar que ningún usuario sea el mismo que realiza la desactivación
+        if (usersDB.some((u) => u.id === user.id)) {
+          throw new BadRequestException('You cannot deactivate yourself');
+        }
+
+        // Obtener todos los roles de SUPER_ADMIN en una sola consulta
+        const superAdminUsers = await prisma.userRol.findMany({
+          where: {
+            userId: { in: usersDB.map((u) => u.id) },
+            rol: { name: ValidRols.SUPER_ADMIN }
+          },
+          select: { userId: true }
+        });
+
+        const superAdminUserIds = new Set(superAdminUsers.map((r) => r.userId));
+        if (usersDB.some((u) => superAdminUserIds.has(u.id))) {
+          throw new BadRequestException('You cannot deactivate a superadmin user');
+        }
+
+        // Reactivar usuarios y eliminar roles
+        const reactivatePromises = usersDB.map(async (userDelete) => {
+          // Desactivar usuario
+          await prisma.user.update({
+            where: { id: userDelete.id },
+            data: { isActive: true }
+          });
+
+          // Reactivar los roles
+          await prisma.userRol.updateMany({
+            where: { userId: userDelete.id },
+            data: { isActive: true }
+          });
+
+          // Auditoría
+          await this.audit.create({
+            entityId: user.id,
+            entityType: 'user',
+            action: AuditActionType.UPDATE,
+            performedById: user.id,
+            createdAt: new Date()
+          });
+
+          return {
+            id: userDelete.id,
+            name: userDelete.name,
+            email: userDelete.email,
+            phone: userDelete.phone,
+            roles: userDelete.userRols.map((rol) => ({
+              id: rol.rol.id,
+              name: rol.rol.name
+            }))
+          };
+        });
+
+        return Promise.all(reactivatePromises);
+      });
+
+      return {
+        statusCode: HttpStatus.OK,
+        message: 'Users reactivate successfully'
+      };
+    } catch (error) {
+      this.logger.error('Error reactivating users', error.stack);
+      if (error instanceof NotFoundException || error instanceof BadRequestException) {
+        throw error;
+      }
+      handleException(error, 'Error reactivating users');
     }
   }
 
@@ -612,6 +727,7 @@ export class UsersService {
           phone: true,
           lastLogin: true,
           isActive: true,
+          isSuperAdmin: true,
           mustChangePassword: true,
           userRols: {
             select: {
@@ -637,6 +753,7 @@ export class UsersService {
           phone: true,
           lastLogin: true,
           isActive: true,
+          isSuperAdmin: true,
           mustChangePassword: true,
           userRols: {
             select: {
@@ -663,6 +780,7 @@ export class UsersService {
         phone: user.phone,
         lastLogin: user.lastLogin,
         isActive: user.isActive,
+        isSuperAdmin: user.isSuperAdmin,
         mustChangePassword: user.mustChangePassword,
         roles: user.userRols.map((rol) => {
           return {
@@ -687,6 +805,7 @@ export class UsersService {
       name: userDB.name,
       email: userDB.email,
       phone: userDB.phone,
+      isSuperAdmin: userDB.isSuperAdmin,
       roles: userDB.roles
     };
   }
@@ -753,6 +872,7 @@ export class UsersService {
     UserData & {
       password: string;
       mustChangePassword: boolean;
+      isSuperAdmin: boolean;
     }
   > {
     const clientDB = await this.prisma.user.findUnique({
@@ -768,6 +888,7 @@ export class UsersService {
         email: true,
         phone: true,
         password: true,
+        isSuperAdmin: true,
         mustChangePassword: true,
         userRols: {
           select: {
@@ -792,6 +913,7 @@ export class UsersService {
       email: clientDB.email,
       phone: clientDB.phone,
       password: clientDB.password,
+      isSuperAdmin: clientDB.isSuperAdmin,
       mustChangePassword: clientDB.mustChangePassword,
       roles: clientDB.userRols.map((rol) => {
         return {
@@ -856,6 +978,7 @@ export class UsersService {
         name: true,
         email: true,
         phone: true,
+        isSuperAdmin: true,
         userRols: {
           select: {
             rol: {
@@ -878,6 +1001,7 @@ export class UsersService {
       name: clientDB.name,
       email: clientDB.email,
       phone: clientDB.phone,
+      isSuperAdmin: clientDB.isSuperAdmin,
       roles: clientDB.userRols.map((rol) => {
         return {
           id: rol.rol.id,
@@ -901,6 +1025,7 @@ export class UsersService {
           name: true,
           email: true,
           phone: true,
+          isSuperAdmin: true,
           lastLogin: true,
           isActive: true,
           mustChangePassword: true,
@@ -925,6 +1050,7 @@ export class UsersService {
         name: clientDB.name,
         email: clientDB.email,
         phone: clientDB.phone,
+        isSuperAdmin: clientDB.isSuperAdmin,
         isActive: clientDB.isActive,
         lastLogin: clientDB.lastLogin,
         mustChangePassword: clientDB.mustChangePassword,

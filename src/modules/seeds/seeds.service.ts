@@ -125,6 +125,7 @@ export class SeedsService {
           data: {
             ...superAdminSeed,
             password: await bcrypt.hash(superAdminSeed.password, 10),
+            isSuperAdmin: true,
             userRols: {
               create: {
                 rolId: superadminRole.id
@@ -135,7 +136,8 @@ export class SeedsService {
             id: true,
             name: true,
             email: true,
-            phone: true
+            phone: true,
+            isSuperAdmin: true
           }
         });
 
@@ -147,6 +149,7 @@ export class SeedsService {
             name: superadminUser.name,
             email: superadminUser.email,
             phone: superadminUser.phone,
+            isSuperAdmin: superadminUser.isSuperAdmin,
             roles: [
               {
                 id: superadminRole.id,

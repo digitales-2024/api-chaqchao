@@ -13,7 +13,7 @@ import {
   ApiTags,
   ApiUnauthorizedResponse
 } from '@nestjs/swagger';
-import { HttpResponse, UserData, UserDataLogin, UserPayload } from 'src/interfaces';
+import { HttpResponse, UserData, UserPayload } from 'src/interfaces';
 import { DeleteUsersDto } from './dto/delete-users.dto';
 
 @ApiTags('Users')
@@ -33,24 +33,20 @@ export class UsersController {
   @Post()
   create(
     @Body() createUserDto: CreateUserDto,
-    @GetUser() user: UserDataLogin
+    @GetUser() user: UserData
   ): Promise<HttpResponse<UserData>> {
     return this.usersService.create(createUserDto, user);
   }
 
   @ApiOkResponse({ description: 'User updated' })
   @Patch(':id')
-  update(
-    @Body() updateUserDto: UpdateUserDto,
-    @Param('id') id: string,
-    @GetUser() user: UserDataLogin
-  ) {
+  update(@Body() updateUserDto: UpdateUserDto, @Param('id') id: string, @GetUser() user: UserData) {
     return this.usersService.update(updateUserDto, id, user);
   }
 
   @ApiOkResponse({ description: 'User deleted' })
   @Delete(':id')
-  remove(@Param('id') id: string, @GetUser() user: UserDataLogin): Promise<HttpResponse<UserData>> {
+  remove(@Param('id') id: string, @GetUser() user: UserData): Promise<HttpResponse<UserData>> {
     return this.usersService.remove(id, user);
   }
 
@@ -58,17 +54,20 @@ export class UsersController {
   @Delete('deactivate/all')
   deactivate(
     @Body() users: DeleteUsersDto,
-    @GetUser() user: UserDataLogin
+    @GetUser() user: UserData
   ): Promise<Omit<HttpResponse, 'data'>> {
     return this.usersService.deactivate(users, user);
   }
 
+  @ApiOkResponse({ description: 'Users reactivated' })
+  @Patch('reactivate/all')
+  reactivateAll(@GetUser() user: UserData, @Body() users: DeleteUsersDto) {
+    return this.usersService.reactivateAll(user, users);
+  }
+
   @ApiOkResponse({ description: 'User reactivated' })
   @Patch('reactivate/:id')
-  reactivate(
-    @Param('id') id: string,
-    @GetUser() user: UserDataLogin
-  ): Promise<HttpResponse<UserData>> {
+  reactivate(@Param('id') id: string, @GetUser() user: UserData): Promise<HttpResponse<UserData>> {
     return this.usersService.reactivate(id, user);
   }
 
