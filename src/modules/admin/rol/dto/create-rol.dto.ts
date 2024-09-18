@@ -20,6 +20,7 @@ export class CreateRolDto {
   @Transform(({ value }) => value.trim().toLowerCase())
   description?: string;
 
+  @ApiProperty()
   @IsArray()
   @IsNotEmpty()
   modulePermissions: string[];

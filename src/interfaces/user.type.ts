@@ -3,7 +3,14 @@ import { Rol } from './index';
 
 export type UserPayload = Pick<
   User,
-  'id' | 'name' | 'email' | 'isActive' | 'phone' | 'mustChangePassword' | 'lastLogin'
+  | 'id'
+  | 'name'
+  | 'email'
+  | 'isActive'
+  | 'phone'
+  | 'mustChangePassword'
+  | 'lastLogin'
+  | 'isSuperAdmin'
 > & {
   roles: Omit<Rol, 'description'>[];
 };
