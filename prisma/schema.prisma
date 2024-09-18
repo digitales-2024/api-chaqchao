@@ -315,3 +315,48 @@ model Client {
   createdAt DateTime @default(now()) @db.Timestamptz(6)
   updatedAt DateTime @updatedAt
 }
+
+model Cart {
+  id          String  @id @unique @default(uuid())
+ 
+  // Relación con Client
+  client   Client @relation("clientId", fields: [clientId], references: [id])
+  clientId String
+
+  // Relación con Client
+  client Client[] @relation("cartId")
+
+  cartStatus        CartStatus
+  createdAt DateTime @default(now()) @db.Timestamptz(6)
+  updatedAt DateTime @updatedAt
+}
+
+enum CartStatus {
+  ACTIVE
+  PENDING
+  COMPLETED
+}
+
+
+model CartItem {
+  id          String  @id @unique @default(uuid())
+
+  // Relación con Cart
+  cart   Cart @relation("cartId", fields: [cartId], references: [id])
+  cartId String
+
+  // Relación con CartItem
+  cartItem CartItem[] @relation("cartItemId")
+
+  // Relación con Product
+  product   Product @relation("productId", fields: [productId], references: [id])
+  productId String
+
+  // Relación con Product
+  product Product[] @relation("cartItemId")
+
+  quantity      Int
+  price         Float
+  createdAt DateTime @default(now()) @db.Timestamptz(6)
+  updatedAt DateTime @updatedAt
+}
