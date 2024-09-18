@@ -75,7 +75,8 @@ export class UsersService {
         if (inactiveEmail) {
           throw new BadRequestException({
             statusCode: HttpStatus.CONFLICT,
-            message: 'Email already exists',
+            message:
+              'Email already exists but inactive, contact the administrator to reactivate the account',
             data: {
               id: (await this.findByEmailInactive(email)).id
             }
@@ -469,17 +470,34 @@ export class UsersService {
 
         // Desactivar usuarios y eliminar roles
         const deactivatePromises = usersDB.map(async (userDelete) => {
-          // Desactivar usuario
-          await prisma.user.update({
-            where: { id: userDelete.id },
-            data: { isActive: false }
+          //Validar que este usuario no haya hecho una accion en el sistema
+          const userAction = await prisma.audit.findFirst({
+            where: {
+              performedById: userDelete.id
+            }
           });
+          if (userAction) {
+            // Desactivar usuario
+            await prisma.user.update({
+              where: { id: userDelete.id },
+              data: { isActive: false }
+            });
 
-          // Eliminar roles
-          await prisma.userRol.updateMany({
-            where: { userId: userDelete.id },
-            data: { isActive: false }
-          });
+            // Desactivar roles
+            await prisma.userRol.updateMany({
+              where: { userId: userDelete.id },
+              data: { isActive: false }
+            });
+          } else {
+            // Eliminar roles
+            await prisma.userRol.deleteMany({
+              where: { userId: userDelete.id }
+            });
+            // Eliminar usuario
+            await prisma.user.delete({
+              where: { id: userDelete.id }
+            });
+          }
 
           // Auditoría
           await this.audit.create({
