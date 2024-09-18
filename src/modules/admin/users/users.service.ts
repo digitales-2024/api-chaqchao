@@ -101,6 +101,18 @@ export class UsersService {
           }
         });
 
+        // Enviamos el usuario al correo con la contraseña temporal
+        const emailResponse = await this.eventEmitter.emitAsync('user.welcome-admin-first', {
+          name: newUser.name.toUpperCase(),
+          email,
+          password,
+          webAdmin: process.env.WEB_URL
+        });
+
+        if (emailResponse.every((response) => response !== true)) {
+          throw new BadRequestException('Failed to send email');
+        }
+
         const userRoles: Omit<Rol, 'description'>[] = [];
 
         for (const rol of roles) {
@@ -840,7 +852,8 @@ export class UsersService {
         const emailResponse = await this.eventEmitter.emitAsync('user.welcome-admin-first', {
           name: userDB.name.toUpperCase(),
           email,
-          password
+          password,
+          webAdmin: process.env.WEB_URL
         });
 
         if (emailResponse.every((response) => response === true)) {
