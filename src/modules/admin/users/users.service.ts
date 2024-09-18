@@ -860,14 +860,14 @@ export class UsersService {
    * @param sendEmailDto Data para enviar el email
    * @returns Estado del envio del email
    */
-  async sendEmail(sendEmailDto: SendEmailDto): Promise<HttpResponse<string>> {
+  async sendNewPassword(sendEmailDto: SendEmailDto): Promise<HttpResponse<string>> {
     try {
       const { email, password } = sendEmailDto;
 
       const userDB = await this.findByEmail(email);
 
       if (userDB.mustChangePassword) {
-        const emailResponse = await this.eventEmitter.emitAsync('user.welcome-admin-first', {
+        const emailResponse = await this.eventEmitter.emitAsync('user.new-password', {
           name: userDB.name.toUpperCase(),
           email,
           password,
