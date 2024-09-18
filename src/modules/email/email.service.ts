@@ -19,7 +19,7 @@ export class EmailService {
 
   @OnEvent('user.welcome-admin-first')
   async welcomeEmail(data: EventPayloads['user.welcome-admin-first']): Promise<boolean> {
-    const { name, email, password } = data;
+    const { name, email, password, webAdmin } = data;
     const subject = `Bienvenido a ${infoBusiness.business}: ${getFirstWord(name)}`;
 
     try {
@@ -31,6 +31,7 @@ export class EmailService {
           name,
           email,
           password,
+          webAdmin,
           business: infoBusiness.business,
           url: infoBusiness.url,
           phone: infoBusiness.phone,
