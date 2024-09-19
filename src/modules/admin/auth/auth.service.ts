@@ -13,6 +13,7 @@ import { JwtPayload } from './interfaces/jwt-payload.interface';
 import { JwtService } from '@nestjs/jwt';
 import { UpdatePasswordDto } from './dto/update-password.dto';
 import { Response } from 'express';
+import { ConfigService } from '@nestjs/config';
 
 @Injectable()
 export class AuthService {
@@ -20,7 +21,8 @@ export class AuthService {
 
   constructor(
     private readonly userService: UsersService,
-    private readonly jwtService: JwtService
+    private readonly jwtService: JwtService,
+    private readonly configService: ConfigService
   ) {}
 
   /**
@@ -61,8 +63,8 @@ export class AuthService {
         secure: process.env.NODE_ENV === 'production',
         sameSite: 'strict',
         path: '/',
-        maxAge: 1000 * 60 * 60 * 24 * 30, // 30 días
-        expires: new Date(Date.now() + 1000 * 60 * 60 * 24 * 30) // 30 días
+        maxAge: this.configService.get('COOKIE_EXPIRES_IN'),
+        expires: new Date(Date.now() + this.configService.get('COOKIE_EXPIRES_IN'))
       });
 
       res.json({
@@ -143,8 +145,8 @@ export class AuthService {
         secure: process.env.NODE_ENV === 'production',
         sameSite: 'strict',
         path: '/',
-        maxAge: 1000 * 60 * 60 * 24 * 30, // 30 días
-        expires: new Date(Date.now() + 1000 * 60 * 60 * 24 * 30) // 30 días
+        maxAge: this.configService.get('COOKIE_EXPIRES_IN'),
+        expires: new Date(Date.now() + this.configService.get('COOKIE_EXPIRES_IN'))
       });
 
       res.json({
