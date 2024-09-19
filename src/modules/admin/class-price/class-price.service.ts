@@ -66,6 +66,24 @@ export class ClassPriceService {
           throw new NotFoundException('Business config not found');
         }
 
+        // Validar que solo haya dos precios para adulto y dos para child
+        const existingPrices = await prisma.classPriceConfig.findMany({
+          where: {
+            businessId,
+            classTypeUser
+          }
+        });
+
+        const priceCount = existingPrices.filter(
+          (price) => price.typeCurrency === typeCurrency
+        ).length;
+
+        if (priceCount >= 1) {
+          throw new BadRequestException(
+            `Only one price in ${typeCurrency} is allowed for ${classTypeUser}`
+          );
+        }
+
         const priceFloat = parseFloat(price.toString());
 
         // Crear el registro de class price config
