@@ -87,13 +87,13 @@ export class EmailService {
   @OnEvent('user.new-password')
   async newPassword(data: EventPayloads['user.new-password']): Promise<boolean> {
     const { name, email, password, webAdmin } = data;
-    const subject = `Bienvenido a ${infoBusiness.business}: ${getFirstWord(name)}`;
+    const subject = `Hola de nuevo: ${getFirstWord(name)}`;
 
     try {
       const sendingEmail = await this.mailerService.sendMail({
         to: email,
         subject,
-        template: 'welcome-admin-first',
+        template: 'new-password',
         context: {
           name,
           email,
