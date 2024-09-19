@@ -12,7 +12,7 @@ import { handleException } from 'src/utils';
 import { JwtPayload } from './interfaces/jwt-payload.interface';
 import { JwtService } from '@nestjs/jwt';
 import { UpdatePasswordDto } from './dto/update-password.dto';
-import { Response } from 'express';
+import { Response, Request } from 'express';
 import { ConfigService } from '@nestjs/config';
 
 @Injectable()
@@ -171,5 +171,50 @@ export class AuthService {
   private getJwtToken(payload: JwtPayload) {
     const token = this.jwtService.sign(payload);
     return token;
+  }
+
+  /**
+   * Verifica si el token es válido
+   * @param token Token a verificar
+   * @returns  Datos del token
+   */
+  verifyToken(token: string): JwtPayload {
+    return this.jwtService.verify(token);
+  }
+
+  /**
+   * Actualizar un token JWT
+   * @param res Respuesta HTTP
+   * @param req Petición HTTP
+   * @returns Datos del usuario logueado
+   */
+  async refreshToken(res: Response, req: Request): Promise<any> {
+    try {
+      const token = req.cookies['access_token'];
+      if (!token) {
+        throw new UnauthorizedException('Token not found');
+      }
+      const payload = this.jwtService.decode(token) as JwtPayload;
+      const userDB = await this.userService.findById(payload.id);
+      // Genera el token
+      const newToken = this.getJwtToken({ id: userDB.id });
+      // Configura la cookie HttpOnly
+      res.cookie('access_token', newToken, {
+        httpOnly: true,
+        secure: process.env.NODE_ENV === 'production',
+        sameSite: 'strict',
+        path: '/'
+      });
+      res.json({
+        id: userDB.id,
+        name: userDB.name,
+        email: userDB.email,
+        phone: userDB.phone,
+        roles: userDB.roles
+      });
+    } catch (error) {
+      this.logger.error('Error refreshing token', error.stack);
+      handleException(error, 'Error refreshing token');
+    }
   }
 }
