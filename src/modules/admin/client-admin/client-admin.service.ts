@@ -3,21 +3,16 @@ import { AuditActionType } from '@prisma/client';
 import { ClientPayload, UserData } from 'src/interfaces';
 import { PrismaService } from 'src/prisma/prisma.service';
 import { handleException } from 'src/utils';
-import { RolService } from '../../admin/rol/rol.service';
 
 @Injectable()
 export class ClientAdminService {
   private readonly logger = new Logger(ClientAdminService.name);
-  constructor(
-    private readonly prisma: PrismaService,
-    private readonly rolService: RolService
-  ) {}
+  constructor(private readonly prisma: PrismaService) {}
   /**
    * Obtiene todos los clientes
    * @returns Todos los clientes
    */
   async findAll(): Promise<ClientPayload[]> {
-    //const isSuperAdmin = await this.rolService.isRolSuperAdmin(id);
     try {
       const clients = await this.prisma.client.findMany({
         where: {},
