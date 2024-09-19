@@ -250,6 +250,23 @@ export class ClassPriceService {
           };
         }
 
+        // Validar que solo haya dos precios para adulto y dos para child
+        const existingPrices = await prisma.classPriceConfig.findMany({
+          where: {
+            classTypeUser: classTypeUser || classPriceDB.classTypeUser
+          }
+        });
+
+        const priceCount = existingPrices.filter(
+          (price) => price.typeCurrency === (typeCurrency || classPriceDB.typeCurrency)
+        ).length;
+
+        if (priceCount >= 1) {
+          throw new BadRequestException(
+            `Only one price in ${typeCurrency || classPriceDB.typeCurrency} is allowed for ${classTypeUser || classPriceDB.classTypeUser}`
+          );
+        }
+
         // Actualizar el registro de class price
         const updatedClassPrice = await prisma.classPriceConfig.update({
           where: {
