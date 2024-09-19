@@ -858,16 +858,46 @@ export class UsersService {
   /**
    * Enviar un email al usuario con la contraseña temporal
    * @param sendEmailDto Data para enviar el email
+   * @param user Usuario que envia el email
    * @returns Estado del envio del email
    */
-  async sendEmail(sendEmailDto: SendEmailDto): Promise<HttpResponse<string>> {
+  async sendNewPassword(sendEmailDto: SendEmailDto, user: UserData): Promise<HttpResponse<string>> {
     try {
       const { email, password } = sendEmailDto;
 
       const userDB = await this.findByEmail(email);
+      // Encriptamos la contraseña
+      const hashedPassword = await bcrypt.hash(password, 10);
 
-      if (userDB.mustChangePassword) {
-        const emailResponse = await this.eventEmitter.emitAsync('user.welcome-admin-first', {
+      const send = await this.prisma.$transaction(async (prisma) => {
+        // Verificamos que el email ya existe y este activo
+        const existEmail = await this.checkEmailExist(email);
+
+        if (!existEmail) {
+          throw new BadRequestException('Email not found');
+        }
+
+        // Verificamos si el email ya existe y esta inactivo
+        const inactiveEmail = await this.checkEmailInactive(email);
+
+        if (inactiveEmail) {
+          throw new BadRequestException(
+            'Email already exists but inactive, contact the administrator to reactivate the account'
+          );
+        }
+
+        // Verificamos que no actualice su propia contraseña
+        if (userDB.id === user.id) {
+          throw new BadRequestException('You cannot update your own password');
+        }
+
+        await prisma.user.update({
+          where: { id: userDB.id },
+          data: {
+            password: hashedPassword
+          }
+        });
+        const emailResponse = await this.eventEmitter.emitAsync('user.new-password', {
           name: userDB.name.toUpperCase(),
           email,
           password,
@@ -881,15 +911,15 @@ export class UsersService {
             data: sendEmailDto.email
           };
         } else {
-          return {
-            statusCode: HttpStatus.BAD_REQUEST,
-            message: `Failed to send email`,
-            data: sendEmailDto.email
-          };
+          throw new BadRequestException('Failed to send email');
         }
-      }
+      });
+      return send;
     } catch (error) {
       this.logger.error(`Error sending email to: ${sendEmailDto.email}`, error.stack);
+      if (error instanceof BadRequestException) {
+        throw error;
+      }
       handleException(error, 'Error sending email');
     }
   }
