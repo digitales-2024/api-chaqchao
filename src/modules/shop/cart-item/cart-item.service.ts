@@ -73,17 +73,19 @@ export class CartItemService {
    * @returns Item para el Carrito de compras creado
    */
   async create(createCartItemDto: CreateCartItemDto): Promise<HttpResponse<CartItemData>> {
-    const { cartId, productId, quantity, price } = createCartItemDto;
+    const { cartId, productId, quantity } = createCartItemDto;
     let newCartItem;
 
     try {
       // Validar el product si se proporciona un productId
-      if (productId) {
-        const cartItemDB = await this.productService.findById(productId);
-        if (!cartItemDB) {
-          throw new BadRequestException('Invalid productId provided');
-        }
+
+      const productDB = await this.productService.findById(productId);
+      if (!productDB) {
+        throw new BadRequestException('Invalid productId provided');
       }
+
+      // Calcular el precio total basado en la cantidad y el precio unitario del producto
+      const price = parseFloat((productDB.price * quantity).toFixed(2)); // Asegúrate de manejar los decimales correctamente
 
       // Crear el Cart Item
       newCartItem = await this.prisma.$transaction(async () => {
@@ -93,7 +95,7 @@ export class CartItemService {
             cartId,
             productId,
             quantity: parseFloat(quantity.toString()),
-            price: parseFloat(price.toString())
+            price
           },
           select: {
             id: true,
@@ -260,6 +262,70 @@ export class CartItemService {
         throw error;
       }
       handleException(error, 'Error deleting product variation');
+    }
+  }
+
+  /**
+   * Actualizar la cantidad de un item en el carrito de compras
+   * @param id Id del item del carrito
+   * @param quantity Nueva cantidad para el item
+   * @returns Item del carrito actualizado
+   */
+  async updateQuantity(id: string, quantity: number): Promise<HttpResponse<CartItemData>> {
+    let updatedCartItem;
+
+    try {
+      // Buscar el item del carrito
+      const cartItem = await this.prisma.cartItem.findUnique({
+        where: { id },
+        include: { product: true } // Incluir los datos del producto para obtener el precio unitario
+      });
+
+      if (!cartItem) {
+        throw new NotFoundException('Cart item not found');
+      }
+
+      // Recalcular el precio basado en la nueva cantidad
+      const newPrice = parseFloat((cartItem.product.price * quantity).toFixed(2));
+
+      // Actualizar la cantidad y el precio
+      updatedCartItem = await this.prisma.cartItem.update({
+        where: { id },
+        data: {
+          quantity: parseFloat(quantity.toString()),
+          price: newPrice
+        },
+        select: {
+          id: true,
+          quantity: true,
+          price: true,
+          cart: {
+            select: {
+              id: true
+            }
+          },
+          product: {
+            select: {
+              id: true,
+              name: true
+            }
+          }
+        }
+      });
+
+      return {
+        statusCode: HttpStatus.OK,
+        message: 'Cart item updated successfully',
+        data: updatedCartItem
+      };
+    } catch (error) {
+      this.logger.error(`Error updating Cart Item quantity: ${error.message}`, error.stack);
+
+      if (error instanceof NotFoundException) {
+        throw error;
+      }
+
+      handleException(error, 'Error updating Cart Item quantity');
     }
   }
 }
