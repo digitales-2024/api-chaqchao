@@ -1,6 +1,7 @@
-import { Controller, Post, Body, Get, Delete, Param } from '@nestjs/common';
+import { Controller, Post, Body, Get, Delete, Param, Patch } from '@nestjs/common';
 import { CartItemService } from './cart-item.service';
 import { CreateCartItemDto } from './dto/create-cart-item.dto';
+import { UpdateQuantityCartItemDto } from './dto/update-cart-item.dto';
 import { Auth } from 'src/modules/admin/auth/decorators';
 import { HttpResponse } from 'src/interfaces';
 import { CartItemData } from 'src/interfaces/cart-item.interface';
@@ -39,5 +40,15 @@ export class CartItemController {
   @Delete(':id')
   remove(@Param('id') id: string): Promise<HttpResponse<CartItemData>> {
     return this.cartItemService.remove(id);
+  }
+
+  @ApiOkResponse({ description: 'Cart item quantity updated' })
+  @Patch(':id')
+  updateQuantity(
+    @Param('id') id: string,
+    @Body() updateCartItemDto: UpdateQuantityCartItemDto
+  ): Promise<HttpResponse<CartItemData>> {
+    const { quantity } = updateCartItemDto;
+    return this.cartItemService.updateQuantity(id, quantity);
   }
 }
