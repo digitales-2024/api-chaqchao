@@ -221,7 +221,7 @@ model ClassSchedule {
   businessId String
   business   BusinessConfig @relation("businessId", fields: [businessId], references: [id])
 
-  startTime String
+  startTime String @unique
   createdAt DateTime @default(now()) @db.Timestamptz(6)
   updatedAt DateTime @updatedAt
 }
