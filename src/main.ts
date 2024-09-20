@@ -42,7 +42,9 @@ async function bootstrap() {
     { name: 'Products', description: 'Operations about products' },
     { name: 'Category', description: 'Operations about categories' },
     { name: 'Orders', description: 'Operations about orders' },
-    { name: 'Audit', description: 'Operations about audit' }
+    { name: 'Audit', description: 'Operations about audit' },
+    { name: 'Cart', description: 'Operations about cart' },
+    { name: 'CartItem', description: 'Operations about cart items' }
   ];
 
   SwaggerModule.setup('api', app, document);
