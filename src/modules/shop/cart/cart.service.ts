@@ -62,7 +62,7 @@ export class CartService {
    * @returns Carrito de compras creado
    */
   async create(createCartDto: CreateCartDto): Promise<HttpResponse<CartData>> {
-    const { clientId, cartStatus } = createCartDto;
+    const { clientId, cartStatus = 'PENDING' } = createCartDto;
     let newCart;
 
     try {
@@ -80,7 +80,7 @@ export class CartService {
         const cart = await this.prisma.cart.create({
           data: {
             clientId,
-            cartStatus
+            cartStatus: cartStatus || 'PENDING' // Pone PENDING si el status no es proveido
           },
           select: {
             id: true,

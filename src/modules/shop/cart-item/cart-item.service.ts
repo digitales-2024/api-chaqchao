@@ -77,15 +77,11 @@ export class CartItemService {
     let newCartItem;
 
     try {
-      // Validar el product si se proporciona un productId
-
-      const productDB = await this.productService.findById(productId);
-      if (!productDB) {
+      // Validar el producto
+      const product = await this.productService.findById(productId);
+      if (!product) {
         throw new BadRequestException('Invalid productId provided');
       }
-
-      // Calcular el precio total basado en la cantidad y el precio unitario del producto
-      const price = parseFloat((productDB.price * quantity).toFixed(2)); // Asegúrate de manejar los decimales correctamente
 
       // Crear el Cart Item
       newCartItem = await this.prisma.$transaction(async () => {
@@ -95,7 +91,7 @@ export class CartItemService {
             cartId,
             productId,
             quantity: parseFloat(quantity.toString()),
-            price
+            price: product.price * quantity // Calcular el precio basado en la cantidad
           },
           select: {
             id: true,
@@ -103,7 +99,8 @@ export class CartItemService {
             price: true,
             cart: {
               select: {
-                id: true
+                id: true,
+                cartStatus: true
               }
             },
             product: {
@@ -115,12 +112,20 @@ export class CartItemService {
           }
         });
 
+        // Actualizar el estado del carrito a 'ACTIVE' si está en 'PENDING'
+        if (cartItem.cart.cartStatus === 'PENDING') {
+          await this.prisma.cart.update({
+            where: { id: cartId },
+            data: { cartStatus: 'ACTIVE' }
+          });
+        }
+
         return cartItem;
       });
 
       return {
         statusCode: HttpStatus.CREATED,
-        message: 'Cart Item created successfully',
+        message: 'Cart Item created and cart status updated to ACTIVE',
         data: {
           id: newCartItem.id,
           cartId: newCartItem.cartId,
@@ -129,30 +134,14 @@ export class CartItemService {
           price: newCartItem.price,
           cart: {
             id: newCartItem.cart.id,
-            cartStatus: newCartItem.cartStatus
+            cartStatus: 'ACTIVE'
           },
-          product: {
-            id: newCartItem.product.id,
-            name: newCartItem.product.name,
-            price: newCartItem.product.price
-          }
+          product: newCartItem.product
         }
       };
     } catch (error) {
-      this.logger.error('Error creating Cart Item: ${error.message}', error.stack);
-
-      if (newCartItem) {
-        await this.prisma.cartItem.delete({ where: { id: newCartItem.id } });
-        this.logger.error(
-          'Cart Item with ID ${newCartItem.id} has been deleted due to error in creation.'
-        );
-      }
-
-      if (error instanceof BadRequestException || error instanceof NotFoundException) {
-        throw error;
-      }
-
-      handleException(error, 'Error creating a Cart Item');
+      this.logger.error(`Error creating Cart Item: ${error.message}`, error.stack);
+      handleException(error, 'Error creating Cart Item');
     }
   }
 

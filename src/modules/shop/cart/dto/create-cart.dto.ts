@@ -1,8 +1,7 @@
 import { ApiProperty } from '@nestjs/swagger';
 import { Transform } from 'class-transformer';
-import { IsNotEmpty, IsString, IsUUID } from 'class-validator';
+import { IsEmpty, IsNotEmpty, IsUUID } from 'class-validator';
 import { CartStatus } from '@prisma/client';
-
 export class CreateCartDto {
   @ApiProperty()
   @IsNotEmpty()
@@ -10,8 +9,7 @@ export class CreateCartDto {
   clientId: string;
 
   @ApiProperty()
-  @IsString()
-  @IsNotEmpty()
+  @IsEmpty()
   @Transform(({ value }) => value.trim().toUpperCase())
   cartStatus: CartStatus;
 }
