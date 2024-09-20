@@ -233,7 +233,7 @@ model ClassLanguage {
   businessId String
   business   BusinessConfig @relation("businessId", fields: [businessId], references: [id])
 
-  languageName String
+  languageName String   @unique
   createdAt    DateTime @default(now()) @db.Timestamptz(6)
   updatedAt    DateTime @updatedAt
 }
