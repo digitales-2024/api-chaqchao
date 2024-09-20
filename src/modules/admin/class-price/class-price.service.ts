@@ -253,13 +253,13 @@ export class ClassPriceService {
         // Validar que solo haya dos precios para adulto y dos para child
         const existingPrices = await prisma.classPriceConfig.findMany({
           where: {
-            classTypeUser: classTypeUser || classPriceDB.classTypeUser
+            classTypeUser: classTypeUser || classPriceDB.classTypeUser,
+            typeCurrency: typeCurrency || classPriceDB.typeCurrency,
+            NOT: { id } // Excluir el registro actual
           }
         });
 
-        const priceCount = existingPrices.filter(
-          (price) => price.typeCurrency === (typeCurrency || classPriceDB.typeCurrency)
-        ).length;
+        const priceCount = existingPrices.length;
 
         if (priceCount >= 1) {
           throw new BadRequestException(
