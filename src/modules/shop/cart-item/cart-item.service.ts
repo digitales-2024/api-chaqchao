@@ -28,8 +28,8 @@ export class CartItemService {
   ) {}
 
   /**
-   * Mostrar todos los productos
-   * @returns Todos los productos
+   * Mostrar todos los cart items
+   * @returns Todos los cart items
    */
   async findAll(): Promise<CartItemData[]> {
     try {
@@ -207,5 +207,59 @@ export class CartItemService {
         price: cartItemDB.product.price
       }
     };
+  }
+
+  /**
+   * Eliminar un item del carrito de compras
+   * @param id Id del item del carrito
+   * @returns Mensaje de confirmación de eliminación
+   */
+  async remove(id: string): Promise<HttpResponse<CartItemData>> {
+    try {
+      // Verificar si el item del carrito existe
+      const cartItem = await this.prisma.cartItem.findUnique({
+        where: { id }
+      });
+
+      if (!cartItem) {
+        throw new NotFoundException('Cart item not found');
+      }
+
+      const cartItemDelete: CartItemData = await this.prisma.cartItem.delete({
+        where: { id },
+        select: {
+          id: true,
+          cartId: true,
+          productId: true,
+          quantity: true,
+          price: true,
+          cart: {
+            select: {
+              id: true,
+              cartStatus: true
+            }
+          },
+          product: {
+            select: {
+              id: true,
+              name: true,
+              price: true
+            }
+          }
+        }
+      });
+
+      return {
+        statusCode: HttpStatus.OK,
+        message: 'Product variation deleted',
+        data: cartItemDelete
+      };
+    } catch (error) {
+      this.logger.error(`Error deleting product variation by id ${id}`, error);
+      if (error instanceof BadRequestException) {
+        throw error;
+      }
+      handleException(error, 'Error deleting product variation');
+    }
   }
 }

@@ -1,4 +1,4 @@
-import { Controller, Post, Body, Get } from '@nestjs/common';
+import { Controller, Post, Body, Get, Delete, Param } from '@nestjs/common';
 import { CartItemService } from './cart-item.service';
 import { CreateCartItemDto } from './dto/create-cart-item.dto';
 import { Auth } from 'src/modules/admin/auth/decorators';
@@ -28,9 +28,16 @@ export class CartItemController {
   create(@Body() createCartItemDto: CreateCartItemDto): Promise<HttpResponse<CartItemData>> {
     return this.cartItemService.create(createCartItemDto);
   }
+
   @ApiOkResponse({ description: 'Get all carts item' })
   @Get()
   findAll(): Promise<CartItemData[]> {
     return this.cartItemService.findAll();
+  }
+
+  @ApiOkResponse({ description: 'Product deleted' })
+  @Delete(':id')
+  remove(@Param('id') id: string): Promise<HttpResponse<CartItemData>> {
+    return this.cartItemService.remove(id);
   }
 }
