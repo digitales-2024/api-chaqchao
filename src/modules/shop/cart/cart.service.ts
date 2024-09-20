@@ -235,4 +235,41 @@ export class CartService {
       handleException(error, 'Error retrieving cart with items');
     }
   }
+
+  /**
+   * Buscar carrito por ID y lo cancela
+   * @param id Identificador del carrito
+   * @returns Vacio con mensaje de Cancelado
+   */
+  async cancelCart(id: string): Promise<HttpResponse<any>> {
+    try {
+      // 1. Validar el carrito
+      const cart = await this.prisma.cart.findUnique({
+        where: { id }
+      });
+
+      if (!cart) {
+        throw new NotFoundException(`Cart with ID ${id} not found`);
+      }
+
+      if (cart.cartStatus !== 'ACTIVE') {
+        throw new BadRequestException('Cart is not in a valid state for cancellation');
+      }
+
+      // 2. Actualizar el estado del carrito a CANCELLED
+      await this.prisma.cart.update({
+        where: { id },
+        data: { cartStatus: 'PENDING' }
+      });
+
+      return {
+        statusCode: HttpStatus.OK,
+        message: 'Cart cancelled successfully',
+        data: []
+      };
+    } catch (error) {
+      this.logger.error(`Error during cart cancellation: ${error.message}`, error.stack);
+      handleException(error, 'Error during cart cancellation');
+    }
+  }
 }

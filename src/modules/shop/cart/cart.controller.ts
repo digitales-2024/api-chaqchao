@@ -41,4 +41,11 @@ export class CartController {
   async findByIdWithItems(@Param('id') id: string): Promise<HttpResponse<CartData>> {
     return this.cartService.findByIdWithItems(id);
   }
+
+  @Post(':id/cancel')
+  @ApiOkResponse({ description: 'Cart cancelled successfully' })
+  @ApiBadRequestResponse({ description: 'Invalid cart state for cancellation' })
+  async cancelCart(@Param('id') id: string): Promise<HttpResponse<CartData>> {
+    return this.cartService.cancelCart(id);
+  }
 }
