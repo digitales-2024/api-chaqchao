@@ -1,4 +1,4 @@
-import { Controller, Post, Body, Get } from '@nestjs/common';
+import { Controller, Post, Body, Get, Param } from '@nestjs/common';
 import { CartService } from './cart.service';
 import { CreateCartDto } from './dto/create-cart.dto';
 import { Auth } from 'src/modules/admin/auth/decorators';
@@ -8,7 +8,8 @@ import {
   ApiCreatedResponse,
   ApiTags,
   ApiUnauthorizedResponse,
-  ApiOkResponse
+  ApiOkResponse,
+  ApiNotFoundResponse
 } from '@nestjs/swagger';
 
 @ApiTags('Cart')
@@ -32,5 +33,12 @@ export class CartController {
   @Get()
   findAll(): Promise<CartData[]> {
     return this.cartService.findAll();
+  }
+
+  @Get(':id/items')
+  @ApiOkResponse({ description: 'Cart retrieved successfully' })
+  @ApiNotFoundResponse({ description: 'Cart not found' })
+  async findByIdWithItems(@Param('id') id: string): Promise<HttpResponse<CartData>> {
+    return this.cartService.findByIdWithItems(id);
   }
 }

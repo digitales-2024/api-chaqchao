@@ -164,4 +164,75 @@ export class CartService {
       }
     };
   }
+
+  /**
+   * Buscar carrito por ID y obtener sus ítems asociados
+   * @param id Identificador del carrito
+   * @returns Carrito con sus ítems
+   */
+  async findByIdWithItems(id: string): Promise<HttpResponse<any>> {
+    try {
+      // Buscar carrito y sus ítems
+      const cart = await this.prisma.cart.findUnique({
+        where: { id },
+        select: {
+          id: true,
+          clientId: true,
+          cartStatus: true,
+          client: {
+            select: {
+              id: true,
+              name: true
+            }
+          },
+          cartItems: {
+            select: {
+              id: true,
+              quantity: true,
+              price: true,
+              product: {
+                select: {
+                  id: true,
+                  name: true,
+                  price: true
+                }
+              }
+            }
+          }
+        }
+      });
+
+      // Si no se encuentra el carrito, lanzar excepción
+      if (!cart) {
+        throw new NotFoundException(`Cart with ID ${id} not found`);
+      }
+
+      return {
+        statusCode: 200,
+        message: 'Cart retrieved successfully',
+        data: {
+          id: cart.id,
+          clientId: cart.clientId,
+          cartStatus: cart.cartStatus,
+          client: {
+            id: cart.client.id,
+            name: cart.client.name
+          },
+          items: cart.cartItems.map((item) => ({
+            id: item.id,
+            quantity: item.quantity,
+            price: item.price,
+            product: {
+              id: item.product.id,
+              name: item.product.name,
+              price: item.product.price
+            }
+          }))
+        }
+      };
+    } catch (error) {
+      this.logger.error(`Error retrieving cart with items: ${error.message}`, error.stack);
+      handleException(error, 'Error retrieving cart with items');
+    }
+  }
 }
