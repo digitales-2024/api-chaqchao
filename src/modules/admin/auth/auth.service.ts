@@ -188,28 +188,45 @@ export class AuthService {
    * @param req Petición HTTP
    * @returns Datos del usuario logueado
    */
-  async refreshToken(res: Response, req: Request): Promise<any> {
+  async refreshToken(res: Response, req: Request): Promise<void> {
     try {
       const token = req.cookies['access_token'];
+      console.log('🚀 ~ AuthService ~ refreshToken ~ req:', req);
+
       if (!token) {
         throw new UnauthorizedException('Token not found');
       }
       const payload = this.jwtService.decode(token) as JwtPayload;
       const userDB = await this.userService.findById(payload.id);
-      // Genera el token
+
+      // Si no existe el usuario o esta inactivo pero que no sea superadmin entonces eliminamos el token
+      if (!userDB || (!userDB.isActive && !userDB.isSuperAdmin)) {
+        res.cookie('access_token', '', {
+          httpOnly: true,
+          expires: new Date(0)
+        });
+        throw new UnauthorizedException('User not found');
+      }
+
+      // Genera un nuevo token
       const newToken = this.getJwtToken({ id: userDB.id });
-      // Configura la cookie HttpOnly
+      console.log('🚀 ~ AuthService ~ refreshToken ~ newToken:', newToken);
+      // Reemplazamos el token anterior por el nuevo
       res.cookie('access_token', newToken, {
         httpOnly: true,
         secure: process.env.NODE_ENV === 'production',
         sameSite: 'strict',
-        path: '/'
+        path: '/',
+        maxAge: this.configService.get('COOKIE_EXPIRES_IN'),
+        expires: new Date(Date.now() + this.configService.get('COOKIE_EXPIRES_IN'))
       });
+
       res.json({
         id: userDB.id,
         name: userDB.name,
         email: userDB.email,
         phone: userDB.phone,
+        isSuperAdmin: userDB.isSuperAdmin,
         roles: userDB.roles
       });
     } catch (error) {
