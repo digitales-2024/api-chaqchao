@@ -16,7 +16,7 @@ import { RefreshTokenStrategy } from './strategies/refresh-token.strategy';
     ConfigModule,
     UsersModule,
     RolModule,
-    // PassportModule.register({ defaultStrategy: 'jwt' }),
+    PassportModule.register({ defaultStrategy: 'jwt' }),
     JwtModule.registerAsync({
       imports: [ConfigModule],
       inject: [ConfigService],
