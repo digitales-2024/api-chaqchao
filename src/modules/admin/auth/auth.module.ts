@@ -7,10 +7,11 @@ import { JwtModule } from '@nestjs/jwt';
 import { ConfigModule, ConfigService } from '@nestjs/config';
 import { JwtStrategy } from './strategies/jwt.strategy';
 import { RolModule } from '../rol/rol.module';
+import { RefreshTokenStrategy } from './strategies/refresh-token.strategy';
 
 @Module({
   controllers: [AuthController],
-  providers: [AuthService, JwtStrategy],
+  providers: [AuthService, JwtStrategy, RefreshTokenStrategy],
   imports: [
     ConfigModule,
     UsersModule,
@@ -23,8 +24,16 @@ import { RolModule } from '../rol/rol.module';
         secret: configService.get('JWT_SECRET'),
         signOptions: { expiresIn: configService.get('JWT_EXPIRES_IN') }
       })
+    }),
+    JwtModule.registerAsync({
+      imports: [ConfigModule],
+      inject: [ConfigService],
+      useFactory: (configService: ConfigService) => ({
+        secret: configService.get('JWT_REFRESH_SECRET'),
+        signOptions: { expiresIn: configService.get('JWT_REFRESH_EXPIRES_IN') } // Tiempo de expiración del refresh token
+      })
     })
   ],
-  exports: [JwtStrategy, PassportModule, JwtModule]
+  exports: [JwtStrategy, RefreshTokenStrategy, PassportModule, JwtModule]
 })
 export class AuthModule {}
