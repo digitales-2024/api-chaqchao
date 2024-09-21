@@ -68,7 +68,7 @@ export class AuthService {
       });
 
       // Genera el refresh token
-      const refreshToken = this.getJwtToken({ id: userDB.id });
+      const refreshToken = this.getJwtRefreshToken({ id: userDB.id });
 
       // Configura la cookie HttpOnly para el refresh token
       res.cookie('refresh_token', refreshToken, {
@@ -90,16 +90,14 @@ export class AuthService {
       });
     } catch (error) {
       this.logger.error(`Error logging in for email: ${loginAuthDto.email}`, error.stack);
-      if (error instanceof UnauthorizedException) {
+      if (
+        error instanceof UnauthorizedException ||
+        error instanceof NotFoundException ||
+        error instanceof ForbiddenException
+      ) {
         throw error;
       }
 
-      if (error instanceof NotFoundException) {
-        throw error;
-      }
-      if (error instanceof ForbiddenException) {
-        throw error;
-      }
       handleException(error, 'Error logging in');
     }
   }
@@ -169,6 +167,19 @@ export class AuthService {
         expires: new Date(Date.now() + this.configService.get('COOKIE_EXPIRES_IN'))
       });
 
+      // Genera el refresh_token
+      const refreshToken = this.getJwtRefreshToken({ id: userDB.id });
+
+      // Configura la cookie HttpOnly
+      res.cookie('refresh_token', refreshToken, {
+        httpOnly: true,
+        secure: process.env.NODE_ENV === 'production',
+        sameSite: 'strict',
+        path: '/',
+        maxAge: this.configService.get('COOKIE_REFRESH_EXPIRES_IN'),
+        expires: new Date(Date.now() + this.configService.get('COOKIE_REFRESH_EXPIRES_IN'))
+      });
+
       res.json({
         id: userDB.id,
         name: userDB.name,
@@ -184,13 +195,25 @@ export class AuthService {
   }
 
   /**
-   * Genera un token JWT
+   * Genera un access_token JWT
    * @param payload Payload para generar el token
    * @returns  Token generado
    */
   private getJwtToken(payload: JwtPayload) {
     const token = this.jwtService.sign(payload);
     return token;
+  }
+
+  /**
+   * Genera un refresh_token JWT
+   * @param payload Payload para generar el token
+   * @returns  Token generado
+   */
+  private getJwtRefreshToken(payload: any): string {
+    return this.jwtService.sign(payload, {
+      secret: this.configService.get('JWT_REFRESH_SECRET'),
+      expiresIn: this.configService.get('JWT_REFRESH_EXPIRES_IN')
+    });
   }
 
   /**
@@ -214,6 +237,7 @@ export class AuthService {
 
     // Generamos un nuevo access token
     const newAccessToken = this.getJwtToken({ id: payload.id });
+    const newRefreshToken = this.getJwtRefreshToken({ id: payload.id });
 
     // Enviamos el nuevo access token en una cookie HttpOnly
     res.cookie('access_token', newAccessToken, {
@@ -223,6 +247,15 @@ export class AuthService {
       path: '/',
       maxAge: this.configService.get<number>('COOKIE_EXPIRES_IN'),
       expires: new Date(Date.now() + this.configService.get<number>('COOKIE_EXPIRES_IN'))
+    });
+
+    res.cookie('refresh_token', newRefreshToken, {
+      httpOnly: true,
+      secure: process.env.NODE_ENV === 'production',
+      sameSite: 'strict',
+      path: '/',
+      maxAge: this.configService.get<number>('COOKIE_REFRESH_EXPIRES_IN'),
+      expires: new Date(Date.now() + this.configService.get<number>('COOKIE_REFRESH_EXPIRES_IN'))
     });
 
     res.send({ message: 'Access token refreshed successfully' });
