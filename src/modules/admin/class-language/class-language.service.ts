@@ -40,6 +40,14 @@ export class ClassLanguageService {
           throw new NotFoundException('Business config not found');
         }
 
+        // Validar si el languageName ya existe
+        const existingLanguage = await prisma.classLanguage.findUnique({
+          where: { languageName }
+        });
+        if (existingLanguage) {
+          throw new BadRequestException(`Language name already exists`);
+        }
+
         // Crear el registro de class language
         const newClassLanguage = await prisma.classLanguage.create({
           data: {
@@ -175,6 +183,14 @@ export class ClassLanguageService {
               languageName: classLanguage.languageName
             }
           };
+        }
+
+        // Validar si el languageName ya existe
+        const existingLanguage = await prisma.classLanguage.findUnique({
+          where: { languageName }
+        });
+        if (existingLanguage) {
+          throw new BadRequestException(`Language name already exists`);
         }
 
         // Actualizar el class language

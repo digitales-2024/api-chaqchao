@@ -22,3 +22,4 @@ export { ClientData } from './client.interface';
 export { ClientGoogleData } from './client.interface';
 export { ClientPayload } from './client.interface';
 export { ClientDataUpdate } from './client.interface';
+export { CartData } from './cart.interface';

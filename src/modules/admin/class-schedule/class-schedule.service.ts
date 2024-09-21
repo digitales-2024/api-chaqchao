@@ -45,13 +45,21 @@ export class ClassScheduleService {
     this.validateTimeFormat(startTime);
     try {
       return await this.prisma.$transaction(async (prisma) => {
-        // Validar si existe el businessId
+        // Validate if businessId exists
         const businessConfigDB = await this.businessConfigService.findOne(businessId);
         if (!businessConfigDB) {
           throw new NotFoundException('Business config not found');
         }
 
-        // Crear el registro de class schedule
+        // Validate if startTime already exists
+        const existingSchedule = await prisma.classSchedule.findUnique({
+          where: { startTime }
+        });
+        if (existingSchedule) {
+          throw new BadRequestException('Start time already exists');
+        }
+
+        // Create the class schedule record
         const newClassSchedule = await prisma.classSchedule.create({
           data: {
             startTime,
@@ -59,7 +67,7 @@ export class ClassScheduleService {
           }
         });
 
-        // Registrar la auditoría de la creación
+        // Log the creation audit
         await prisma.audit.create({
           data: {
             action: AuditActionType.CREATE,
@@ -186,6 +194,14 @@ export class ClassScheduleService {
               startTime: existingClassSchedule.startTime
             }
           };
+        }
+
+        // Validar si el startTime ya existe
+        const existingSchedule = await prisma.classSchedule.findUnique({
+          where: { startTime }
+        });
+        if (existingSchedule) {
+          throw new BadRequestException('Start time already exists');
         }
 
         // Actualizar el class schedule
