@@ -200,7 +200,10 @@ export class AuthService {
    * @returns  Token generado
    */
   private getJwtToken(payload: JwtPayload) {
-    const token = this.jwtService.sign(payload);
+    const token = this.jwtService.sign(payload, {
+      secret: this.configService.get('JWT_SECRET'),
+      expiresIn: this.configService.get('JWT_EXPIRES_IN')
+    });
     return token;
   }
 
