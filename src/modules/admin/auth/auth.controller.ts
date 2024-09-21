@@ -4,6 +4,7 @@ import { LoginAuthDto } from './dto';
 import { UpdatePasswordDto } from './dto/update-password.dto';
 import { ApiCreatedResponse, ApiInternalServerErrorResponse, ApiTags } from '@nestjs/swagger';
 import { Response, Request } from 'express';
+import { Auth, RefreshAuth } from './decorators';
 
 @ApiTags('Auth')
 @ApiInternalServerErrorResponse({
@@ -21,6 +22,7 @@ export class AuthController {
 
   @ApiCreatedResponse({ description: 'Logout user' })
   @Post('logout')
+  @Auth()
   async logout(@Res() res: Response): Promise<void> {
     return this.authService.logout(res);
   }
@@ -36,7 +38,8 @@ export class AuthController {
 
   @ApiCreatedResponse({ description: 'Refresh token' })
   @Post('refresh-token')
-  async refreshToken(@Res() res: Response, @Req() req: Request): Promise<void> {
-    return this.authService.refreshToken(res, req);
+  @RefreshAuth()
+  async refreshToken(@Req() req: Request, @Res() res: Response): Promise<void> {
+    return this.authService.refreshToken(req, res);
   }
 }
