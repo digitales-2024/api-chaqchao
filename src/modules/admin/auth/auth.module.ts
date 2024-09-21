@@ -16,7 +16,7 @@ import { RefreshTokenStrategy } from './strategies/refresh-token.strategy';
     ConfigModule,
     UsersModule,
     RolModule,
-    PassportModule.register({ defaultStrategy: 'jwt' }),
+    // PassportModule.register({ defaultStrategy: 'jwt' }),
     JwtModule.registerAsync({
       imports: [ConfigModule],
       inject: [ConfigService],
@@ -24,15 +24,15 @@ import { RefreshTokenStrategy } from './strategies/refresh-token.strategy';
         secret: configService.get('JWT_SECRET'),
         signOptions: { expiresIn: configService.get('JWT_EXPIRES_IN') }
       })
-    }),
-    JwtModule.registerAsync({
-      imports: [ConfigModule],
-      inject: [ConfigService],
-      useFactory: (configService: ConfigService) => ({
-        secret: configService.get('JWT_REFRESH_SECRET'),
-        signOptions: { expiresIn: configService.get('JWT_REFRESH_EXPIRES_IN') } // Tiempo de expiración del refresh token
-      })
     })
+    // JwtModule.registerAsync({
+    //   imports: [ConfigModule],
+    //   inject: [ConfigService],
+    //   useFactory: (configService: ConfigService) => ({
+    //     secret: configService.get('JWT_REFRESH_SECRET'),
+    //     signOptions: { expiresIn: configService.get('JWT_REFRESH_EXPIRES_IN') } // Tiempo de expiración del refresh token
+    //   })
+    // })
   ],
   exports: [JwtStrategy, RefreshTokenStrategy, PassportModule, JwtModule]
 })
