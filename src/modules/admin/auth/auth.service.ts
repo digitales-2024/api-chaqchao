@@ -67,6 +67,19 @@ export class AuthService {
         expires: new Date(Date.now() + this.configService.get('COOKIE_EXPIRES_IN'))
       });
 
+      // Genera el refresh token
+      const refreshToken = this.getJwtToken({ id: userDB.id });
+
+      // Configura la cookie HttpOnly para el refresh token
+      res.cookie('refresh_token', refreshToken, {
+        httpOnly: true,
+        secure: process.env.NODE_ENV === 'production',
+        sameSite: 'strict',
+        path: '/',
+        maxAge: this.configService.get('COOKIE_REFRESH_EXPIRES_IN'), // Asegúrate de que esta configuración exista
+        expires: new Date(Date.now() + this.configService.get('COOKIE_REFRESH_EXPIRES_IN'))
+      });
+
       res.json({
         id: userDB.id,
         name: userDB.name,
@@ -80,6 +93,7 @@ export class AuthService {
       if (error instanceof UnauthorizedException) {
         throw error;
       }
+
       if (error instanceof NotFoundException) {
         throw error;
       }
@@ -97,6 +111,12 @@ export class AuthService {
   async logout(res: Response): Promise<void> {
     // Borra la cookie que contiene el token JWT
     res.cookie('access_token', '', {
+      httpOnly: true,
+      expires: new Date(0) // Establece la fecha de expiración a una fecha pasada para eliminar la cookie
+    });
+
+    // Borra la cookie que contiene el refresh token
+    res.cookie('refresh_token', '', {
       httpOnly: true,
       expires: new Date(0) // Establece la fecha de expiración a una fecha pasada para eliminar la cookie
     });
@@ -188,50 +208,23 @@ export class AuthService {
    * @param req Petición HTTP
    * @returns Datos del usuario logueado
    */
-  async refreshToken(res: Response, req: Request): Promise<void> {
-    try {
-      const token = req.cookies['access_token'];
-      console.log('🚀 ~ AuthService ~ refreshToken ~ req:', req);
+  async refreshToken(req: Request, res: Response): Promise<void> {
+    // Extraemos el payload del token
+    const payload = this.verifyToken(req.cookies.access_token);
 
-      if (!token) {
-        throw new UnauthorizedException('Token not found');
-      }
-      const payload = this.jwtService.decode(token) as JwtPayload;
-      const userDB = await this.userService.findById(payload.id);
+    // Generamos un nuevo access token
+    const newAccessToken = this.getJwtToken({ id: payload.id });
 
-      // Si no existe el usuario o esta inactivo pero que no sea superadmin entonces eliminamos el token
-      if (!userDB || (!userDB.isActive && !userDB.isSuperAdmin)) {
-        res.cookie('access_token', '', {
-          httpOnly: true,
-          expires: new Date(0)
-        });
-        throw new UnauthorizedException('User not found');
-      }
+    // Enviamos el nuevo access token en una cookie HttpOnly
+    res.cookie('access_token', newAccessToken, {
+      httpOnly: true,
+      secure: process.env.NODE_ENV === 'production',
+      sameSite: 'strict',
+      path: '/',
+      maxAge: this.configService.get<number>('COOKIE_EXPIRES_IN'),
+      expires: new Date(Date.now() + this.configService.get<number>('COOKIE_EXPIRES_IN'))
+    });
 
-      // Genera un nuevo token
-      const newToken = this.getJwtToken({ id: userDB.id });
-      console.log('🚀 ~ AuthService ~ refreshToken ~ newToken:', newToken);
-      // Reemplazamos el token anterior por el nuevo
-      res.cookie('access_token', newToken, {
-        httpOnly: true,
-        secure: process.env.NODE_ENV === 'production',
-        sameSite: 'strict',
-        path: '/',
-        maxAge: this.configService.get('COOKIE_EXPIRES_IN'),
-        expires: new Date(Date.now() + this.configService.get('COOKIE_EXPIRES_IN'))
-      });
-
-      res.json({
-        id: userDB.id,
-        name: userDB.name,
-        email: userDB.email,
-        phone: userDB.phone,
-        isSuperAdmin: userDB.isSuperAdmin,
-        roles: userDB.roles
-      });
-    } catch (error) {
-      this.logger.error('Error refreshing token', error.stack);
-      handleException(error, 'Error refreshing token');
-    }
+    res.send({ message: 'Access token refreshed successfully' });
   }
 }
