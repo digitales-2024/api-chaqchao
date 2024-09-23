@@ -256,16 +256,45 @@ export class CartService {
         throw new BadRequestException('Cart is not in a valid state for cancellation');
       }
 
-      // 2. Actualizar el estado del carrito a CANCELLED
-      await this.prisma.cart.update({
+      // 2. Eliminar los cartItems relacionados primero
+      await this.prisma.cartItem.deleteMany({
+        where: { cartId: id }
+      });
+
+      // 3. Actualizar el estado del carrito a CANCELLED (o eliminar el carrito)
+      const cartDelete: CartData = await this.prisma.cart.delete({
         where: { id },
-        data: { cartStatus: 'PENDING' }
+        select: {
+          id: true,
+          clientId: true,
+          cartStatus: true,
+          client: {
+            select: {
+              id: true,
+              name: true
+            }
+          },
+          cartItems: {
+            select: {
+              id: true,
+              quantity: true,
+              price: true,
+              product: {
+                select: {
+                  id: true,
+                  name: true,
+                  price: true
+                }
+              }
+            }
+          }
+        }
       });
 
       return {
         statusCode: HttpStatus.OK,
         message: 'Cart cancelled successfully',
-        data: []
+        data: cartDelete
       };
     } catch (error) {
       this.logger.error(`Error during cart cancellation: ${error.message}`, error.stack);
