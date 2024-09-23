@@ -25,14 +25,6 @@ import { RefreshTokenStrategy } from './strategies/refresh-token.strategy';
         signOptions: { expiresIn: configService.get('JWT_EXPIRES_IN') }
       })
     })
-    // JwtModule.registerAsync({
-    //   imports: [ConfigModule],
-    //   inject: [ConfigService],
-    //   useFactory: (configService: ConfigService) => ({
-    //     secret: configService.get('JWT_REFRESH_SECRET'),
-    //     signOptions: { expiresIn: configService.get('JWT_REFRESH_EXPIRES_IN') } // Tiempo de expiración del refresh token
-    //   })
-    // })
   ],
   exports: [JwtStrategy, RefreshTokenStrategy, PassportModule, JwtModule]
 })
