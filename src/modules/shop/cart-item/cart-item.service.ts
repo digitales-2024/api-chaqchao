@@ -42,14 +42,14 @@ export class CartItemService {
           cart: {
             select: {
               id: true,
-              cartStatus: true // Si cartStatus es requerido, inclúyelo
+              cartStatus: true
             }
           },
           product: {
             select: {
               id: true,
               name: true,
-              price: true, // Incluye el precio del producto si es necesario
+              price: true,
               productVariations: {
                 select: {
                   id: true,
@@ -69,12 +69,12 @@ export class CartItemService {
         price: cartItem.price,
         cart: {
           id: cartItem.cart.id,
-          cartStatus: cartItem.cart.cartStatus // Asegúrate de tener cartStatus
+          cartStatus: cartItem.cart.cartStatus
         },
         product: {
           id: cartItem.product.id,
           name: cartItem.product.name,
-          price: cartItem.product.price, // Incluye el precio del producto
+          price: cartItem.product.price,
           productVariations: cartItem.product.productVariations.map((variation) => ({
             id: variation.id,
             name: variation.name,
@@ -145,6 +145,15 @@ export class CartItemService {
         return cartItem;
       });
 
+      // Calcular el precio adicional total de las variaciones
+      const additionalPriceTotal = newCartItem.product.productVariations.reduce(
+        (sum, variation) => sum + variation.additionalPrice,
+        0
+      );
+
+      // Calcular el precio final (precio base + precio adicional)
+      const finalPrice = newCartItem.price + additionalPriceTotal;
+
       return {
         statusCode: HttpStatus.CREATED,
         message: 'Cart Item created and cart status updated to ACTIVE',
@@ -154,6 +163,7 @@ export class CartItemService {
           productId: newCartItem.productId,
           quantity: newCartItem.quantity,
           price: newCartItem.price,
+          finalPrice,
           cart: {
             id: newCartItem.cart.id,
             cartStatus: 'ACTIVE'
