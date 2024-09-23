@@ -5,7 +5,7 @@ import { IsNotEmpty, IsString, IsUUID } from 'class-validator';
 export class CreateClassLanguageDto {
   @ApiProperty()
   @IsString()
-  @Transform(({ value }) => value.trim())
+  @Transform(({ value }) => value.trim().toLowerCase())
   @IsNotEmpty()
   languageName: string;
 
