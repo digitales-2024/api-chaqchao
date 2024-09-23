@@ -229,38 +229,49 @@ export class AuthService {
   }
 
   /**
+   * Verifica si el refresh_token es válido
+   * @param token Token a verificar
+   * @returns  Datos del token
+   */
+  verifyRefreshToken(token: string): JwtPayload {
+    return this.jwtService.verify(token, {
+      secret: this.configService.get('JWT_REFRESH_SECRET')
+    });
+  }
+
+  /**
    * Actualizar un token JWT
    * @param res Respuesta HTTP
    * @param req Petición HTTP
    * @returns Datos del usuario logueado
    */
   async refreshToken(req: Request, res: Response): Promise<void> {
-    // Extraemos el payload del token
-    const payload = this.verifyToken(req.cookies.access_token);
+    try {
+      const payload = this.verifyRefreshToken(req.cookies.refresh_token);
 
-    // Generamos un nuevo access token
-    const newAccessToken = this.getJwtToken({ id: payload.id });
-    const newRefreshToken = this.getJwtRefreshToken({ id: payload.id });
+      const newAccessToken = this.getJwtToken({ id: payload.id });
+      const newRefreshToken = this.getJwtRefreshToken({ id: payload.id });
 
-    // Enviamos el nuevo access token en una cookie HttpOnly
-    res.cookie('access_token', newAccessToken, {
-      httpOnly: true,
-      secure: process.env.NODE_ENV === 'production',
-      sameSite: 'strict',
-      path: '/',
-      maxAge: this.configService.get<number>('COOKIE_EXPIRES_IN'),
-      expires: new Date(Date.now() + this.configService.get<number>('COOKIE_EXPIRES_IN'))
-    });
+      res.cookie('access_token', newAccessToken, {
+        httpOnly: true,
+        secure: process.env.NODE_ENV === 'production',
+        sameSite: 'strict',
+        path: '/',
+        maxAge: this.configService.get<number>('COOKIE_EXPIRES_IN') // tiempo corto para el access_token
+      });
 
-    res.cookie('refresh_token', newRefreshToken, {
-      httpOnly: true,
-      secure: process.env.NODE_ENV === 'production',
-      sameSite: 'strict',
-      path: '/',
-      maxAge: this.configService.get<number>('COOKIE_REFRESH_EXPIRES_IN'),
-      expires: new Date(Date.now() + this.configService.get<number>('COOKIE_REFRESH_EXPIRES_IN'))
-    });
+      res.cookie('refresh_token', newRefreshToken, {
+        httpOnly: true,
+        secure: process.env.NODE_ENV === 'production',
+        sameSite: 'strict',
+        path: '/',
+        maxAge: this.configService.get<number>('COOKIE_REFRESH_EXPIRES_IN') // más tiempo para el refresh_token
+      });
 
-    res.send({ message: 'Access token refreshed successfully' });
+      res.send({ message: 'Access token refreshed successfully' });
+    } catch (error) {
+      console.error('Error refreshing token:', error);
+      throw new UnauthorizedException('Invalid refresh token');
+    }
   }
 }
