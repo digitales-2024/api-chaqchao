@@ -41,25 +41,46 @@ export class CartItemService {
           price: true,
           cart: {
             select: {
-              id: true
+              id: true,
+              cartStatus: true // Si cartStatus es requerido, inclúyelo
             }
           },
           product: {
             select: {
               id: true,
-              name: true
+              name: true,
+              price: true, // Incluye el precio del producto si es necesario
+              productVariations: {
+                select: {
+                  id: true,
+                  name: true,
+                  additionalPrice: true
+                }
+              }
             }
           }
         }
       });
 
-      // Mapea los resultados al tipo ProductData
+      // Mapea los resultados al tipo CartItemData
       return cartsItem.map((cartItem) => ({
         id: cartItem.id,
         quantity: cartItem.quantity,
         price: cartItem.price,
-        cart: cartItem.cart,
-        product: cartItem.product
+        cart: {
+          id: cartItem.cart.id,
+          cartStatus: cartItem.cart.cartStatus // Asegúrate de tener cartStatus
+        },
+        product: {
+          id: cartItem.product.id,
+          name: cartItem.product.name,
+          price: cartItem.product.price, // Incluye el precio del producto
+          productVariations: cartItem.product.productVariations.map((variation) => ({
+            id: variation.id,
+            name: variation.name,
+            additionalPrice: variation.additionalPrice
+          }))
+        }
       })) as CartItemData[];
     } catch (error) {
       this.logger.error('Error getting all carts items');
@@ -106,7 +127,8 @@ export class CartItemService {
             product: {
               select: {
                 id: true,
-                name: true
+                name: true,
+                productVariations: true
               }
             }
           }
@@ -136,7 +158,16 @@ export class CartItemService {
             id: newCartItem.cart.id,
             cartStatus: 'ACTIVE'
           },
-          product: newCartItem.product
+          product: {
+            id: newCartItem.product.id,
+            name: newCartItem.product.name,
+            price: newCartItem.product.price,
+            productVariations: newCartItem.product.productVariations.map((variation) => ({
+              id: variation.id,
+              name: variation.name,
+              additionalPrice: variation.additionalPrice
+            }))
+          }
         }
       };
     } catch (error) {
@@ -169,7 +200,8 @@ export class CartItemService {
           select: {
             id: true,
             name: true,
-            price: true
+            price: true,
+            productVariations: true
           }
         }
       }
@@ -195,7 +227,8 @@ export class CartItemService {
       product: {
         id: cartItemDB.product.id,
         name: cartItemDB.product.name,
-        price: cartItemDB.product.price
+        price: cartItemDB.product.price,
+        productVariations: cartItemDB.product.productVariations
       }
     };
   }
@@ -234,7 +267,8 @@ export class CartItemService {
             select: {
               id: true,
               name: true,
-              price: true
+              price: true,
+              productVariations: true
             }
           }
         }
