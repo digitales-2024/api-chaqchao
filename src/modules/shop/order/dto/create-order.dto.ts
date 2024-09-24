@@ -20,7 +20,6 @@ export class CreateOrderDto {
 
   @ApiProperty()
   @IsString()
-  @IsEmpty()
   comments: string;
 
   @ApiProperty()

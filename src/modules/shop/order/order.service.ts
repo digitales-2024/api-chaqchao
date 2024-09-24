@@ -5,6 +5,7 @@ import { OrderData } from 'src/interfaces/order.interface';
 import { handleException } from 'src/utils';
 import { CreateOrderDto } from './dto/create-order.dto';
 import { HttpResponse } from 'src/interfaces';
+import { UpdateStatusOrderDto } from './dto/update-status-order.dto';
 
 @Injectable()
 export class OrderService {
@@ -109,6 +110,50 @@ export class OrderService {
     } catch (error) {
       this.logger.error(`Error creating Order: ${error.message}`, error.stack);
       handleException(error, 'Error creating a Order');
+    }
+  }
+
+  /**
+   * Actualiza solo el estado de un Order
+   * @param id Identificador del Order
+   * @param updateOrderStatusDto Contiene el nuevo estado del Order
+   * @returns Order actualizado con el nuevo estado
+   */
+  async updateOrderStatus(
+    id: string,
+    updateStatusOrderDto: UpdateStatusOrderDto
+  ): Promise<HttpResponse<OrderData>> {
+    const { orderStatus } = updateStatusOrderDto;
+
+    try {
+      // Actualizar solo el campo orderStatus
+      const updatedOrder = await this.prisma.order.update({
+        where: { id },
+        data: { orderStatus },
+        select: {
+          id: true,
+          orderStatus: true,
+          pickupAddress: true,
+          pickupTime: true,
+          comments: true,
+          isActive: true,
+          cartId: true,
+          cart: {
+            select: {
+              id: true
+            }
+          }
+        }
+      });
+
+      return {
+        statusCode: HttpStatus.OK,
+        message: 'Order status updated successfully',
+        data: updatedOrder
+      };
+    } catch (error) {
+      this.logger.error(`Error updating Order status: ${error.message}`, error.stack);
+      handleException(error, 'Error updating Order status');
     }
   }
 }
