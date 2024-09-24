@@ -669,10 +669,10 @@ export class ProductsService {
   }
 
   /**
-   * Reactivar un producto en la base de datos
-   * @param id Id del producto a reactivar
+   * Reactivar un producto por id
+   * @param id Id del producto
    * @param user Usuario que reactiva el producto
-   * @returns Retorna un objeto con los datos del producto reactivado
+   * @returns Producto reactivado
    */
   async reactivate(id: string, user: UserData): Promise<HttpResponse<ProductData>> {
     try {
@@ -758,10 +758,10 @@ export class ProductsService {
   }
 
   /**
-   * Reactivar varios productos seleccionadors en la base de datos
-   * @param user Usuario que hara la reactivación
-   * @param users Arreglo de los productos a reactivar
-   * @return Retorna un mensaje de la reactivacion exitosa
+   * Activar todos los productos en la base de datos
+   * @param user Usuario que reactiva los productos
+   * @param products Productos a reactivar
+   * @returns Productos reactivados
    */
   async reactivateAll(
     user: UserData,
@@ -801,14 +801,14 @@ export class ProductsService {
           }
         });
 
-        // Validar que se encontraron usuarios
+        // Validar que se encontraron los productos
         if (productsDB.length === 0) {
           throw new NotFoundException('Product not found or inactive');
         }
 
-        // Reactivar usuarios y eliminar roles
+        // Reactivar productos
         const reactivatePromises = productsDB.map(async (product) => {
-          // Desactivar usuario
+          // Activar el producto
           await prisma.product.update({
             where: { id: product.id },
             data: { isActive: true }
