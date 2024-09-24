@@ -10,13 +10,15 @@ import {
 import { CreateProductDto } from './dto/create-product.dto';
 import { UpdateProductDto } from './dto/update-product.dto';
 import { PrismaService } from 'src/prisma/prisma.service';
-import { HttpResponse, ProductData, UserData } from 'src/interfaces';
+import { HttpResponse, ProductData, UserData, UserPayload } from 'src/interfaces';
 import { AuditActionType } from '@prisma/client';
 import { handleException } from 'src/utils';
 import { CategoryService } from '../category/category.service';
 import { ProductVariationService } from '../product-variation/product-variation.service';
 import { CreateProductVariationDto } from '../product-variation/dto/create-product-variation.dto';
 import { UpdateProductVariationDto } from '../product-variation/dto/update-product-variation.dto';
+import { ValidRols } from '../auth/interfaces';
+import { DeleteProductsDto } from './dto/delete-product.dto';
 
 @Injectable()
 export class ProductsService {
@@ -124,6 +126,7 @@ export class ProductsService {
           price: newProduct.price,
           image: newProduct.image,
           isAvailable: newProduct.isAvailable,
+          isActive: newProduct.isActive,
           category: {
             id: newProduct.category.id,
             name: newProduct.category.name
@@ -153,15 +156,16 @@ export class ProductsService {
    * Mostrar todos los productos
    * @returns Todos los productos
    */
-  async findAll(): Promise<ProductData[]> {
+  async findAll(user: UserPayload): Promise<ProductData[]> {
+    // Verificar si el usuario es super admin
+    const isSuperAdmin = user.roles.some((role) => role.name === ValidRols.SUPER_ADMIN);
+
     try {
       const products = await this.prisma.product.findMany({
-        where: { isActive: true },
         select: {
           id: true,
           name: true,
           description: true,
-          isActive: true,
           price: true,
           image: true,
           isAvailable: true,
@@ -178,7 +182,8 @@ export class ProductsService {
               description: true,
               additionalPrice: true
             }
-          }
+          },
+          ...(isSuperAdmin && { isActive: true }) // Incluir isActive solo si es super admin
         }
       });
 
@@ -190,6 +195,7 @@ export class ProductsService {
         price: product.price,
         image: product.image,
         isAvailable: product.isAvailable,
+        ...(isSuperAdmin && { isActive: product.isActive }),
         category: product.category,
         variations: product.productVariations
       })) as ProductData[];
@@ -391,6 +397,7 @@ export class ProductsService {
           price: true,
           image: true,
           isAvailable: true,
+          isActive: true,
           category: {
             select: {
               id: true,
@@ -419,6 +426,7 @@ export class ProductsService {
           price: finalUpdatedProduct.price,
           image: finalUpdatedProduct.image,
           isAvailable: finalUpdatedProduct.isAvailable,
+          isActive: finalUpdatedProduct.isActive,
           category: {
             id: finalUpdatedProduct.category.id,
             name: finalUpdatedProduct.category.name
@@ -486,6 +494,7 @@ export class ProductsService {
           price: productDB.price,
           image: productDB.image,
           isAvailable: productDB.isAvailable,
+          isActive: productDB.isActive,
           category: {
             id: productDB.category.id,
             name: productDB.category.name
@@ -556,6 +565,7 @@ export class ProductsService {
       price: productDB.price,
       image: productDB.image,
       isAvailable: productDB.isAvailable,
+      isActive: productDB.isActive,
       category: productDB.category,
       variations: productDB.productVariations
     };
@@ -579,6 +589,7 @@ export class ProductsService {
             price: true,
             image: true,
             isAvailable: true,
+            isActive: true,
             category: {
               select: {
                 id: true,
@@ -630,6 +641,7 @@ export class ProductsService {
           price: productDB.price,
           image: productDB.image,
           isAvailable: newStatus,
+          isActive: productDB.isActive,
           category: {
             id: productDB.category.id,
             name: productDB.category.name
@@ -653,6 +665,194 @@ export class ProductsService {
     } catch (error) {
       this.logger.error(`Error toggling activation for product with id: ${id}`, error.stack);
       handleException(error, 'Error toggling product activation');
+    }
+  }
+
+  /**
+   * Reactivar un producto en la base de datos
+   * @param id Id del producto a reactivar
+   * @param user Usuario que reactiva el producto
+   * @returns Retorna un objeto con los datos del producto reactivado
+   */
+  async reactivate(id: string, user: UserData): Promise<HttpResponse<ProductData>> {
+    try {
+      const productReactivate = await this.prisma.$transaction(async (prisma) => {
+        const productDB = await prisma.product.findUnique({
+          where: { id },
+          select: {
+            id: true,
+            name: true,
+            description: true,
+            isActive: true,
+            price: true,
+            image: true,
+            isAvailable: true,
+            // Incluir la categoría relacionada
+            category: {
+              select: {
+                id: true,
+                name: true
+              }
+            },
+            // Incluir todas las variaciones asociadas al producto
+            productVariations: {
+              select: {
+                id: true,
+                name: true,
+                description: true,
+                additionalPrice: true
+              }
+            }
+          }
+        });
+
+        if (!productDB) {
+          throw new NotFoundException('Product not found');
+        }
+
+        if (productDB.isActive) {
+          throw new BadRequestException('Product is already active');
+        }
+
+        await prisma.product.update({
+          where: { id },
+          data: {
+            isActive: true
+          }
+        });
+
+        await this.prisma.audit.create({
+          data: {
+            action: AuditActionType.UPDATE,
+            entityId: productDB.id,
+            entityType: 'product',
+            performedById: user.id,
+            createdAt: new Date()
+          }
+        });
+        return {
+          id: productDB.id,
+          name: productDB.name,
+          description: productDB.description,
+          price: productDB.price,
+          image: productDB.image,
+          isAvailable: productDB.isAvailable,
+          isActive: productDB.isActive,
+          category: {
+            id: productDB.category.id,
+            name: productDB.category.name
+          },
+          variations: productDB.productVariations
+        };
+      });
+
+      return {
+        statusCode: HttpStatus.OK,
+        message: 'Product reactivated',
+        data: productReactivate
+      };
+    } catch (error) {
+      this.logger.error(`Error reactivating a product for id: ${id}`, error.stack);
+      handleException(error, 'Error reactivating a product');
+    }
+  }
+
+  /**
+   * Reactivar varios productos seleccionadors en la base de datos
+   * @param user Usuario que hara la reactivación
+   * @param users Arreglo de los productos a reactivar
+   * @return Retorna un mensaje de la reactivacion exitosa
+   */
+  async reactivateAll(
+    user: UserData,
+    products: DeleteProductsDto
+  ): Promise<Omit<HttpResponse, 'data'>> {
+    try {
+      await this.prisma.$transaction(async (prisma) => {
+        // Buscar los productos en la base de datos
+        const productsDB = await prisma.product.findMany({
+          where: {
+            id: { in: products.ids }
+          },
+          select: {
+            id: true,
+            name: true,
+            description: true,
+            price: true,
+            image: true,
+            isAvailable: true,
+            isActive: true,
+            // Incluir la categoría relacionada
+            category: {
+              select: {
+                id: true,
+                name: true
+              }
+            },
+            // Incluir todas las variaciones asociadas al producto
+            productVariations: {
+              select: {
+                id: true,
+                name: true,
+                description: true,
+                additionalPrice: true
+              }
+            }
+          }
+        });
+
+        // Validar que se encontraron usuarios
+        if (productsDB.length === 0) {
+          throw new NotFoundException('Product not found or inactive');
+        }
+
+        // Reactivar usuarios y eliminar roles
+        const reactivatePromises = productsDB.map(async (product) => {
+          // Desactivar usuario
+          await prisma.product.update({
+            where: { id: product.id },
+            data: { isActive: true }
+          });
+
+          await this.prisma.audit.create({
+            data: {
+              action: AuditActionType.UPDATE,
+              entityId: user.id,
+              entityType: 'product',
+              performedById: user.id,
+              createdAt: new Date()
+            }
+          });
+
+          return {
+            id: product.id,
+            name: product.name,
+            description: product.description,
+            price: product.price,
+            image: product.image,
+            isAvailable: product.isAvailable,
+            isActive: product.isActive,
+            category: {
+              id: product.category.id,
+              name: product.category.name
+            },
+            variations: product.productVariations
+          };
+        });
+
+        return Promise.all(reactivatePromises);
+      });
+
+      return {
+        statusCode: HttpStatus.OK,
+        message: 'Products reactivate successfully'
+      };
+    } catch (error) {
+      this.logger.error('Error reactivating products', error.stack);
+      if (error instanceof NotFoundException || error instanceof BadRequestException) {
+        throw error;
+      }
+      handleException(error, 'Error reactivating products');
     }
   }
 }
