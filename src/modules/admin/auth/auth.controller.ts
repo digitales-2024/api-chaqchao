@@ -1,9 +1,10 @@
-import { Controller, Post, Body, Res } from '@nestjs/common';
+import { Controller, Post, Body, Res, Req } from '@nestjs/common';
 import { AuthService } from './auth.service';
 import { LoginAuthDto } from './dto';
 import { UpdatePasswordDto } from './dto/update-password.dto';
 import { ApiCreatedResponse, ApiInternalServerErrorResponse, ApiTags } from '@nestjs/swagger';
-import { Response } from 'express';
+import { Response, Request } from 'express';
+import { RefreshAuth } from './decorators';
 
 @ApiTags('Auth')
 @ApiInternalServerErrorResponse({
@@ -32,5 +33,12 @@ export class AuthController {
     @Res() res: Response
   ): Promise<void> {
     return this.authService.updatePasswordTemp(updatePasswordDto, res);
+  }
+
+  @ApiCreatedResponse({ description: 'Refresh token' })
+  @Post('refresh-token')
+  @RefreshAuth()
+  async refreshToken(@Req() req: Request, @Res() res: Response): Promise<void> {
+    return this.authService.refreshToken(req, res);
   }
 }

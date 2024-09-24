@@ -41,25 +41,46 @@ export class CartItemService {
           price: true,
           cart: {
             select: {
-              id: true
+              id: true,
+              cartStatus: true
             }
           },
           product: {
             select: {
               id: true,
-              name: true
+              name: true,
+              price: true,
+              productVariations: {
+                select: {
+                  id: true,
+                  name: true,
+                  additionalPrice: true
+                }
+              }
             }
           }
         }
       });
 
-      // Mapea los resultados al tipo ProductData
+      // Mapea los resultados al tipo CartItemData
       return cartsItem.map((cartItem) => ({
         id: cartItem.id,
         quantity: cartItem.quantity,
         price: cartItem.price,
-        cart: cartItem.cart,
-        product: cartItem.product
+        cart: {
+          id: cartItem.cart.id,
+          cartStatus: cartItem.cart.cartStatus
+        },
+        product: {
+          id: cartItem.product.id,
+          name: cartItem.product.name,
+          price: cartItem.product.price,
+          productVariations: cartItem.product.productVariations.map((variation) => ({
+            id: variation.id,
+            name: variation.name,
+            additionalPrice: variation.additionalPrice
+          }))
+        }
       })) as CartItemData[];
     } catch (error) {
       this.logger.error('Error getting all carts items');
@@ -106,7 +127,8 @@ export class CartItemService {
             product: {
               select: {
                 id: true,
-                name: true
+                name: true,
+                productVariations: true
               }
             }
           }
@@ -123,6 +145,15 @@ export class CartItemService {
         return cartItem;
       });
 
+      // Calcular el precio adicional total de las variaciones
+      const additionalPriceTotal = newCartItem.product.productVariations.reduce(
+        (sum, variation) => sum + variation.additionalPrice,
+        0
+      );
+
+      // Calcular el precio final (precio base + precio adicional)
+      const finalPrice = newCartItem.price + additionalPriceTotal;
+
       return {
         statusCode: HttpStatus.CREATED,
         message: 'Cart Item created and cart status updated to ACTIVE',
@@ -132,11 +163,21 @@ export class CartItemService {
           productId: newCartItem.productId,
           quantity: newCartItem.quantity,
           price: newCartItem.price,
+          finalPrice,
           cart: {
             id: newCartItem.cart.id,
             cartStatus: 'ACTIVE'
           },
-          product: newCartItem.product
+          product: {
+            id: newCartItem.product.id,
+            name: newCartItem.product.name,
+            price: newCartItem.product.price,
+            productVariations: newCartItem.product.productVariations.map((variation) => ({
+              id: variation.id,
+              name: variation.name,
+              additionalPrice: variation.additionalPrice
+            }))
+          }
         }
       };
     } catch (error) {
@@ -169,7 +210,8 @@ export class CartItemService {
           select: {
             id: true,
             name: true,
-            price: true
+            price: true,
+            productVariations: true
           }
         }
       }
@@ -195,7 +237,8 @@ export class CartItemService {
       product: {
         id: cartItemDB.product.id,
         name: cartItemDB.product.name,
-        price: cartItemDB.product.price
+        price: cartItemDB.product.price,
+        productVariations: cartItemDB.product.productVariations
       }
     };
   }
@@ -234,7 +277,8 @@ export class CartItemService {
             select: {
               id: true,
               name: true,
-              price: true
+              price: true,
+              productVariations: true
             }
           }
         }

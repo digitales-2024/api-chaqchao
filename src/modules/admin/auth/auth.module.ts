@@ -7,10 +7,11 @@ import { JwtModule } from '@nestjs/jwt';
 import { ConfigModule, ConfigService } from '@nestjs/config';
 import { JwtStrategy } from './strategies/jwt.strategy';
 import { RolModule } from '../rol/rol.module';
+import { RefreshTokenStrategy } from './strategies/refresh-token.strategy';
 
 @Module({
   controllers: [AuthController],
-  providers: [AuthService, JwtStrategy],
+  providers: [AuthService, JwtStrategy, RefreshTokenStrategy],
   imports: [
     ConfigModule,
     UsersModule,
@@ -25,6 +26,6 @@ import { RolModule } from '../rol/rol.module';
       })
     })
   ],
-  exports: [JwtStrategy, PassportModule, JwtModule]
+  exports: [JwtStrategy, RefreshTokenStrategy, PassportModule, JwtModule]
 })
 export class AuthModule {}
