@@ -328,6 +328,9 @@ model Cart {
 
   cartItems CartItem[] @relation("CartToCartItem")
 
+  // Relación opuesta con Order
+  order Order? @relation(name: "CartToOrder")
+
   cartStatus CartStatus
   createdAt  DateTime   @default(now()) @db.Timestamptz(6)
   updatedAt  DateTime   @updatedAt
@@ -354,4 +357,62 @@ model CartItem {
   price     Float
   createdAt DateTime @default(now()) @db.Timestamptz(6)
   updatedAt DateTime @updatedAt
+}
+
+
+model Order {
+  id String @id @unique @default(uuid())
+
+  // Relación con Cart
+  cartId String @unique
+  cart   Cart   @relation(fields: [cartId], references: [id], name: "CartToOrder")
+
+  date    DateTime?
+  orderStatus OrderStatus
+  pickupAddress String
+  pickuptime    DateTime
+  comments      String
+  isActive     Boolean   @default(true)
+  createdAt DateTime @default(now()) @db.Timestamptz(6)
+  updatedAt DateTime @updatedAt
+
+  // Agregar el campo para la relación opuesta con BillingDocument
+  billingDocuments BillingDocument[] @relation("OrderToBilling")
+}
+
+enum OrderStatus {
+  PENDING
+  CONFIRMED
+  READY
+  COMPLETED
+  CANCELLED
+}
+
+
+model BillingDocument {
+  id String @id @unique @default(uuid())
+
+  // Relación con Order
+  orderId String
+  order   Order   @relation(fields: [orderId], references: [id], name: "OrderToBilling")
+
+  billingDocumentType BillingDocumentType
+  documentNumber String
+  issuedAt  DateTime
+  totalAmount     Float
+  paymentStatus   PaymentStatus
+  isActive     Boolean   @default(true)
+  createdAt DateTime @default(now()) @db.Timestamptz(6)
+  updatedAt DateTime @updatedAt
+}
+
+enum BillingDocumentType {
+  INVOICE
+  RECEIPT
+}
+
+enum PaymentStatus {
+  PAID
+  PENDING
+  FAILED
 }
