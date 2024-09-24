@@ -367,11 +367,10 @@ model Order {
   cartId String @unique
   cart   Cart   @relation(fields: [cartId], references: [id], name: "CartToOrder")
 
-  date    DateTime?
+  pickupTime    DateTime
   orderStatus OrderStatus
   pickupAddress String
-  pickuptime    DateTime
-  comments      String
+  comments      String?
   isActive     Boolean   @default(true)
   createdAt DateTime @default(now()) @db.Timestamptz(6)
   updatedAt DateTime @updatedAt

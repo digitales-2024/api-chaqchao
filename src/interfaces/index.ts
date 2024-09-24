@@ -23,3 +23,5 @@ export { ClientGoogleData } from './client.interface';
 export { ClientPayload } from './client.interface';
 export { ClientDataUpdate } from './client.interface';
 export { CartData } from './cart.interface';
+export { CartItemData } from './cart-item.interface';
+export { OrderData } from './order.interface';
