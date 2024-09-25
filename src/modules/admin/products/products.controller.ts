@@ -3,7 +3,7 @@ import { ProductsService } from './products.service';
 import { CreateProductDto } from './dto/create-product.dto';
 import { UpdateProductDto } from './dto/update-product.dto';
 import { Auth, GetUser } from '../auth/decorators';
-import { HttpResponse, ProductData, UserData } from 'src/interfaces';
+import { HttpResponse, ProductData, UserData, UserPayload } from 'src/interfaces';
 import {
   ApiBadRequestResponse,
   ApiCreatedResponse,
@@ -11,6 +11,7 @@ import {
   ApiTags,
   ApiUnauthorizedResponse
 } from '@nestjs/swagger';
+import { DeleteProductsDto } from './dto/delete-product.dto';
 
 @ApiTags('Products')
 @ApiBadRequestResponse({ description: 'Bad Request' })
@@ -34,8 +35,8 @@ export class ProductsController {
 
   @ApiOkResponse({ description: 'Get all products' })
   @Get()
-  findAll(): Promise<ProductData[]> {
-    return this.productsService.findAll();
+  findAll(@GetUser() user: UserPayload): Promise<ProductData[]> {
+    return this.productsService.findAll(user);
   }
 
   @ApiOkResponse({ description: 'Get product by id' })
@@ -67,5 +68,20 @@ export class ProductsController {
     @GetUser() user: UserData
   ): Promise<HttpResponse<ProductData>> {
     return this.productsService.toggleActivation(id, user);
+  }
+
+  @ApiOkResponse({ description: 'Productos reactivated' })
+  @Patch('reactivate/all')
+  reactivateAll(@GetUser() user: UserData, @Body() products: DeleteProductsDto) {
+    return this.productsService.reactivateAll(user, products);
+  }
+
+  @ApiOkResponse({ description: 'Producto reactivated' })
+  @Patch('reactivate/:id')
+  reactivate(
+    @Param('id') id: string,
+    @GetUser() user: UserData
+  ): Promise<HttpResponse<ProductData>> {
+    return this.productsService.reactivate(id, user);
   }
 }

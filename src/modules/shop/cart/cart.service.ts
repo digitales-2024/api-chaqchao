@@ -43,7 +43,7 @@ export class CartService {
         }
       });
 
-      // Mapea los resultados al tipo ProductData
+      // Mapea los resultados al tipo CartData
       return carts.map((cart) => ({
         id: cart.id,
         cartStatus: cart.cartStatus,
