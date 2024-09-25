@@ -12,11 +12,17 @@ import { handleException } from 'src/utils';
 import { ValidRols } from '../auth/interfaces';
 import { UpdateRolDto } from './dto/update-rol.dto';
 import { HttpResponse, RolPermissions, RolModulesPermissions, Rol, UserData } from 'src/interfaces';
+import { DeleteRolesDto } from './dto/delete-roles.dto';
+import { AuditActionType } from '@prisma/client';
+import { AuditService } from '../audit/audit.service';
 
 @Injectable()
 export class RolService {
   private readonly logger = new Logger(RolService.name);
-  constructor(private readonly prisma: PrismaService) {}
+  constructor(
+    private readonly prisma: PrismaService,
+    private readonly auditService: AuditService
+  ) {}
 
   /**
    * Crear un nuevo rol
@@ -335,6 +341,164 @@ export class RolService {
         throw error;
       }
       handleException(error, 'Error deleting a rol');
+    }
+  }
+
+  /**
+   * Eliminar todos los roles de un arreglo
+   * @param roles Arreglo de roles a desactivar
+   * @param user Usuario que desactiva los roles
+   * @returns Retorna un mensaje de la eliminacion correcta
+   */
+  async removeAll(roles: DeleteRolesDto, user: UserData): Promise<Omit<HttpResponse, 'data'>> {
+    try {
+      await this.prisma.$transaction(async (prisma) => {
+        // Buscar los roles en la base de datos
+        const rolesDB = await prisma.rol.findMany({
+          where: {
+            id: { in: roles.ids }
+          },
+          select: {
+            id: true,
+            name: true,
+            description: true,
+            isActive: true
+          }
+        });
+
+        // Validar que se encontraron roles
+        if (rolesDB.length === 0) {
+          throw new NotFoundException('Users not found or inactive');
+        }
+
+        // Validar algunos de id es el de usuario superadmin
+        const superAdminRoles = rolesDB.filter((r) => r.name === ValidRols.SUPER_ADMIN);
+        if (superAdminRoles.length > 0) {
+          throw new BadRequestException('You cannot deactivate a superadmin role');
+        }
+
+        // Validar si alguno de los roles esta en uso
+        const rolesInUse = await Promise.all(rolesDB.map((role) => this.rolIsUsed(role.id)));
+        if (rolesInUse.some((inUse) => inUse)) {
+          throw new BadRequestException('You cannot deactivate a role in use');
+        }
+
+        // Desactivar roles y eliminar roles
+        const deactivatePromises = rolesDB.map(async (rolDelete) => {
+          const rolIsUsedByInactiveUsers = await this.rolIsUsedByInactiveUsers(rolDelete.id);
+          if (rolIsUsedByInactiveUsers) {
+            // Desactivar usuario
+            await prisma.rol.update({
+              where: { id: rolDelete.id },
+              data: { isActive: false }
+            });
+          } else {
+            // Eliminar roles
+            await prisma.rol.delete({
+              where: { id: rolDelete.id }
+            });
+          }
+
+          // Auditoría
+          await this.auditService.create({
+            entityId: rolDelete.id,
+            entityType: 'rol',
+            action: AuditActionType.DELETE,
+            performedById: user.id,
+            createdAt: new Date()
+          });
+
+          return {
+            id: rolDelete.id,
+            name: rolDelete.name,
+            description: rolDelete.description
+          };
+        });
+
+        return Promise.all(deactivatePromises);
+      });
+
+      return {
+        statusCode: HttpStatus.OK,
+        message: 'Users deactivated successfully'
+      };
+    } catch (error) {
+      this.logger.error('Error deactivating users', error.stack);
+      if (error instanceof NotFoundException || error instanceof BadRequestException) {
+        throw error;
+      }
+      handleException(error, 'Error deactivating users');
+    }
+  }
+
+  /**
+   * Reactivar todos los roles de un arreglo
+   * @param roles Arreglo de roles a reactivar
+   * @param user Usuario que reactiva los roles
+   */
+  async reactivateAll(roles: DeleteRolesDto, user: UserData): Promise<Omit<HttpResponse, 'data'>> {
+    try {
+      await this.prisma.$transaction(async (prisma) => {
+        // Buscar los roles en la base de datos
+        const rolesDB = await prisma.rol.findMany({
+          where: {
+            id: { in: roles.ids }
+          },
+          select: {
+            id: true,
+            name: true,
+            description: true,
+            isActive: true
+          }
+        });
+
+        // Validar que se encontraron roles
+        if (rolesDB.length === 0) {
+          throw new NotFoundException('Users not found or inactive');
+        }
+
+        // Validar algunos de id es el de usuario superadmin
+        const superAdminRoles = rolesDB.filter((r) => r.name === ValidRols.SUPER_ADMIN);
+        if (superAdminRoles.length > 0) {
+          throw new BadRequestException('You cannot reactivate a superadmin role');
+        }
+
+        // Reactivar roles
+        const reactivatePromises = rolesDB.map(async (rolReactivate) => {
+          await prisma.rol.update({
+            where: { id: rolReactivate.id },
+            data: { isActive: true }
+          });
+
+          // Auditoría
+          await this.auditService.create({
+            entityId: rolReactivate.id,
+            entityType: 'rol',
+            action: AuditActionType.UPDATE,
+            performedById: user.id,
+            createdAt: new Date()
+          });
+
+          return {
+            id: rolReactivate.id,
+            name: rolReactivate.name,
+            description: rolReactivate.description
+          };
+        });
+
+        return Promise.all(reactivatePromises);
+      });
+
+      return {
+        statusCode: HttpStatus.OK,
+        message: 'Users reactivated successfully'
+      };
+    } catch (error) {
+      this.logger.error('Error reactivating users', error.stack);
+      if (error instanceof NotFoundException || error instanceof BadRequestException) {
+        throw error;
+      }
+      handleException(error, 'Error reactivating users');
     }
   }
 
