@@ -1,5 +1,5 @@
 import { Module } from '@nestjs/common';
-import { CartItemController } from './cart-item-controller';
+import { CartItemController } from './cart-item.controller';
 import { CartItemService } from './cart-item.service';
 import { PrismaModule } from 'src/prisma/prisma.module';
 import { ProductsModule } from 'src/modules/admin/products/products.module';
