@@ -13,6 +13,7 @@ import {
   ApiUnauthorizedResponse
 } from '@nestjs/swagger';
 import { HttpResponse, Rol, RolModulesPermissions, RolPermissions, UserData } from 'src/interfaces';
+import { DeleteRolesDto } from './dto/delete-roles.dto';
 
 @ApiTags('Rol')
 @ApiUnauthorizedResponse({ description: 'Unauthorized' })
@@ -46,6 +47,26 @@ export class RolController {
   @Delete(':id')
   remove(@Param('id') id: string): Promise<HttpResponse<Rol>> {
     return this.rolService.remove(id);
+  }
+
+  @ApiBadRequestResponse({ description: 'Rols no found' })
+  @ApiOkResponse({ description: 'Rols deleted' })
+  @Delete('remove/all')
+  removeAll(
+    @Body() roles: DeleteRolesDto,
+    @GetUser() user: UserData
+  ): Promise<Omit<HttpResponse, 'data'>> {
+    return this.rolService.removeAll(roles, user);
+  }
+
+  @ApiBadRequestResponse({ description: 'Rols no found' })
+  @ApiOkResponse({ description: 'Rols reactivated' })
+  @Patch('reactivate/all')
+  reactivateAll(
+    @Body() roles: DeleteRolesDto,
+    @GetUser() user: UserData
+  ): Promise<Omit<HttpResponse, 'data'>> {
+    return this.rolService.reactivateAll(roles, user);
   }
 
   @ApiBadRequestResponse({ description: 'Rols no found' })
