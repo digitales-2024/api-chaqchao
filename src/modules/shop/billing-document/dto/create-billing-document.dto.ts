@@ -1,13 +1,13 @@
 import { ApiProperty } from '@nestjs/swagger';
 import { BillingDocumentType, PaymentStatus } from '@prisma/client';
 import { Transform } from 'class-transformer';
-import { IsEmpty, IsNotEmpty, IsNumber, IsString } from 'class-validator';
+import { IsUUID, IsNotEmpty, IsNumber, IsString, IsEmpty } from 'class-validator';
 
 export class CreateBillingDocumentDto {
   @ApiProperty()
   @IsEmpty()
   @Transform(({ value }) => value.trim().toUpperCase())
-  billingDocumentType: BillingDocumentType;
+  billingDocumentType?: BillingDocumentType;
 
   @ApiProperty()
   @IsString()
@@ -21,9 +21,14 @@ export class CreateBillingDocumentDto {
   @ApiProperty()
   @IsEmpty()
   @Transform(({ value }) => value.trim().toUpperCase())
-  paymentStatus: PaymentStatus;
+  paymentStatus?: PaymentStatus;
 
   @ApiProperty()
   @IsString()
   issuedAt: string;
+
+  @ApiProperty()
+  @IsNotEmpty()
+  @IsUUID()
+  orderId: string;
 }

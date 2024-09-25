@@ -1,6 +1,7 @@
-import { Controller, Get } from '@nestjs/common';
+import { Body, Controller, Get, Post } from '@nestjs/common';
 import {
   ApiBadRequestResponse,
+  ApiCreatedResponse,
   ApiInternalServerErrorResponse,
   ApiOkResponse,
   ApiTags,
@@ -9,6 +10,8 @@ import {
 import { Auth } from 'src/modules/admin/auth/decorators';
 import { BillingDocumentService } from './billing-document.service';
 import { BillingDocumentData } from 'src/interfaces/billing-document.interface';
+import { CreateBillingDocumentDto } from './dto/create-billing-document.dto';
+import { HttpResponse } from 'src/interfaces';
 
 @ApiTags('BillingDocument')
 @ApiUnauthorizedResponse({ description: 'Unauthorized' })
@@ -26,5 +29,13 @@ export class BillingDocumentController {
   @Get()
   findAll(): Promise<BillingDocumentData[]> {
     return this.billingDocumentService.findAll();
+  }
+
+  @ApiCreatedResponse({ description: 'Billing Document created' })
+  @Post()
+  create(
+    @Body() createBillingDocumentDto: CreateBillingDocumentDto
+  ): Promise<HttpResponse<BillingDocumentData>> {
+    return this.billingDocumentService.create(createBillingDocumentDto);
   }
 }
