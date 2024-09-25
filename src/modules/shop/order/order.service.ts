@@ -1,4 +1,11 @@
-import { forwardRef, HttpStatus, Inject, Injectable, Logger } from '@nestjs/common';
+import {
+  BadRequestException,
+  forwardRef,
+  HttpStatus,
+  Inject,
+  Injectable,
+  Logger
+} from '@nestjs/common';
 import { PrismaService } from 'src/prisma/prisma.service';
 import { CartService } from '../cart/cart.service';
 import { OrderData } from 'src/interfaces/order.interface';
@@ -6,6 +13,8 @@ import { handleException } from 'src/utils';
 import { CreateOrderDto } from './dto/create-order.dto';
 import { HttpResponse } from 'src/interfaces';
 import { UpdateStatusOrderDto } from './dto/update-status-order.dto';
+import * as moment from 'moment-timezone';
+import { DayOfWeek } from '@prisma/client';
 
 @Injectable()
 export class OrderService {
@@ -61,6 +70,23 @@ export class OrderService {
     let newOrder;
 
     try {
+      // Obtener el día actual de la semana
+      const today = moment().format('dddd').toUpperCase() as DayOfWeek;
+
+      // Buscar los horarios de atención para el día actual
+      const businessHours = await this.prisma.businessHours.findFirst({
+        where: { dayOfWeek: today, isOpen: true }
+      });
+
+      if (!businessHours) {
+        throw new BadRequestException('The business is closed today.');
+      }
+
+      // Validar si la hora actual está dentro del rango de horarios permitidos
+      const currentTime = moment.utc(pickupTime).tz('America/Lima-5').format('HH:mm');
+      if (currentTime < businessHours.openingTime || currentTime > businessHours.closingTime) {
+        throw new BadRequestException('Orders cannot be placed outside business hours.');
+      }
       // Crear el nuevo Order
       newOrder = await this.prisma.$transaction(async () => {
         const order = await this.prisma.order.create({
