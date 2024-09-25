@@ -1,7 +1,7 @@
 import { Controller, Get, Post, Body, Patch, Param, Delete } from '@nestjs/common';
 import { RolService } from './rol.service';
 import { CreateRolDto } from './dto/create-rol.dto';
-import { Auth } from '../auth/decorators';
+import { Auth, GetUser } from '../auth/decorators';
 import { UpdateRolDto } from './dto/update-rol.dto';
 import {
   ApiBadRequestResponse,
@@ -12,7 +12,8 @@ import {
   ApiTags,
   ApiUnauthorizedResponse
 } from '@nestjs/swagger';
-import { HttpResponse, Rol, RolPermissions } from 'src/interfaces';
+import { HttpResponse, Rol, RolModulesPermissions, RolPermissions, UserData } from 'src/interfaces';
+import { DeleteRolesDto } from './dto/delete-roles.dto';
 
 @ApiTags('Rol')
 @ApiUnauthorizedResponse({ description: 'Unauthorized' })
@@ -44,15 +45,35 @@ export class RolController {
   @ApiBadRequestResponse({ description: 'Rol no found' })
   @ApiOkResponse({ description: 'Rol deleted' })
   @Delete(':id')
-  remove(@Param('id') id: string): Promise<HttpResponse<RolPermissions>> {
+  remove(@Param('id') id: string): Promise<HttpResponse<Rol>> {
     return this.rolService.remove(id);
+  }
+
+  @ApiBadRequestResponse({ description: 'Rols no found' })
+  @ApiOkResponse({ description: 'Rols deleted' })
+  @Delete('remove/all')
+  removeAll(
+    @Body() roles: DeleteRolesDto,
+    @GetUser() user: UserData
+  ): Promise<Omit<HttpResponse, 'data'>> {
+    return this.rolService.removeAll(roles, user);
+  }
+
+  @ApiBadRequestResponse({ description: 'Rols no found' })
+  @ApiOkResponse({ description: 'Rols reactivated' })
+  @Patch('reactivate/all')
+  reactivateAll(
+    @Body() roles: DeleteRolesDto,
+    @GetUser() user: UserData
+  ): Promise<Omit<HttpResponse, 'data'>> {
+    return this.rolService.reactivateAll(roles, user);
   }
 
   @ApiBadRequestResponse({ description: 'Rols no found' })
   @ApiOkResponse({ description: 'Rols found' })
   @Get()
-  findAll(): Promise<RolPermissions[]> {
-    return this.rolService.findAll();
+  findAll(@GetUser() user: UserData): Promise<RolPermissions[]> {
+    return this.rolService.findAll(user);
   }
 
   @ApiBadRequestResponse({ description: 'Rol no found' })
@@ -60,5 +81,10 @@ export class RolController {
   @Get(':id')
   findOne(@Param('id') id: string): Promise<RolPermissions> {
     return this.rolService.findById(id);
+  }
+
+  @Get('modules-permissions/all')
+  findAllModulesPermissions(): Promise<RolModulesPermissions[]> {
+    return this.rolService.findAllModulesPermissions();
   }
 }
