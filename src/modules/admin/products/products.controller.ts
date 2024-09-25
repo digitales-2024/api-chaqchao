@@ -61,6 +61,15 @@ export class ProductsController {
     return this.productsService.remove(id, user);
   }
 
+  @ApiOkResponse({ description: 'Users deactivated' })
+  @Delete('remove/all')
+  deactivate(
+    @Body() products: DeleteProductsDto,
+    @GetUser() user: UserData
+  ): Promise<Omit<HttpResponse, 'data'>> {
+    return this.productsService.removeAll(products, user);
+  }
+
   @ApiOkResponse({ description: 'Product toggle activation' })
   @Patch('toggleactivation/:id')
   toggleActivation(
@@ -70,13 +79,13 @@ export class ProductsController {
     return this.productsService.toggleActivation(id, user);
   }
 
-  @ApiOkResponse({ description: 'Productos reactivated' })
+  @ApiOkResponse({ description: 'Products reactivated' })
   @Patch('reactivate/all')
   reactivateAll(@GetUser() user: UserData, @Body() products: DeleteProductsDto) {
     return this.productsService.reactivateAll(user, products);
   }
 
-  @ApiOkResponse({ description: 'Producto reactivated' })
+  @ApiOkResponse({ description: 'Product reactivated' })
   @Patch('reactivate/:id')
   reactivate(
     @Param('id') id: string,

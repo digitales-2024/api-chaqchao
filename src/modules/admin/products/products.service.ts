@@ -17,7 +17,6 @@ import { CategoryService } from '../category/category.service';
 import { ProductVariationService } from '../product-variation/product-variation.service';
 import { CreateProductVariationDto } from '../product-variation/dto/create-product-variation.dto';
 import { UpdateProductVariationDto } from '../product-variation/dto/update-product-variation.dto';
-import { ValidRols } from '../auth/interfaces';
 import { DeleteProductsDto } from './dto/delete-product.dto';
 
 @Injectable()
@@ -158,7 +157,6 @@ export class ProductsService {
    */
   async findAll(user: UserPayload): Promise<ProductData[]> {
     // Verificar si el usuario es super admin
-    const isSuperAdmin = user.roles.some((role) => role.name === ValidRols.SUPER_ADMIN);
 
     try {
       const products = await this.prisma.product.findMany({
@@ -183,7 +181,7 @@ export class ProductsService {
               additionalPrice: true
             }
           },
-          ...(isSuperAdmin && { isActive: true }) // Incluir isActive solo si es super admin
+          ...(user.isSuperAdmin && { isActive: true }) // Incluir isActive solo si es super admin
         }
       });
 
@@ -195,7 +193,7 @@ export class ProductsService {
         price: product.price,
         image: product.image,
         isAvailable: product.isAvailable,
-        ...(isSuperAdmin && { isActive: product.isActive }),
+        ...(user.isSuperAdmin && { isActive: product.isActive }),
         category: product.category,
         variations: product.productVariations
       })) as ProductData[];
@@ -515,6 +513,104 @@ export class ProductsService {
   }
 
   /**
+   * Desactivar todos los productos en la base de datos
+   * @param products Productos a desactivar
+   * @param user Usuario que desactiva los productos
+   * @returns Productos desactivados
+   */
+  async removeAll(
+    products: DeleteProductsDto,
+    user: UserData
+  ): Promise<Omit<HttpResponse, 'data'>> {
+    try {
+      await this.prisma.$transaction(async (prisma) => {
+        // Buscar los productos en la base de datos
+        const productsDB = await prisma.product.findMany({
+          where: {
+            id: { in: products.ids }
+          },
+          select: {
+            id: true,
+            name: true,
+            description: true,
+            price: true,
+            image: true,
+            isAvailable: true,
+            isActive: true,
+            // Incluir la categoría relacionada
+            category: {
+              select: {
+                id: true,
+                name: true
+              }
+            },
+            // Incluir todas las variaciones asociadas al producto
+            productVariations: {
+              select: {
+                id: true,
+                name: true,
+                description: true,
+                additionalPrice: true
+              }
+            }
+          }
+        });
+
+        // Validar que se encontraron los productos
+        if (productsDB.length === 0) {
+          throw new NotFoundException('Products not found or inactive');
+        }
+
+        const deactivatePromises = productsDB.map(async (productDelete) => {
+          // Desactivar productos
+          await prisma.product.update({
+            where: { id: productDelete.id },
+            data: { isActive: false }
+          });
+
+          await this.prisma.audit.create({
+            data: {
+              action: AuditActionType.DELETE,
+              entityId: productDelete.id,
+              entityType: 'product',
+              performedById: user.id,
+              createdAt: new Date()
+            }
+          });
+
+          return {
+            id: productDelete.id,
+            name: productDelete.name,
+            description: productDelete.description,
+            price: productDelete.price,
+            image: productDelete.image,
+            isAvailable: productDelete.isAvailable,
+            isActive: productDelete.isActive,
+            category: {
+              id: productDelete.category.id,
+              name: productDelete.category.name
+            },
+            variations: productDelete.productVariations
+          };
+        });
+
+        return Promise.all(deactivatePromises);
+      });
+
+      return {
+        statusCode: HttpStatus.OK,
+        message: 'Products deactivate successfully'
+      };
+    } catch (error) {
+      this.logger.error('Error deactivating products', error.stack);
+      if (error instanceof NotFoundException || error instanceof BadRequestException) {
+        throw error;
+      }
+      handleException(error, 'Error deactivating products');
+    }
+  }
+
+  /**
    * Mostrar producto por id
    * @param id Id del producto
    * @returns Si existe el producto te retorna el mensaje de error si no te retorna el producto
@@ -817,7 +913,7 @@ export class ProductsService {
           await this.prisma.audit.create({
             data: {
               action: AuditActionType.UPDATE,
-              entityId: user.id,
+              entityId: product.id,
               entityType: 'product',
               performedById: user.id,
               createdAt: new Date()
