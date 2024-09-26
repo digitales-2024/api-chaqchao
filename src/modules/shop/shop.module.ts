@@ -6,6 +6,7 @@ import { CartModule } from './cart/cart.module';
 import { OrderModule } from './order/order.module';
 import { CartItemModule } from './cart-item/cart-item.module';
 import { BillingDocumentModule } from './billing-document/billing-document.module';
+import { NotificationModule } from './notification/notification.module';
 
 @Module({
   imports: [
@@ -15,7 +16,8 @@ import { BillingDocumentModule } from './billing-document/billing-document.modul
     CartModule,
     CartItemModule,
     OrderModule,
-    BillingDocumentModule
+    BillingDocumentModule,
+    NotificationModule
   ]
 })
 export class ShopModule {}
