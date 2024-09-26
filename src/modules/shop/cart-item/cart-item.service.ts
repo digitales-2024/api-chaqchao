@@ -104,6 +104,49 @@ export class CartItemService {
         throw new BadRequestException('Invalid productId provided');
       }
 
+      // Validar la edad del cliente asociado al carrito
+      const cart = await this.prisma.cart.findUnique({
+        where: { id: cartId },
+        include: {
+          client: {
+            select: { birthDate: true } // Seleccionar la fecha de nacimiento del cliente
+          }
+        }
+      });
+
+      if (!cart || !cart.client) {
+        throw new BadRequestException('Cart or Client not found');
+      }
+
+      const { birthDate } = cart.client;
+
+      // Verificar si el cliente tiene fecha de nacimiento registrada
+      if (birthDate) {
+        const birthDateObj = new Date(birthDate);
+        const currentDate = new Date();
+
+        // Calcular la edad
+        let age = currentDate.getFullYear() - birthDateObj.getFullYear();
+        const monthDifference = currentDate.getMonth() - birthDateObj.getMonth();
+
+        // Restar un año si el cliente aún no ha cumplido años este año
+        if (
+          monthDifference < 0 ||
+          (monthDifference === 0 && currentDate.getDate() < birthDateObj.getDate())
+        ) {
+          age--;
+        }
+
+        console.log(`La edad del cliente es: ${age}`);
+
+        // Verificar si el producto está restringido por edad y el cliente es menor de edad
+        if (product.isRestricted && age < 18) {
+          throw new BadRequestException('El cliente es menor de edad para comprar este producto');
+        }
+      } else {
+        throw new BadRequestException('Cliente no tiene registrada su fecha de nacimiento');
+      }
+
       // Crear el Cart Item
       newCartItem = await this.prisma.$transaction(async () => {
         // Crear el nuevo Cart Item
