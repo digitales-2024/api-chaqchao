@@ -1,6 +1,7 @@
-import { Controller, Get } from '@nestjs/common';
+import { Body, Controller, Get, Post } from '@nestjs/common';
 import {
   ApiBadRequestResponse,
+  ApiCreatedResponse,
   ApiOkResponse,
   ApiTags,
   ApiUnauthorizedResponse
@@ -8,6 +9,8 @@ import {
 import { NotificationData } from 'src/interfaces/notification.interface';
 import { Auth } from 'src/modules/admin/auth/decorators';
 import { NotificationService } from './notification.service';
+import { CreateNotificationDto } from './dto/create-notification.dto';
+import { HttpResponse } from 'src/interfaces';
 
 @ApiTags('Notifications')
 @ApiBadRequestResponse({ description: 'Bas Request' })
@@ -24,5 +27,13 @@ export class NotificationController {
   @Get()
   findAll(): Promise<NotificationData[]> {
     return this.notificationService.findAll();
+  }
+
+  @ApiCreatedResponse({ description: 'Notification created successfully' })
+  @Post()
+  create(
+    @Body() createNotificationDto: CreateNotificationDto
+  ): Promise<HttpResponse<NotificationData>> {
+    return this.notificationService.create(createNotificationDto);
   }
 }
