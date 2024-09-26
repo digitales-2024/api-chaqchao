@@ -45,4 +45,9 @@ export class OrderController {
   ): Promise<HttpResponse<OrderData>> {
     return this.orderService.updateOrderStatus(id, updateStatusOrderDto);
   }
+  @ApiOkResponse({ description: 'Get paid order information' })
+  @Get('details/:clientId')
+  async getOrderDetails(@Param('clientId') clientId: string) {
+    return this.orderService.getOrderDetails(clientId);
+  }
 }
