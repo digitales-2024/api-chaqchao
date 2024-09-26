@@ -72,11 +72,11 @@ export class CategoryService {
    * Mostrar un listado de todas las categorias activas
    * @returns Todas las categorias activas
    */
-  async findAll(): Promise<CategoryData[]> {
+  async findAll(user: UserData): Promise<CategoryData[]> {
     try {
       return await this.prisma.category.findMany({
-        where: { isActive: true },
-        select: { id: true, name: true, description: true }
+        where: { ...(user.isSuperAdmin ? {} : { isActive: true }) },
+        select: { id: true, name: true, description: true, isActive: true }
       });
     } catch (error) {
       this.logger.error('Error get all categories');
