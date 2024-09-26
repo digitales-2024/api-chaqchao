@@ -21,15 +21,5 @@ export const permissionsSeed: Permission[] = [
     cod: 'READ',
     name: 'read',
     description: 'Read'
-  },
-  {
-    cod: 'LIST',
-    name: 'list',
-    description: 'List'
-  },
-  {
-    cod: 'PRD-EXPORT',
-    name: 'export',
-    description: 'Export'
   }
 ];
