@@ -41,7 +41,8 @@ export class ProductsService {
     createProductDto: CreateProductDto,
     user: UserData
   ): Promise<HttpResponse<ProductData>> {
-    const { name, description, price, image, categoryId, variations } = createProductDto;
+    const { name, description, price, image, categoryId, variations, isRestricted } =
+      createProductDto;
     let newProduct;
 
     try {
@@ -62,6 +63,7 @@ export class ProductsService {
             description,
             price: parseFloat(price.toString()),
             image,
+            isRestricted,
             categoryId
           },
           select: {
@@ -71,6 +73,7 @@ export class ProductsService {
             price: true,
             image: true,
             isAvailable: true,
+            isRestricted: true,
             category: {
               select: {
                 id: true,
@@ -127,6 +130,7 @@ export class ProductsService {
           image: newProduct.image,
           isAvailable: newProduct.isAvailable,
           isActive: newProduct.isActive,
+          isRestricted: newProduct.isRestricted,
           category: {
             id: newProduct.category.id,
             name: newProduct.category.name
@@ -398,6 +402,7 @@ export class ProductsService {
           image: true,
           isAvailable: true,
           isActive: true,
+          isRestricted: true,
           category: {
             select: {
               id: true,
@@ -427,6 +432,7 @@ export class ProductsService {
           image: finalUpdatedProduct.image,
           isAvailable: finalUpdatedProduct.isAvailable,
           isActive: finalUpdatedProduct.isActive,
+          isRestricted: finalUpdatedProduct.isRestricted,
           category: {
             id: finalUpdatedProduct.category.id,
             name: finalUpdatedProduct.category.name
@@ -495,6 +501,7 @@ export class ProductsService {
           image: productDB.image,
           isAvailable: productDB.isAvailable,
           isActive: productDB.isActive,
+          isRestricted: productDB.isRestricted,
           category: {
             id: productDB.category.id,
             name: productDB.category.name
@@ -530,6 +537,7 @@ export class ProductsService {
         price: true,
         image: true,
         isAvailable: true,
+        isRestricted: true,
         // Incluir la categoría relacionada
         category: {
           select: {
@@ -566,6 +574,7 @@ export class ProductsService {
       image: productDB.image,
       isAvailable: productDB.isAvailable,
       isActive: productDB.isActive,
+      isRestricted: productDB.isRestricted,
       category: productDB.category,
       variations: productDB.productVariations
     };
@@ -590,6 +599,7 @@ export class ProductsService {
             image: true,
             isAvailable: true,
             isActive: true,
+            isRestricted: true,
             category: {
               select: {
                 id: true,
@@ -642,6 +652,7 @@ export class ProductsService {
           image: productDB.image,
           isAvailable: newStatus,
           isActive: productDB.isActive,
+          isRestricted: productDB.isRestricted,
           category: {
             id: productDB.category.id,
             name: productDB.category.name
@@ -687,6 +698,7 @@ export class ProductsService {
             price: true,
             image: true,
             isAvailable: true,
+            isRestricted: true,
             // Incluir la categoría relacionada
             category: {
               select: {
@@ -738,6 +750,7 @@ export class ProductsService {
           image: productDB.image,
           isAvailable: productDB.isAvailable,
           isActive: productDB.isActive,
+          isRestricted: productDB.isRestricted,
           category: {
             id: productDB.category.id,
             name: productDB.category.name
