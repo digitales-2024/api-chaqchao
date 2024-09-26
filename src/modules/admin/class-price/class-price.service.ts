@@ -139,6 +139,9 @@ export class ClassPriceService {
           classTypeUser: true,
           price: true,
           typeCurrency: true
+        },
+        orderBy: {
+          typeCurrency: 'asc'
         }
       });
 
