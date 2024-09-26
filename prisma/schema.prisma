@@ -221,7 +221,7 @@ model ClassSchedule {
   businessId String
   business   BusinessConfig @relation("businessId", fields: [businessId], references: [id])
 
-  startTime String @unique
+  startTime String   @unique
   createdAt DateTime @default(now()) @db.Timestamptz(6)
   updatedAt DateTime @updatedAt
 }
@@ -252,13 +252,14 @@ model ClassRegistrationConfig {
 }
 
 model Product {
-  id          String  @id @unique @default(uuid())
-  name        String
-  description String?
-  price       Float
-  image       String?
-  isAvailable Boolean @default(true)
-  isActive    Boolean @default(true)
+  id           String   @id @unique @default(uuid())
+  name         String
+  description  String?
+  price        Float
+  image        String?
+  isAvailable  Boolean  @default(true)
+  isActive     Boolean  @default(true)
+  isRestricted Boolean? @default(false)
 
   createdAt DateTime @default(now()) @db.Timestamptz(6)
   updatedAt DateTime @updatedAt
@@ -314,7 +315,11 @@ model Client {
   lastLogin    DateTime  @default(now()) @db.Timestamptz(6)
   isActive     Boolean   @default(true)
 
-  carts     Cart[]   @relation("ClientToCart")
+  carts Cart[] @relation("ClientToCart")
+
+  // Relación con Notification
+  notifications Notification[] @relation("ClientToNotificationRelation")
+
   createdAt DateTime @default(now()) @db.Timestamptz(6)
   updatedAt DateTime @updatedAt
 }
@@ -359,7 +364,6 @@ model CartItem {
   updatedAt DateTime @updatedAt
 }
 
-
 model Order {
   id String @id @unique @default(uuid())
 
@@ -368,14 +372,17 @@ model Order {
   cart   Cart   @relation(fields: [cartId], references: [id], name: "CartToOrder")
 
   pickupTime    DateTime
-  orderStatus OrderStatus
+  orderStatus   OrderStatus
   pickupAddress String
   comments      String?
-  isActive     Boolean   @default(true)
-  createdAt DateTime @default(now()) @db.Timestamptz(6)
-  updatedAt DateTime @updatedAt
+  isActive      Boolean     @default(true)
+  createdAt     DateTime    @default(now()) @db.Timestamptz(6)
+  updatedAt     DateTime    @updatedAt
 
-  // Agregar el campo para la relación opuesta con BillingDocument
+  // Relación con Notification
+  notifications Notification[] @relation("OrderToNotificationRelation")
+
+  // Relación con BillingDocument
   billingDocuments BillingDocument[] @relation("OrderToBilling")
 }
 
@@ -387,22 +394,21 @@ enum OrderStatus {
   CANCELLED
 }
 
-
 model BillingDocument {
   id String @id @unique @default(uuid())
 
   // Relación con Order
   orderId String
-  order   Order   @relation(fields: [orderId], references: [id], name: "OrderToBilling")
+  order   Order  @relation(fields: [orderId], references: [id], name: "OrderToBilling")
 
   billingDocumentType BillingDocumentType
-  documentNumber String
-  issuedAt  DateTime
-  totalAmount     Float
-  paymentStatus   PaymentStatus
-  isActive     Boolean   @default(true)
-  createdAt DateTime @default(now()) @db.Timestamptz(6)
-  updatedAt DateTime @updatedAt
+  documentNumber      String
+  issuedAt            DateTime
+  totalAmount         Float
+  paymentStatus       PaymentStatus
+  isActive            Boolean             @default(true)
+  createdAt           DateTime            @default(now()) @db.Timestamptz(6)
+  updatedAt           DateTime            @updatedAt
 }
 
 enum BillingDocumentType {
@@ -414,4 +420,32 @@ enum PaymentStatus {
   PAID
   PENDING
   FAILED
+}
+
+model Notification {
+  id               String           @id @unique @default(uuid())
+  description      String?
+  notificationType NotificationType
+  isRead           Boolean          @default(false)
+
+  // Relación con Client
+  clientId String
+  client   Client @relation(fields: [clientId], references: [id], name: "ClientToNotificationRelation", map: "FK_Notification_Client")
+
+  // Relación con Order
+  orderId String
+  order   Order  @relation(fields: [orderId], references: [id], name: "OrderToNotificationRelation", map: "FK_Notification_Order")
+
+  createdAt DateTime @default(now()) @db.Timestamptz(6)
+  updatedAt DateTime @updatedAt
+}
+
+enum NotificationType {
+  ORDER_CONFIRMED
+  ORDER_PREPARING
+  ORDER_READY
+  ORDER_PICKED_UP
+  ORDER_CANCELLED
+  PROMOTIONAL
+  REMINDER
 }
