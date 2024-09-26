@@ -205,7 +205,7 @@ export class OrderService {
           }
         },
         billingDocuments: {
-          where: { paymentStatus: 'PENDING' } //Deberia ser PAID
+          where: { paymentStatus: 'PAID' }
         }
       }
     });

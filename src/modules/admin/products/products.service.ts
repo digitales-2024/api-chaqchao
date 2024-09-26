@@ -173,6 +173,7 @@ export class ProductsService {
           price: true,
           image: true,
           isAvailable: true,
+          isRestricted: true,
           category: {
             select: {
               id: true,
@@ -199,6 +200,7 @@ export class ProductsService {
         price: product.price,
         image: product.image,
         isAvailable: product.isAvailable,
+        isRestricted: product.isRestricted,
         ...(isSuperAdmin && { isActive: product.isActive }),
         category: product.category,
         variations: product.productVariations
