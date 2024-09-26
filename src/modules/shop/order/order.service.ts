@@ -4,7 +4,8 @@ import {
   HttpStatus,
   Inject,
   Injectable,
-  Logger
+  Logger,
+  NotFoundException
 } from '@nestjs/common';
 import { PrismaService } from 'src/prisma/prisma.service';
 import { CartService } from '../cart/cart.service';
@@ -181,5 +182,54 @@ export class OrderService {
       this.logger.error(`Error updating Order status: ${error.message}`, error.stack);
       handleException(error, 'Error updating Order status');
     }
+  }
+
+  /**
+   * Obtenemos detalles del pedido, direccion del local, codigo unico de recojo
+   * @param clientId para obtener la informacion del Client
+   * @returns El codigo unico se genera cuando se haya realizado el pago el billingDocumentType esta en 'PAID'
+   * @returns los detalles del Pedido
+   * @returns la direccion del local la obtenemos desde un modulo llamado Bussiness config que tiene el address
+   */
+  async getOrderDetails(clientId: string): Promise<any> {
+    // Obtener el pedido (Order) activo o pendiente del cliente
+    const order = await this.prisma.order.findFirst({
+      where: {
+        cart: { clientId },
+        orderStatus: 'PENDING'
+      },
+      include: {
+        cart: {
+          include: {
+            cartItems: true
+          }
+        },
+        billingDocuments: {
+          where: { paymentStatus: 'PAID' }
+        }
+      }
+    });
+
+    if (!order) {
+      throw new NotFoundException('No se encontró un pedido para este cliente.');
+    }
+
+    // Obtener la dirección del local desde BusinessConfig
+    const businessConfig = await this.prisma.businessConfig.findFirst({
+      select: { address: true }
+    });
+
+    // Generar el código de recojo solo si el pedido está en status PAID
+    let pickupCode: string | null = null;
+    if (order.billingDocuments.length > 0) {
+      pickupCode = `PU-${order.id}-${Date.now()}`;
+    }
+
+    // Retornar la información consolidada
+    return {
+      orderDetails: order,
+      businessAddress: businessConfig?.address,
+      pickupCode: pickupCode
+    };
   }
 }
