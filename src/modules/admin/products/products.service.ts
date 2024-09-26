@@ -167,6 +167,8 @@ export class ProductsService {
           price: true,
           image: true,
           isAvailable: true,
+          createdAt: true,
+          updatedAt: true,
           category: {
             select: {
               id: true,
@@ -182,6 +184,9 @@ export class ProductsService {
             }
           },
           ...(user.isSuperAdmin && { isActive: true }) // Incluir isActive solo si es super admin
+        },
+        orderBy: {
+          createdAt: 'asc'
         }
       });
 
@@ -195,6 +200,8 @@ export class ProductsService {
         isAvailable: product.isAvailable,
         ...(user.isSuperAdmin && { isActive: product.isActive }),
         category: product.category,
+        createdAt: product.createdAt,
+        updatedAt: product.updatedAt,
         variations: product.productVariations
       })) as ProductData[];
     } catch (error) {
