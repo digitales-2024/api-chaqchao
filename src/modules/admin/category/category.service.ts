@@ -119,6 +119,8 @@ export class CategoryService {
 
       const { name, description } = updateCategoryDto;
 
+      await this.findByName(name);
+
       // Verificar si hay cambios en los datos
       const hasChanges =
         (name && name !== categoryDB.name) ||
@@ -270,12 +272,13 @@ export class CategoryService {
       select: { id: true, name: true, description: true, isActive: true }
     });
 
+    if (!!categoryDB && !categoryDB.isActive) {
+      throw new BadRequestException(
+        'This category is inactive, contact the superadmin to reactivate it'
+      );
+    }
     if (categoryDB) {
       throw new BadRequestException('This category exists');
-    }
-
-    if (!!categoryDB && !categoryDB.isActive) {
-      throw new BadRequestException('This category exist, but is inactive');
     }
 
     return categoryDB;
