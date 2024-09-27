@@ -1,9 +1,9 @@
-import { modulesSeed } from 'src/modules/seeds/data/modules.seed';
-import { permissionsSeed } from 'src/modules/seeds/data/permissions.seed';
-import { rolSuperAdminSeed, superAdminSeed } from 'src/modules/seeds/data/superadmin.seed';
-import * as bcrypt from 'bcrypt';
-import { handleException } from 'src/utils';
 import { PrismaClient } from '@prisma/client';
+import { modulesSeed } from './modules/seeds/data/modules.seed';
+import { permissionsSeed } from './modules/seeds/data/permissions.seed';
+import { rolSuperAdminSeed, superAdminSeed } from './modules/seeds/data/superadmin.seed';
+import { handleException } from './utils';
+import * as bcrypt from 'bcrypt';
 
 const prisma = new PrismaClient();
 
