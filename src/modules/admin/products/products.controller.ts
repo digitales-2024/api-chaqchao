@@ -1,4 +1,14 @@
-import { Controller, Get, Post, Body, Patch, Param, Delete } from '@nestjs/common';
+import {
+  Controller,
+  Get,
+  Post,
+  Body,
+  Patch,
+  Param,
+  Delete,
+  UploadedFile,
+  UseInterceptors
+} from '@nestjs/common';
 import { ProductsService } from './products.service';
 import { CreateProductDto } from './dto/create-product.dto';
 import { UpdateProductDto } from './dto/update-product.dto';
@@ -12,6 +22,7 @@ import {
   ApiUnauthorizedResponse
 } from '@nestjs/swagger';
 import { DeleteProductsDto } from './dto/delete-product.dto';
+import { FileInterceptor } from '@nestjs/platform-express';
 
 @ApiTags('Products')
 @ApiBadRequestResponse({ description: 'Bad Request' })
@@ -31,6 +42,23 @@ export class ProductsController {
     @GetUser() user: UserData
   ): Promise<HttpResponse<ProductData>> {
     return this.productsService.create(createProductDto, user);
+  }
+
+  @ApiCreatedResponse({ description: 'Image uploaded' })
+  @Post('upload/image')
+  @UseInterceptors(FileInterceptor('image')) // Interceptor para manejar la subida de archivos
+  async uploadImage(@UploadedFile() image: Express.Multer.File): Promise<HttpResponse<string>> {
+    return this.productsService.uploadImage(image);
+  }
+
+  @ApiCreatedResponse({ description: 'Image updated' })
+  @Patch('update/image/:existingFileName')
+  @UseInterceptors(FileInterceptor('image'))
+  async updateImage(
+    @UploadedFile() image: Express.Multer.File,
+    @Param('existingFileName') existingFileName: string
+  ): Promise<HttpResponse<string>> {
+    return this.productsService.updateImage(image, existingFileName);
   }
 
   @ApiOkResponse({ description: 'Get all products' })
