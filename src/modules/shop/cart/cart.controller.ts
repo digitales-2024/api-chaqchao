@@ -48,4 +48,11 @@ export class CartController {
   async cancelCart(@Param('id') id: string): Promise<HttpResponse<CartData>> {
     return this.cartService.cancelCart(id);
   }
+
+  @Get(':id/items-invoice')
+  @ApiOkResponse({ description: 'Invoice generated successfully' })
+  @ApiNotFoundResponse({ description: 'Cart not found' })
+  async generateAndSendInvoice(@Param('id') id: string): Promise<HttpResponse<CartData>> {
+    return this.cartService.generateAndSendInvoice(id);
+  }
 }
