@@ -45,4 +45,23 @@ export class CloudflareService {
     // Devuelve la URL pública del archivo subido
     return `${this.publicUrl}/${fileName}`;
   }
+
+  async updateImage(file: Express.Multer.File, existingFileName: string): Promise<string> {
+    // Usar el nombre de archivo existente si no se proporciona un nuevo nombre
+    const fileName = existingFileName;
+
+    // Parametros para actualizar el archivo
+    const params = {
+      Bucket: this.bucketName, // Nombre del bucket
+      Key: fileName, // Nombre del archivo en el bucket
+      Body: file.buffer, // Contenido del archivo
+      ContentType: file.mimetype // Tipo de contenido
+    };
+
+    // Ejecuta el comando para actualizar el archivo
+    const command = new PutObjectCommand(params);
+    await this.s3Client.send(command);
+    // Retorna la URL pública del archivo actualizado
+    return `${this.publicUrl}/${fileName}`;
+  }
 }
