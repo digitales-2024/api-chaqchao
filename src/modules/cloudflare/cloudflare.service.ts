@@ -2,7 +2,7 @@ import { Injectable } from '@nestjs/common';
 import { ConfigService } from '@nestjs/config';
 import { extname } from 'path';
 import { randomUUID } from 'crypto';
-import { PutObjectCommand, S3Client } from '@aws-sdk/client-s3';
+import { DeleteObjectCommand, PutObjectCommand, S3Client } from '@aws-sdk/client-s3';
 
 @Injectable()
 export class CloudflareService {
@@ -47,10 +47,21 @@ export class CloudflareService {
   }
 
   async updateImage(file: Express.Multer.File, existingFileName: string): Promise<string> {
-    // Usar el nombre de archivo existente si no se proporciona un nuevo nombre
-    const fileName = existingFileName;
+    // Extraer la extensión del nuevo archivo
+    const newExtension = file.originalname.split('.').pop();
 
-    // Parametros para actualizar el archivo
+    // Generar un nuevo nombre de archivo único con la nueva extensión
+    const fileName = `${randomUUID()}.${newExtension}`;
+
+    // Eliminar el archivo existente
+    const deleteParams = {
+      Bucket: this.bucketName,
+      Key: existingFileName
+    };
+    const deleteCommand = new DeleteObjectCommand(deleteParams);
+    await this.s3Client.send(deleteCommand);
+
+    // Parámetros para actualizar el archivo
     const params = {
       Bucket: this.bucketName, // Nombre del bucket
       Key: fileName, // Nombre del archivo en el bucket
@@ -61,6 +72,7 @@ export class CloudflareService {
     // Ejecuta el comando para actualizar el archivo
     const command = new PutObjectCommand(params);
     await this.s3Client.send(command);
+
     // Retorna la URL pública del archivo actualizado
     return `${this.publicUrl}/${fileName}`;
   }
