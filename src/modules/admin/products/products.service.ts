@@ -163,10 +163,11 @@ export class ProductsService {
    * @returns Todos los productos
    */
   async findAll(user: UserPayload): Promise<ProductData[]> {
-    // Verificar si el usuario es super admin
-
     try {
       const products = await this.prisma.product.findMany({
+        where: {
+          ...(user.isSuperAdmin ? {} : { isActive: true }) // Filtrar por isActive solo si no es super admin
+        },
         select: {
           id: true,
           name: true,
@@ -175,6 +176,7 @@ export class ProductsService {
           image: true,
           isAvailable: true,
           isRestricted: true,
+          isActive: true, // Incluir isActive siempre
           createdAt: true,
           updatedAt: true,
           category: {
@@ -190,8 +192,7 @@ export class ProductsService {
               description: true,
               additionalPrice: true
             }
-          },
-          ...(user.isSuperAdmin && { isActive: true }) // Incluir isActive solo si es super admin
+          }
         },
         orderBy: {
           createdAt: 'asc'
@@ -207,7 +208,7 @@ export class ProductsService {
         image: product.image,
         isAvailable: product.isAvailable,
         isRestricted: product.isRestricted,
-        ...(user.isSuperAdmin && { isActive: product.isActive }),
+        isActive: product.isActive, // Incluir isActive siempre
         category: product.category,
         createdAt: product.createdAt,
         updatedAt: product.updatedAt,
