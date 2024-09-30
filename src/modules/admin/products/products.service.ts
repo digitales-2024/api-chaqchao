@@ -4,6 +4,7 @@ import {
   HttpStatus,
   Inject,
   Injectable,
+  InternalServerErrorException,
   Logger,
   NotFoundException
 } from '@nestjs/common';
@@ -18,6 +19,7 @@ import { ProductVariationService } from '../product-variation/product-variation.
 import { CreateProductVariationDto } from '../product-variation/dto/create-product-variation.dto';
 import { UpdateProductVariationDto } from '../product-variation/dto/update-product-variation.dto';
 import { DeleteProductsDto } from './dto/delete-product.dto';
+import { CloudflareService } from 'src/modules/cloudflare/cloudflare.service';
 
 @Injectable()
 export class ProductsService {
@@ -27,7 +29,8 @@ export class ProductsService {
     @Inject(forwardRef(() => CategoryService))
     private readonly categoryService: CategoryService,
     @Inject(forwardRef(() => ProductVariationService))
-    private readonly productVariationService: ProductVariationService
+    private readonly productVariationService: ProductVariationService,
+    private readonly cloudflareService: CloudflareService
   ) {}
 
   /**
@@ -971,6 +974,97 @@ export class ProductsService {
         throw error;
       }
       handleException(error, 'Error reactivating products');
+    }
+  }
+  /**
+   * Subir imagen
+   * @param image Imagen a subir
+   * @returns URL de la imagen
+   */
+  async uploadImage(image: Express.Multer.File): Promise<HttpResponse<string>> {
+    let imageUrl: string = null;
+
+    try {
+      if (!image) {
+        throw new BadRequestException('Image not provided');
+      }
+
+      // Validar que solo se suba un archivo
+      if (Array.isArray(image)) {
+        throw new BadRequestException('Only one file can be uploaded at a time');
+      }
+
+      // Validar que el archivo sea una imagen
+      const validMimeTypes = ['image/jpeg', 'image/png', 'image/gif', 'image/webp'];
+      if (!validMimeTypes.includes(image.mimetype)) {
+        throw new BadRequestException(
+          'The file must be an image in JPEG, PNG, GIF, or WEBP format'
+        );
+      }
+
+      // Sube la imagen y devuelve la URL
+      imageUrl = await this.cloudflareService.uploadImage(image);
+      return {
+        statusCode: HttpStatus.CREATED,
+        message: 'Image uploaded successfully',
+        data: imageUrl
+      };
+    } catch (error) {
+      this.logger.error(`Error uploading image: ${error.message}`, error.stack);
+
+      if (error instanceof BadRequestException || error instanceof NotFoundException) {
+        throw error;
+      }
+
+      throw new InternalServerErrorException('Error subiendo la imagen');
+    }
+  }
+
+  /**
+   * Actualizar imagen
+   * @param image Imagen a actualizar
+   * @param existingFileName Nombre del archivo existente
+   * @returns URL de la imagen actualizada
+   */
+  async updateImage(
+    image: Express.Multer.File,
+    existingFileName: string
+  ): Promise<HttpResponse<string>> {
+    let imageUrl: string = null;
+
+    try {
+      if (!image) {
+        throw new BadRequestException('Image not provided');
+      }
+
+      // Validar que solo se suba un archivo
+      if (Array.isArray(image)) {
+        throw new BadRequestException('Only one file can be uploaded at a time');
+      }
+
+      // Validar que el archivo sea una imagen
+      const validMimeTypes = ['image/jpeg', 'image/png', 'image/gif', 'image/webp'];
+      if (!validMimeTypes.includes(image.mimetype)) {
+        throw new BadRequestException(
+          'The file must be an image in JPEG, PNG, GIF, or WEBP format'
+        );
+      }
+
+      // Actualizar la imagen y devuelve la URL
+      imageUrl = await this.cloudflareService.updateImage(image, existingFileName);
+      return {
+        statusCode: HttpStatus.OK,
+        message: 'Image updated successfully',
+        data: imageUrl
+      };
+    } catch (error) {
+      this.logger.error(`Error updating image: ${error.message}`, error.stack);
+
+      if (error instanceof BadRequestException || error instanceof NotFoundException) {
+        throw error;
+      }
+
+      throw new InternalServerErrorException('Error updating image');
     }
   }
 }

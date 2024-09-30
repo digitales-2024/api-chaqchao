@@ -1,0 +1,67 @@
+import { Injectable } from '@nestjs/common';
+import { ConfigService } from '@nestjs/config';
+import { extname } from 'path';
+import { randomUUID } from 'crypto';
+import { PutObjectCommand, S3Client } from '@aws-sdk/client-s3';
+
+@Injectable()
+export class CloudflareService {
+  private s3Client: S3Client;
+  private bucketName: string;
+  private publicUrl: string;
+
+  constructor(private configService: ConfigService) {
+    // Inicializamos el cliente S3 para interactuar con Cloudflare R2
+    this.s3Client = new S3Client({
+      region: 'auto', // La región se establece en 'auto' para Cloudflare R2
+      endpoint: this.configService.get('API_S3'), // El endpoint viene de .env
+      credentials: {
+        accessKeyId: this.configService.get('ACCESS_KEY_ID'), // Access Key ID de .env
+        secretAccessKey: this.configService.get('SECRET_ACCESS_KEY') // Secret Access Key de .env
+      }
+    });
+
+    // Definimos el bucket y la URL pública del bucket desde las variables de entorno
+    this.bucketName = this.configService.get('CLOUDFLARE_BUCKET_NAME');
+    this.publicUrl = `${this.configService.get('PUBLIC_URL_IMAGE')}`;
+  }
+
+  // Método para subir la imagen a Cloudflare R2
+  async uploadImage(file: Express.Multer.File): Promise<string> {
+    const fileExtension = extname(file.originalname); // Obtiene la extensión del archivo
+    const fileName = `${randomUUID()}${fileExtension}`; // Genera un nombre único para el archivo
+
+    // Parámetros para la subida del archivo
+    const params = {
+      Bucket: this.bucketName, // Nombre del bucket
+      Key: fileName, // Nombre del archivo en el bucket
+      Body: file.buffer, // Contenido del archivo
+      ContentType: file.mimetype // Tipo de contenido (ej. image/jpeg)
+    };
+
+    // Ejecuta el comando para subir el archivo
+    const command = new PutObjectCommand(params);
+    await this.s3Client.send(command);
+    // Devuelve la URL pública del archivo subido
+    return `${this.publicUrl}/${fileName}`;
+  }
+
+  async updateImage(file: Express.Multer.File, existingFileName: string): Promise<string> {
+    // Usar el nombre de archivo existente si no se proporciona un nuevo nombre
+    const fileName = existingFileName;
+
+    // Parametros para actualizar el archivo
+    const params = {
+      Bucket: this.bucketName, // Nombre del bucket
+      Key: fileName, // Nombre del archivo en el bucket
+      Body: file.buffer, // Contenido del archivo
+      ContentType: file.mimetype // Tipo de contenido
+    };
+
+    // Ejecuta el comando para actualizar el archivo
+    const command = new PutObjectCommand(params);
+    await this.s3Client.send(command);
+    // Retorna la URL pública del archivo actualizado
+    return `${this.publicUrl}/${fileName}`;
+  }
+}
