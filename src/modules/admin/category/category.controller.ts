@@ -34,8 +34,8 @@ export class CategoryController {
 
   @ApiOkResponse({ description: 'Get all categories' })
   @Get()
-  findAll(): Promise<CategoryData[]> {
-    return this.categoryService.findAll();
+  findAll(@GetUser() user: UserData): Promise<CategoryData[]> {
+    return this.categoryService.findAll(user);
   }
 
   @ApiOkResponse({ description: 'Get category by id' })

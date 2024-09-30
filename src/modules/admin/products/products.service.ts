@@ -4,6 +4,7 @@ import {
   HttpStatus,
   Inject,
   Injectable,
+  InternalServerErrorException,
   Logger,
   NotFoundException
 } from '@nestjs/common';
@@ -17,8 +18,8 @@ import { CategoryService } from '../category/category.service';
 import { ProductVariationService } from '../product-variation/product-variation.service';
 import { CreateProductVariationDto } from '../product-variation/dto/create-product-variation.dto';
 import { UpdateProductVariationDto } from '../product-variation/dto/update-product-variation.dto';
-import { ValidRols } from '../auth/interfaces';
 import { DeleteProductsDto } from './dto/delete-product.dto';
+import { CloudflareService } from 'src/modules/cloudflare/cloudflare.service';
 
 @Injectable()
 export class ProductsService {
@@ -28,7 +29,8 @@ export class ProductsService {
     @Inject(forwardRef(() => CategoryService))
     private readonly categoryService: CategoryService,
     @Inject(forwardRef(() => ProductVariationService))
-    private readonly productVariationService: ProductVariationService
+    private readonly productVariationService: ProductVariationService,
+    private readonly cloudflareService: CloudflareService
   ) {}
 
   /**
@@ -161,11 +163,11 @@ export class ProductsService {
    * @returns Todos los productos
    */
   async findAll(user: UserPayload): Promise<ProductData[]> {
-    // Verificar si el usuario es super admin
-    const isSuperAdmin = user.roles.some((role) => role.name === ValidRols.SUPER_ADMIN);
-
     try {
       const products = await this.prisma.product.findMany({
+        where: {
+          ...(user.isSuperAdmin ? {} : { isActive: true }) // Filtrar por isActive solo si no es super admin
+        },
         select: {
           id: true,
           name: true,
@@ -174,6 +176,9 @@ export class ProductsService {
           image: true,
           isAvailable: true,
           isRestricted: true,
+          isActive: true, // Incluir isActive siempre
+          createdAt: true,
+          updatedAt: true,
           category: {
             select: {
               id: true,
@@ -187,8 +192,10 @@ export class ProductsService {
               description: true,
               additionalPrice: true
             }
-          },
-          ...(isSuperAdmin && { isActive: true }) // Incluir isActive solo si es super admin
+          }
+        },
+        orderBy: {
+          createdAt: 'asc'
         }
       });
 
@@ -201,8 +208,10 @@ export class ProductsService {
         image: product.image,
         isAvailable: product.isAvailable,
         isRestricted: product.isRestricted,
-        ...(isSuperAdmin && { isActive: product.isActive }),
+        isActive: product.isActive, // Incluir isActive siempre
         category: product.category,
+        createdAt: product.createdAt,
+        updatedAt: product.updatedAt,
         variations: product.productVariations
       })) as ProductData[];
     } catch (error) {
@@ -524,6 +533,104 @@ export class ProductsService {
   }
 
   /**
+   * Desactivar todos los productos en la base de datos
+   * @param products Productos a desactivar
+   * @param user Usuario que desactiva los productos
+   * @returns Productos desactivados
+   */
+  async removeAll(
+    products: DeleteProductsDto,
+    user: UserData
+  ): Promise<Omit<HttpResponse, 'data'>> {
+    try {
+      await this.prisma.$transaction(async (prisma) => {
+        // Buscar los productos en la base de datos
+        const productsDB = await prisma.product.findMany({
+          where: {
+            id: { in: products.ids }
+          },
+          select: {
+            id: true,
+            name: true,
+            description: true,
+            price: true,
+            image: true,
+            isAvailable: true,
+            isActive: true,
+            // Incluir la categoría relacionada
+            category: {
+              select: {
+                id: true,
+                name: true
+              }
+            },
+            // Incluir todas las variaciones asociadas al producto
+            productVariations: {
+              select: {
+                id: true,
+                name: true,
+                description: true,
+                additionalPrice: true
+              }
+            }
+          }
+        });
+
+        // Validar que se encontraron los productos
+        if (productsDB.length === 0) {
+          throw new NotFoundException('Products not found or inactive');
+        }
+
+        const deactivatePromises = productsDB.map(async (productDelete) => {
+          // Desactivar productos
+          await prisma.product.update({
+            where: { id: productDelete.id },
+            data: { isActive: false }
+          });
+
+          await this.prisma.audit.create({
+            data: {
+              action: AuditActionType.DELETE,
+              entityId: productDelete.id,
+              entityType: 'product',
+              performedById: user.id,
+              createdAt: new Date()
+            }
+          });
+
+          return {
+            id: productDelete.id,
+            name: productDelete.name,
+            description: productDelete.description,
+            price: productDelete.price,
+            image: productDelete.image,
+            isAvailable: productDelete.isAvailable,
+            isActive: productDelete.isActive,
+            category: {
+              id: productDelete.category.id,
+              name: productDelete.category.name
+            },
+            variations: productDelete.productVariations
+          };
+        });
+
+        return Promise.all(deactivatePromises);
+      });
+
+      return {
+        statusCode: HttpStatus.OK,
+        message: 'Products deactivate successfully'
+      };
+    } catch (error) {
+      this.logger.error('Error deactivating products', error.stack);
+      if (error instanceof NotFoundException || error instanceof BadRequestException) {
+        throw error;
+      }
+      handleException(error, 'Error deactivating products');
+    }
+  }
+
+  /**
    * Mostrar producto por id
    * @param id Id del producto
    * @returns Si existe el producto te retorna el mensaje de error si no te retorna el producto
@@ -832,7 +939,7 @@ export class ProductsService {
           await this.prisma.audit.create({
             data: {
               action: AuditActionType.UPDATE,
-              entityId: user.id,
+              entityId: product.id,
               entityType: 'product',
               performedById: user.id,
               createdAt: new Date()
@@ -868,6 +975,97 @@ export class ProductsService {
         throw error;
       }
       handleException(error, 'Error reactivating products');
+    }
+  }
+  /**
+   * Subir imagen
+   * @param image Imagen a subir
+   * @returns URL de la imagen
+   */
+  async uploadImage(image: Express.Multer.File): Promise<HttpResponse<string>> {
+    let imageUrl: string = null;
+
+    try {
+      if (!image) {
+        throw new BadRequestException('Image not provided');
+      }
+
+      // Validar que solo se suba un archivo
+      if (Array.isArray(image)) {
+        throw new BadRequestException('Only one file can be uploaded at a time');
+      }
+
+      // Validar que el archivo sea una imagen
+      const validMimeTypes = ['image/jpeg', 'image/png', 'image/gif', 'image/webp'];
+      if (!validMimeTypes.includes(image.mimetype)) {
+        throw new BadRequestException(
+          'The file must be an image in JPEG, PNG, GIF, or WEBP format'
+        );
+      }
+
+      // Sube la imagen y devuelve la URL
+      imageUrl = await this.cloudflareService.uploadImage(image);
+      return {
+        statusCode: HttpStatus.CREATED,
+        message: 'Image uploaded successfully',
+        data: imageUrl
+      };
+    } catch (error) {
+      this.logger.error(`Error uploading image: ${error.message}`, error.stack);
+
+      if (error instanceof BadRequestException || error instanceof NotFoundException) {
+        throw error;
+      }
+
+      throw new InternalServerErrorException('Error subiendo la imagen');
+    }
+  }
+
+  /**
+   * Actualizar imagen
+   * @param image Imagen a actualizar
+   * @param existingFileName Nombre del archivo existente
+   * @returns URL de la imagen actualizada
+   */
+  async updateImage(
+    image: Express.Multer.File,
+    existingFileName: string
+  ): Promise<HttpResponse<string>> {
+    let imageUrl: string = null;
+
+    try {
+      if (!image) {
+        throw new BadRequestException('Image not provided');
+      }
+
+      // Validar que solo se suba un archivo
+      if (Array.isArray(image)) {
+        throw new BadRequestException('Only one file can be uploaded at a time');
+      }
+
+      // Validar que el archivo sea una imagen
+      const validMimeTypes = ['image/jpeg', 'image/png', 'image/gif', 'image/webp'];
+      if (!validMimeTypes.includes(image.mimetype)) {
+        throw new BadRequestException(
+          'The file must be an image in JPEG, PNG, GIF, or WEBP format'
+        );
+      }
+
+      // Actualizar la imagen y devuelve la URL
+      imageUrl = await this.cloudflareService.updateImage(image, existingFileName);
+      return {
+        statusCode: HttpStatus.OK,
+        message: 'Image updated successfully',
+        data: imageUrl
+      };
+    } catch (error) {
+      this.logger.error(`Error updating image: ${error.message}`, error.stack);
+
+      if (error instanceof BadRequestException || error instanceof NotFoundException) {
+        throw error;
+      }
+
+      throw new InternalServerErrorException('Error updating image');
     }
   }
 }
