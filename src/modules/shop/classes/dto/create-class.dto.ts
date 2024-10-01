@@ -99,7 +99,7 @@ export class CreateClassDto {
   })
   @IsString()
   @Transform(({ value }) => value.trim().toUpperCase())
-  TypeCurrency: string;
+  typeCurrency: string;
 
   @ApiProperty({
     name: 'comments',
