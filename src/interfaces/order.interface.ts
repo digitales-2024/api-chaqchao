@@ -1,4 +1,4 @@
-import { Order } from '@prisma/client';
+import { CartStatus, Order } from '@prisma/client';
 
 export type OrderData = Pick<
   Order,
@@ -11,5 +11,5 @@ export type OrderData = Pick<
   | 'cartId'
   | 'someonePickup'
 > & {
-  cart: { id: string };
+  cart: { id: string; clientId: string; cartStatus: CartStatus };
 };

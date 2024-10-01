@@ -1,10 +1,9 @@
-import { ApiProperty, PartialType } from '@nestjs/swagger';
+import { ApiProperty } from '@nestjs/swagger';
 import { OrderStatus } from '@prisma/client';
 import { Transform } from 'class-transformer';
 import { IsNotEmpty, IsEnum } from 'class-validator';
-import { CreateOrderDto } from './create-order.dto';
 
-export class UpdateStatusOrderDto extends PartialType(CreateOrderDto) {
+export class UpdateStatusOrderDto {
   @ApiProperty()
   @IsNotEmpty()
   @IsEnum(OrderStatus)

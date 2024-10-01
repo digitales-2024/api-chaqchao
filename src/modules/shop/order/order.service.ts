@@ -16,6 +16,7 @@ import { HttpResponse } from 'src/interfaces';
 import { UpdateStatusOrderDto } from './dto/update-status-order.dto';
 import * as moment from 'moment-timezone';
 import { DayOfWeek } from '@prisma/client';
+import { OrderGateway } from './order.gateway';
 
 @Injectable()
 export class OrderService {
@@ -24,7 +25,9 @@ export class OrderService {
   constructor(
     private readonly prisma: PrismaService,
     @Inject(forwardRef(() => CartService))
-    private readonly cartService: CartService
+    private readonly cartService: CartService,
+    @Inject(forwardRef(() => OrderGateway))
+    private readonly orderGateway: OrderGateway
   ) {}
 
   /**
@@ -42,7 +45,20 @@ export class OrderService {
           pickupTime: true,
           comments: true,
           isActive: true,
-          cartId: true
+          cartId: true,
+          someonePickup: true,
+          cart: {
+            select: {
+              id: true,
+              clientId: true,
+              cartStatus: true,
+              client: {
+                select: {
+                  name: true
+                }
+              }
+            }
+          }
         }
       });
       //Mapea los resultados al tipo OrderData
@@ -53,7 +69,14 @@ export class OrderService {
         pickupTime: order.pickupTime,
         comments: order.comments,
         isActive: order.isActive,
-        cartId: order.cartId
+        cartId: order.cartId,
+        someonePickup: order.someonePickup,
+        cart: {
+          id: order.cart.id,
+          clientId: order.cart.clientId,
+          cartStatus: order.cart.cartStatus
+        },
+        clientName: order.cart.client.name
       })) as OrderData[];
     } catch (error) {
       this.logger.error('Error getting all orders');
@@ -134,58 +157,15 @@ export class OrderService {
           isActive: newOrder.isActive,
           someonePickup: newOrder.someonePickup,
           cart: {
-            id: newOrder.id
+            id: newOrder.id,
+            clientId: newOrder.cliendId,
+            cartStatus: newOrder.cartStatus
           }
         }
       };
     } catch (error) {
       this.logger.error(`Error creating Order: ${error.message}`, error.stack);
       handleException(error, 'Error creating a Order');
-    }
-  }
-
-  /**
-   * Actualiza solo el estado de un Order
-   * @param id Identificador del Order
-   * @param updateOrderStatusDto Contiene el nuevo estado del Order
-   * @returns Order actualizado con el nuevo estado
-   */
-  async updateOrderStatus(
-    id: string,
-    updateStatusOrderDto: UpdateStatusOrderDto
-  ): Promise<HttpResponse<OrderData>> {
-    const { orderStatus } = updateStatusOrderDto;
-
-    try {
-      // Actualizar solo el campo orderStatus
-      const updatedOrder = await this.prisma.order.update({
-        where: { id },
-        data: { orderStatus },
-        select: {
-          id: true,
-          orderStatus: true,
-          pickupAddress: true,
-          pickupTime: true,
-          someonePickup: true,
-          comments: true,
-          isActive: true,
-          cartId: true,
-          cart: {
-            select: {
-              id: true
-            }
-          }
-        }
-      });
-
-      return {
-        statusCode: HttpStatus.OK,
-        message: 'Order status updated successfully',
-        data: updatedOrder
-      };
-    } catch (error) {
-      this.logger.error(`Error updating Order status: ${error.message}`, error.stack);
-      handleException(error, 'Error updating Order status');
     }
   }
 
@@ -237,5 +217,51 @@ export class OrderService {
       businessAddress: businessConfig?.address,
       pickupCode: pickupCode
     };
+  }
+
+  /**
+   * Actualiza solo el estado de un Order
+   * @param id Identificador del Order
+   * @param updateOrderStatusDto Contiene el nuevo estado del Order
+   * @returns Order actualizado con el nuevo estado
+   */
+  async updateOrderStatus(
+    id: string,
+    updateStatusOrderDto: UpdateStatusOrderDto
+  ): Promise<HttpResponse<OrderData>> {
+    const { orderStatus } = updateStatusOrderDto;
+    // Aquí actualizas el estado de la orden en la base de datos.
+    try {
+      const updatedOrder = await this.prisma.order.update({
+        where: { id },
+        data: { orderStatus },
+        select: {
+          id: true,
+          orderStatus: true,
+          pickupAddress: true,
+          pickupTime: true,
+          someonePickup: true,
+          comments: true,
+          isActive: true,
+          cartId: true,
+          cart: {
+            select: {
+              id: true,
+              clientId: true,
+              cartStatus: true
+            }
+          }
+        }
+      });
+
+      // Emitir el evento de actualización del estado de la orden mediante WebSocket
+      this.orderGateway.sendOrderStatusUpdate(id, orderStatus);
+
+      return {
+        statusCode: HttpStatus.OK,
+        message: 'Order status updated successfully',
+        data: updatedOrder
+      };
+    } catch (error) {}
   }
 }
