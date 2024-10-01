@@ -7,6 +7,7 @@ import { BusinessConfigModule } from '../business-config/business-config.module'
 @Module({
   controllers: [ClassLanguageController],
   providers: [ClassLanguageService],
-  imports: [PrismaModule, BusinessConfigModule]
+  imports: [PrismaModule, BusinessConfigModule],
+  exports: [ClassLanguageService]
 })
 export class ClassLanguageModule {}
