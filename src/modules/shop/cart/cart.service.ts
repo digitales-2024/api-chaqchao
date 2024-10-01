@@ -305,11 +305,6 @@ export class CartService {
   }
 
   /**
-   * Generamos la boleta o factura
-   * @param cart carrito para obtener los detalles
-   * @returns los detalles del carrito en formato boleta o factura en pdf
-   */
-  /**
    * Generamos la boleta o factura con tabla, header y footer
    * @param cart carrito para obtener los detalles
    * @returns los detalles del carrito en formato boleta o factura en pdf

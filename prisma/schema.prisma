@@ -308,6 +308,7 @@ model Client {
   name         String
   email        String    @unique
   phone        String?
+  ruc          String?
   password     String?
   birthDate    DateTime?
   isGoogleAuth Boolean?
@@ -374,6 +375,8 @@ model Order {
   pickupTime    DateTime
   orderStatus   OrderStatus
   pickupAddress String
+  someonePickup Boolean?    @default(false)
+
   comments      String?
   isActive      Boolean     @default(true)
   createdAt     DateTime    @default(now()) @db.Timestamptz(6)

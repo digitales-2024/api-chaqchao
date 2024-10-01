@@ -205,7 +205,7 @@ export class OrderService {
           }
         },
         billingDocuments: {
-          where: { paymentStatus: 'PAID' }
+          where: { paymentStatus: 'PENDING' } //Debe ser en modo PAID
         }
       }
     });
@@ -222,7 +222,8 @@ export class OrderService {
     // Generar el código de recojo solo si el pedido está en status PAID
     let pickupCode: string | null = null;
     if (order.billingDocuments.length > 0) {
-      pickupCode = `PU-${order.id}-${Date.now()}`;
+      const randomCode = Math.floor(100000 + Math.random() * 900000);
+      pickupCode = `UC-${randomCode.toString()}`;
     }
 
     // Retornar la información consolidada
