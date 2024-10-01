@@ -36,6 +36,14 @@ export class CreateClassDto {
   scheduleClass: string;
 
   @ApiProperty({
+    name: 'languageClass',
+    description: 'Class language'
+  })
+  @IsString()
+  @Transform(({ value }) => value.trim().toLowerCase())
+  languageClass: string;
+
+  @ApiProperty({
     name: 'dateClass',
     description: 'Class date'
   })
@@ -49,6 +57,49 @@ export class CreateClassDto {
   })
   @IsNumber()
   totalParticipants: number;
+
+  @ApiProperty({
+    name: 'totalAdults',
+    description: 'Total adults'
+  })
+  @IsNumber()
+  totalAdults: number;
+
+  @ApiProperty({
+    name: 'totalChildren',
+    description: 'Total children'
+  })
+  @IsNumber()
+  totalChildren: number;
+
+  @ApiProperty({
+    name: 'totalPriceAdults',
+    description: 'Total price adults'
+  })
+  @IsNumber()
+  totalPriceAdults: number;
+
+  @ApiProperty({
+    name: 'totalPriceChildren',
+    description: 'Total price children'
+  })
+  @IsNumber()
+  totalPriceChildren: number;
+
+  @ApiProperty({
+    name: 'totalPrice',
+    description: 'Total price'
+  })
+  @IsNumber()
+  totalPrice: number;
+
+  @ApiProperty({
+    name: 'typeCurrency',
+    description: 'Type currency'
+  })
+  @IsString()
+  @Transform(({ value }) => value.trim().toUpperCase())
+  TypeCurrency: string;
 
   @ApiProperty({
     name: 'comments',
