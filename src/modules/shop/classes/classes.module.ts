@@ -3,10 +3,11 @@ import { ClassesService } from './classes.service';
 import { ClassesController } from './classes.controller';
 import { PrismaModule } from 'src/prisma/prisma.module';
 import { ClassScheduleModule } from 'src/modules/admin/class-schedule/class-schedule.module';
+import { ClassRegistrationModule } from 'src/modules/admin/class-registration/class-registration.module';
 
 @Module({
   controllers: [ClassesController],
   providers: [ClassesService],
-  imports: [PrismaModule, ClassScheduleModule]
+  imports: [PrismaModule, ClassScheduleModule, ClassRegistrationModule]
 })
 export class ClassesModule {}
