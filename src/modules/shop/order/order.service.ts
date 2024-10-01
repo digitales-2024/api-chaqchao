@@ -47,6 +47,7 @@ export class OrderService {
           isActive: true,
           cartId: true,
           someonePickup: true,
+          pickupCode: true,
           cart: {
             select: {
               id: true,
@@ -71,6 +72,7 @@ export class OrderService {
         isActive: order.isActive,
         cartId: order.cartId,
         someonePickup: order.someonePickup,
+        pickupCode: order.pickupCode,
         cart: {
           id: order.cart.id,
           clientId: order.cart.clientId,
@@ -103,6 +105,23 @@ export class OrderService {
         where: { dayOfWeek: today, isOpen: true }
       });
 
+      // Generar el código de recojo
+      // Obtener el último Order con el pickupCode más alto
+      const lastOrder = await this.prisma.order.findFirst({
+        orderBy: {
+          pickupCode: 'desc' // Ordenar en orden descendente para obtener el último código
+        }
+      });
+
+      let nextPickupCodeNumber = 0; // Si no hay órdenes anteriores, comenzamos en 0
+      if (lastOrder) {
+        // Extraer el número de la cadena del código de recojo (ejemplo: P-000123 -> 123)
+        nextPickupCodeNumber = parseInt(lastOrder.pickupCode.split('-')[1], 10) + 1;
+      }
+
+      // Formatear el nuevo código con ceros a la izquierda
+      const nextPickupCode = `P-${nextPickupCodeNumber.toString().padStart(6, '0')}`;
+
       if (!businessHours) {
         throw new BadRequestException('The business is closed today.');
       }
@@ -121,6 +140,7 @@ export class OrderService {
             comments,
             orderStatus: orderStatus || 'PENDING',
             someonePickup,
+            pickupCode: nextPickupCode || '',
             cart: {
               connect: {
                 id: cartId
@@ -134,6 +154,7 @@ export class OrderService {
             pickupTime: true,
             comments: true,
             someonePickup: true,
+            pickupCode: true,
             cart: {
               select: {
                 id: true
@@ -156,6 +177,7 @@ export class OrderService {
           comments: newOrder.comments,
           isActive: newOrder.isActive,
           someonePickup: newOrder.someonePickup,
+          pickupCode: newOrder.pickupCode,
           cart: {
             id: newOrder.id,
             clientId: newOrder.cliendId,
@@ -204,18 +226,10 @@ export class OrderService {
       select: { address: true }
     });
 
-    // Generar el código de recojo solo si el pedido está en status PAID
-    let pickupCode: string | null = null;
-    if (order.billingDocuments.length > 0) {
-      const randomCode = Math.floor(100000 + Math.random() * 900000);
-      pickupCode = `UC-${randomCode.toString()}`;
-    }
-
     // Retornar la información consolidada
     return {
       orderDetails: order,
-      businessAddress: businessConfig?.address,
-      pickupCode: pickupCode
+      businessAddress: businessConfig?.address
     };
   }
 
@@ -244,6 +258,7 @@ export class OrderService {
           comments: true,
           isActive: true,
           cartId: true,
+          pickupCode: true,
           cart: {
             select: {
               id: true,
