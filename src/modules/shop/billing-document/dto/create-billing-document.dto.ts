@@ -1,7 +1,7 @@
 import { ApiProperty } from '@nestjs/swagger';
 import { BillingDocumentType, PaymentStatus } from '@prisma/client';
 import { Transform } from 'class-transformer';
-import { IsUUID, IsNotEmpty, IsNumber, IsString, IsEmpty } from 'class-validator';
+import { IsUUID, IsNotEmpty, IsNumber, IsString, IsEmpty, IsOptional } from 'class-validator';
 
 export class CreateBillingDocumentDto {
   @ApiProperty()
@@ -17,6 +17,10 @@ export class CreateBillingDocumentDto {
   @ApiProperty()
   @IsNumber()
   totalAmount: number;
+
+  @ApiProperty()
+  @IsOptional()
+  ruc: string;
 
   @ApiProperty()
   @IsEmpty()

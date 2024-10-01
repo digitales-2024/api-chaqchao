@@ -308,7 +308,6 @@ model Client {
   name         String
   email        String    @unique
   phone        String?
-  ruc          String?
   password     String?
   birthDate    DateTime?
   isGoogleAuth Boolean?
@@ -406,6 +405,7 @@ model BillingDocument {
 
   billingDocumentType BillingDocumentType
   documentNumber      String
+  ruc                 String?
   issuedAt            DateTime
   totalAmount         Float
   paymentStatus       PaymentStatus

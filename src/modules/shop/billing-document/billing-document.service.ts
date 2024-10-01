@@ -60,8 +60,15 @@ export class BillingDocumentService {
   async create(
     createBillingDocumentDto: CreateBillingDocumentDto
   ): Promise<HttpResponse<BillingDocumentData>> {
-    const { billingDocumentType, documentNumber, totalAmount, paymentStatus, issuedAt, orderId } =
-      createBillingDocumentDto;
+    const {
+      billingDocumentType,
+      documentNumber,
+      totalAmount,
+      paymentStatus,
+      issuedAt,
+      orderId,
+      ruc
+    } = createBillingDocumentDto;
     let newBillingDocument;
 
     try {
@@ -71,6 +78,7 @@ export class BillingDocumentService {
             billingDocumentType: billingDocumentType || 'RECEIPT',
             documentNumber,
             totalAmount,
+            ruc,
             paymentStatus: paymentStatus || 'PENDING',
             issuedAt,
             orderId
@@ -82,6 +90,7 @@ export class BillingDocumentService {
             totalAmount: true,
             paymentStatus: true,
             issuedAt: true,
+            ruc: true,
             order: {
               select: {
                 id: true
@@ -103,6 +112,7 @@ export class BillingDocumentService {
           totalAmount: newBillingDocument.totalAmount,
           paymentStatus: newBillingDocument.paymentStatus,
           orderId: newBillingDocument.orderId,
+          ruc: newBillingDocument.ruc,
           order: {
             id: newBillingDocument.order.id
           }
@@ -139,6 +149,7 @@ export class BillingDocumentService {
           paymentStatus: true,
           issuedAt: true,
           orderId: true,
+          ruc: true,
           order: {
             select: {
               id: true
