@@ -1,4 +1,4 @@
-import { Body, Controller, Get, Post } from '@nestjs/common';
+import { Body, Controller, Get, Param, Patch, Post } from '@nestjs/common';
 import {
   ApiBadRequestResponse,
   ApiCreatedResponse,
@@ -12,6 +12,7 @@ import { BillingDocumentService } from './billing-document.service';
 import { BillingDocumentData } from 'src/interfaces/billing-document.interface';
 import { CreateBillingDocumentDto } from './dto/create-billing-document.dto';
 import { HttpResponse } from 'src/interfaces';
+import { UpdateStatusBillingDocumentDto } from './dto/update-status-billing.dto';
 
 @ApiTags('BillingDocument')
 @ApiUnauthorizedResponse({ description: 'Unauthorized' })
@@ -37,5 +38,16 @@ export class BillingDocumentController {
     @Body() createBillingDocumentDto: CreateBillingDocumentDto
   ): Promise<HttpResponse<BillingDocumentData>> {
     return this.billingDocumentService.create(createBillingDocumentDto);
+  }
+  @ApiOkResponse({ description: 'Billing Document Status updated' })
+  @Patch(':id/status')
+  async updateBillingDocumentStatus(
+    @Param('id') id: string,
+    @Body() updateStatusBillingDocumentDto: UpdateStatusBillingDocumentDto
+  ): Promise<HttpResponse<BillingDocumentData>> {
+    return this.billingDocumentService.updateBillingDocumentStatus(
+      id,
+      updateStatusBillingDocumentDto
+    );
   }
 }
