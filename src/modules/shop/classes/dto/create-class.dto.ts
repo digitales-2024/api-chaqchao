@@ -40,8 +40,8 @@ export class CreateClassDto {
     description: 'Class date'
   })
   @IsDate()
-  @Transform(({ value }) => value.trim())
-  dateClass: string;
+  @Transform(({ value }) => new Date(value), { toClassOnly: true })
+  dateClass: Date;
 
   @ApiProperty({
     name: 'totalParticipants',
