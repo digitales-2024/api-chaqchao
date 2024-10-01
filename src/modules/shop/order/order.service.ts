@@ -28,8 +28,8 @@ export class OrderService {
   ) {}
 
   /**
-   * Mostrar todos los order
-   * @returns Todos los carts
+   * Mostrar todos los orders
+   * @returns Todos los orders
    */
   async findAll(): Promise<OrderData[]> {
     try {
@@ -67,7 +67,8 @@ export class OrderService {
    * @returns Order creada correctamente
    */
   async create(CreateOrderDto: CreateOrderDto): Promise<HttpResponse<OrderData>> {
-    const { cartId, orderStatus, pickupAddress, pickupTime, comments } = CreateOrderDto;
+    const { cartId, orderStatus, pickupAddress, pickupTime, comments, someonePickup } =
+      CreateOrderDto;
     let newOrder;
 
     try {
@@ -96,6 +97,7 @@ export class OrderService {
             pickupTime,
             comments,
             orderStatus: orderStatus || 'PENDING',
+            someonePickup,
             cart: {
               connect: {
                 id: cartId
@@ -108,6 +110,7 @@ export class OrderService {
             pickupAddress: true,
             pickupTime: true,
             comments: true,
+            someonePickup: true,
             cart: {
               select: {
                 id: true
@@ -129,6 +132,7 @@ export class OrderService {
           pickupTime: newOrder.pickupTime,
           comments: newOrder.comments,
           isActive: newOrder.isActive,
+          someonePickup: newOrder.someonePickup,
           cart: {
             id: newOrder.id
           }
@@ -162,6 +166,7 @@ export class OrderService {
           orderStatus: true,
           pickupAddress: true,
           pickupTime: true,
+          someonePickup: true,
           comments: true,
           isActive: true,
           cartId: true,
