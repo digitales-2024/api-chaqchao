@@ -14,4 +14,6 @@ export type ClassesData = Pick<
   | 'totalPriceChildren'
   | 'languageClass'
   | 'typeCurrency'
+  | 'dateClass'
+  | 'scheduleClass'
 >;
