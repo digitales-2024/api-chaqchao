@@ -7,6 +7,7 @@ import { BusinessConfigModule } from '../business-config/business-config.module'
 @Module({
   controllers: [ClassPriceController],
   providers: [ClassPriceService],
-  imports: [PrismaModule, BusinessConfigModule]
+  imports: [PrismaModule, BusinessConfigModule],
+  exports: [ClassPriceService]
 })
 export class ClassPriceModule {}
