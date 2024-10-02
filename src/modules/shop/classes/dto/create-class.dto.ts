@@ -1,4 +1,5 @@
 import { ApiProperty } from '@nestjs/swagger';
+import { TypeCurrency } from '@prisma/client';
 import { Transform } from 'class-transformer';
 import { IsDate, IsEmail, IsNumber, IsPhoneNumber, IsString } from 'class-validator';
 
@@ -99,7 +100,7 @@ export class CreateClassDto {
   })
   @IsString()
   @Transform(({ value }) => value.trim().toUpperCase())
-  typeCurrency: string;
+  typeCurrency: TypeCurrency;
 
   @ApiProperty({
     name: 'comments',
