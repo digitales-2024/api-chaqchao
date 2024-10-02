@@ -5,10 +5,17 @@ import { PrismaModule } from 'src/prisma/prisma.module';
 import { ClassScheduleModule } from 'src/modules/admin/class-schedule/class-schedule.module';
 import { ClassRegistrationModule } from 'src/modules/admin/class-registration/class-registration.module';
 import { ClassLanguageModule } from 'src/modules/admin/class-language/class-language.module';
+import { ClassPriceModule } from 'src/modules/admin/class-price/class-price.module';
 
 @Module({
   controllers: [ClassesController],
   providers: [ClassesService],
-  imports: [PrismaModule, ClassScheduleModule, ClassRegistrationModule, ClassLanguageModule]
+  imports: [
+    PrismaModule,
+    ClassScheduleModule,
+    ClassRegistrationModule,
+    ClassLanguageModule,
+    ClassPriceModule
+  ]
 })
 export class ClassesModule {}
