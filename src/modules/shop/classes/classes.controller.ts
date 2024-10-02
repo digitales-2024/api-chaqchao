@@ -7,6 +7,7 @@ import {
   ApiInternalServerErrorResponse,
   ApiTags
 } from '@nestjs/swagger';
+import { ClassesData, HttpResponse } from 'src/interfaces';
 
 @ApiTags('Classes')
 @ApiInternalServerErrorResponse({ description: 'Internal server error' })
@@ -20,7 +21,7 @@ export class ClassesController {
 
   @ApiCreatedResponse({ description: 'Class created' })
   @Post()
-  create(@Body() createClassDto: CreateClassDto) {
+  create(@Body() createClassDto: CreateClassDto): Promise<HttpResponse<ClassesData>> {
     return this.classesService.create(createClassDto);
   }
 }
