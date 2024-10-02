@@ -28,7 +28,9 @@ export class ClassesAdminService {
           totalPriceAdults: true,
           totalPriceChildren: true,
           languageClass: true,
-          typeCurrency: true
+          typeCurrency: true,
+          dateClass: true,
+          scheduleClass: true
         },
         orderBy: {
           createdAt: 'asc'
@@ -48,7 +50,9 @@ export class ClassesAdminService {
         totalPriceAdults: classItem.totalPriceAdults,
         totalPriceChildren: classItem.totalPriceChildren,
         languageClass: classItem.languageClass,
-        typeCurrency: classItem.typeCurrency
+        typeCurrency: classItem.typeCurrency,
+        dateClass: classItem.dateClass,
+        scheduleClass: classItem.scheduleClass
       })) as ClassesData[];
     } catch (error) {
       this.logger.error('Error getting all products');
@@ -79,7 +83,9 @@ export class ClassesAdminService {
           totalPriceAdults: true,
           totalPriceChildren: true,
           languageClass: true,
-          typeCurrency: true
+          typeCurrency: true,
+          dateClass: true,
+          scheduleClass: true
         },
         orderBy: {
           createdAt: 'asc'
@@ -99,7 +105,9 @@ export class ClassesAdminService {
         totalPriceAdults: classItem.totalPriceAdults,
         totalPriceChildren: classItem.totalPriceChildren,
         languageClass: classItem.languageClass,
-        typeCurrency: classItem.typeCurrency
+        typeCurrency: classItem.typeCurrency,
+        dateClass: classItem.dateClass,
+        scheduleClass: classItem.scheduleClass
       })) as ClassesData[];
     } catch (error) {
       this.logger.error('Error getting all products');
