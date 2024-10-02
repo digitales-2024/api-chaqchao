@@ -117,4 +117,51 @@ export class EmailService {
       return false; // Retorna false indicando fallo
     }
   }
+
+  @OnEvent('class.new-class')
+  async newClass(data: EventPayloads['class.new-class']): Promise<boolean> {
+    const {
+      name,
+      email,
+      scheduleClass,
+      dateClass,
+      languageClass,
+      totalParticipants,
+      totalPrice,
+      typeCurrency
+    } = data;
+    const subject = `Clase programada: ${infoBusiness.business}`;
+
+    try {
+      const sendingEmail = await this.mailerService.sendMail({
+        to: email,
+        subject,
+        template: 'new-class',
+        context: {
+          name,
+          email,
+          scheduleClass,
+          dateClass,
+          languageClass: languageClass.charAt(0).toUpperCase() + languageClass.slice(1),
+          totalParticipants,
+          totalPrice,
+          typeCurrency,
+          business: infoBusiness.business,
+          url: infoBusiness.url,
+          phone: infoBusiness.phone,
+          address: infoBusiness.address,
+          contact: infoBusiness.contact
+        }
+      });
+
+      if (sendingEmail) {
+        return true; // Retorna true indicando éxito
+      } else {
+        return false; // Retorna false indicando fallo
+      }
+    } catch (error) {
+      this.logger.error(error);
+      return false; // Retorna false indicando fallo
+    }
+  }
 }
