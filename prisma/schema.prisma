@@ -371,7 +371,7 @@ model Order {
   cartId String @unique
   cart   Cart   @relation(fields: [cartId], references: [id], name: "CartToOrder")
 
-  pickupCode    String?
+  pickupCode    String?     @unique
   pickupTime    DateTime
   orderStatus   OrderStatus
   pickupAddress String
