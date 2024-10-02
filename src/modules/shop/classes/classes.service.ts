@@ -14,6 +14,7 @@ import { ClassLanguageService } from 'src/modules/admin/class-language/class-lan
 import * as moment from 'moment-timezone';
 import { ClassesData, HttpResponse } from 'src/interfaces';
 import { ClassPriceService } from 'src/modules/admin/class-price/class-price.service';
+import { TypedEventEmitter } from 'src/event-emitter/typed-event-emitter.class';
 
 @Injectable()
 export class ClassesService {
@@ -24,7 +25,8 @@ export class ClassesService {
     private readonly classScheduleService: ClassScheduleService,
     private readonly classRegistrationService: ClassRegistrationService,
     private readonly classLanguageService: ClassLanguageService,
-    private readonly classPriceService: ClassPriceService
+    private readonly classPriceService: ClassPriceService,
+    private readonly eventEmitter: TypedEventEmitter
   ) {}
 
   /**
@@ -202,9 +204,28 @@ export class ClassesService {
           totalPriceAdults: true,
           totalPriceChildren: true,
           languageClass: true,
-          typeCurrency: true
+          typeCurrency: true,
+          scheduleClass: true,
+          dateClass: true
         }
       });
+
+      if (classCreated) {
+        const normalizedDateClass = moment
+          .utc(classCreated.dateClass)
+          .tz('America/Lima')
+          .format('Do [of] MMMM, dddd');
+        await this.eventEmitter.emitAsync('class.new-class', {
+          name: classCreated.userName.toUpperCase(),
+          email: classCreated.userEmail,
+          dateClass: normalizedDateClass,
+          scheduleClass: classCreated.scheduleClass,
+          languageClass: classCreated.languageClass,
+          totalParticipants: classCreated.totalParticipants,
+          totalPrice: classCreated.totalPrice,
+          typeCurrency: classCreated.typeCurrency
+        });
+      }
 
       return {
         statusCode: HttpStatus.CREATED,
