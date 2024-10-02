@@ -209,6 +209,12 @@ export class CartService {
         throw new NotFoundException(`Cart with ID ${id} not found`);
       }
 
+      // Calcular totalAmount sumando (precio del ítem * cantidad)
+      const totalAmount = cart.cartItems.reduce((total, item) => {
+        return total + item.product.price * item.quantity;
+      }, 0);
+      console.log(totalAmount);
+
       return {
         statusCode: 200,
         message: 'Cart retrieved successfully',
@@ -216,6 +222,7 @@ export class CartService {
           id: cart.id,
           clientId: cart.clientId,
           cartStatus: cart.cartStatus,
+          totalAmount,
           client: {
             id: cart.client.id,
             name: cart.client.name
@@ -223,7 +230,7 @@ export class CartService {
           items: cart.cartItems.map((item) => ({
             id: item.id,
             quantity: item.quantity,
-            price: item.price,
+            finalprice: item.price,
             product: {
               id: item.product.id,
               name: item.product.name,
