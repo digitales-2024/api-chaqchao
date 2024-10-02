@@ -1,6 +1,7 @@
 import { Controller, Get, Param, Query } from '@nestjs/common';
 import { OrdersService } from './orders.service';
 import { Auth } from '../auth/decorators';
+import { OrderStatus } from '@prisma/client';
 
 @Controller({
   path: 'orders',
@@ -11,8 +12,8 @@ export class OrdersController {
   constructor(private readonly ordersService: OrdersService) {}
 
   @Get()
-  findAll(@Query('date') date: string) {
-    return this.ordersService.findAll(date);
+  findAll(@Query('date') date: string, @Query('status') status?: OrderStatus) {
+    return this.ordersService.findAll(date, status);
   }
 
   @Get(':id')
