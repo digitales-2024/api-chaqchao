@@ -37,7 +37,7 @@ export class ClassPriceService {
    * Validar el tipo de moneda
    * @param typeCurrency Tipo de moneda
    */
-  private validateTypeCurrency(typeCurrency: string): void {
+  public validateTypeCurrency(typeCurrency: string): void {
     if (!Object.values(TypeCurrency).includes(typeCurrency as TypeCurrency)) {
       throw new BadRequestException(
         `Invalid typeCurrency value. Use one of: ${Object.values(TypeCurrency).join(', ')}`
@@ -357,6 +357,37 @@ export class ClassPriceService {
         throw error;
       }
       throw new BadRequestException('Error deleting class price');
+    }
+  }
+
+  /**
+   * Encontrar clases por el tipo de usuario
+   * @param classTypeUser Tipo de usuario
+   * @returns Clases encontradas
+   */
+  async findClassPriceByTypeCurrency(typeCurrency: TypeCurrency): Promise<ClassPriceConfigData[]> {
+    try {
+      const classPrices = await this.prisma.classPriceConfig.findMany({
+        where: {
+          typeCurrency
+        },
+        select: {
+          id: true,
+          classTypeUser: true,
+          price: true,
+          typeCurrency: true
+        }
+      });
+
+      return classPrices.map((classPrice) => ({
+        id: classPrice.id,
+        classTypeUser: classPrice.classTypeUser,
+        price: classPrice.price,
+        typeCurrency: classPrice.typeCurrency
+      })) as ClassPriceConfigData[];
+    } catch (error) {
+      this.logger.error(`Error fetching class prices: ${error.message}`, error.stack);
+      throw new BadRequestException('Error fetching class prices');
     }
   }
 }
