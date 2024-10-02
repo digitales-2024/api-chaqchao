@@ -1,8 +1,17 @@
-import { Order } from '@prisma/client';
+import { CartStatus, Order } from '@prisma/client';
 
 export type OrderData = Pick<
   Order,
-  'id' | 'orderStatus' | 'pickupAddress' | 'pickupTime' | 'comments' | 'isActive' | 'cartId'
+  | 'id'
+  | 'orderStatus'
+  | 'pickupAddress'
+  | 'pickupTime'
+  | 'comments'
+  | 'isActive'
+  | 'cartId'
+  | 'someonePickup'
+  | 'pickupCode'
+  | 'totalAmount'
 > & {
-  cart: { id: string };
+  cart: { id: string; clientId: string; cartStatus: CartStatus };
 };

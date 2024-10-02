@@ -371,9 +371,13 @@ model Order {
   cartId String @unique
   cart   Cart   @relation(fields: [cartId], references: [id], name: "CartToOrder")
 
+  pickupCode    String?     @unique
+  totalAmount   Float?
   pickupTime    DateTime
   orderStatus   OrderStatus
   pickupAddress String
+  someonePickup Boolean?    @default(false)
+
   comments      String?
   isActive      Boolean     @default(true)
   createdAt     DateTime    @default(now()) @db.Timestamptz(6)
@@ -403,6 +407,7 @@ model BillingDocument {
 
   billingDocumentType BillingDocumentType
   documentNumber      String
+  ruc                 String?
   issuedAt            DateTime
   totalAmount         Float
   paymentStatus       PaymentStatus

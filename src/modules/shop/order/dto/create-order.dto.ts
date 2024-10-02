@@ -1,7 +1,7 @@
 import { ApiProperty } from '@nestjs/swagger';
 import { OrderStatus } from '@prisma/client';
 import { Transform } from 'class-transformer';
-import { IsNotEmpty, IsString, IsUUID, IsEmpty } from 'class-validator';
+import { IsNotEmpty, IsString, IsUUID, IsEmpty, IsBoolean, IsOptional } from 'class-validator';
 
 export class CreateOrderDto {
   @ApiProperty()
@@ -26,4 +26,14 @@ export class CreateOrderDto {
   @IsNotEmpty()
   @IsUUID()
   cartId: string;
+
+  @ApiProperty()
+  @IsBoolean()
+  @IsOptional()
+  someonePickup: boolean;
+
+  @ApiProperty()
+  @IsString()
+  @IsOptional()
+  pickupCode: string;
 }
