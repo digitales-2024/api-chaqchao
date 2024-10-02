@@ -11,6 +11,7 @@ export type OrderData = Pick<
   | 'cartId'
   | 'someonePickup'
   | 'pickupCode'
+  | 'totalAmount'
 > & {
   cart: { id: string; clientId: string; cartStatus: CartStatus };
 };

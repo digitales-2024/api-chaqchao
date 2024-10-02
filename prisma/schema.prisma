@@ -372,6 +372,7 @@ model Order {
   cart   Cart   @relation(fields: [cartId], references: [id], name: "CartToOrder")
 
   pickupCode    String?     @unique
+  totalAmount   Float?
   pickupTime    DateTime
   orderStatus   OrderStatus
   pickupAddress String

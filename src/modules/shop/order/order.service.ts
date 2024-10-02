@@ -13,7 +13,6 @@ import { OrderData } from 'src/interfaces/order.interface';
 import { handleException } from 'src/utils';
 import { CreateOrderDto } from './dto/create-order.dto';
 import { HttpResponse } from 'src/interfaces';
-import { UpdateStatusOrderDto } from './dto/update-status-order.dto';
 import * as moment from 'moment-timezone';
 import { DayOfWeek } from '@prisma/client';
 import { OrderGateway } from './order.gateway';
@@ -29,62 +28,6 @@ export class OrderService {
     @Inject(forwardRef(() => OrderGateway))
     private readonly orderGateway: OrderGateway
   ) {}
-
-  /**
-   * Mostrar todos los orders
-   * @returns Todos los orders
-   */
-  async findAll(): Promise<OrderData[]> {
-    try {
-      const orders = await this.prisma.order.findMany({
-        where: {},
-        select: {
-          id: true,
-          orderStatus: true,
-          pickupAddress: true,
-          pickupTime: true,
-          comments: true,
-          isActive: true,
-          cartId: true,
-          someonePickup: true,
-          pickupCode: true,
-          cart: {
-            select: {
-              id: true,
-              clientId: true,
-              cartStatus: true,
-              client: {
-                select: {
-                  name: true
-                }
-              }
-            }
-          }
-        }
-      });
-      //Mapea los resultados al tipo OrderData
-      return orders.map((order) => ({
-        id: order.id,
-        orderStatus: order.orderStatus,
-        pickupAddress: order.pickupAddress,
-        pickupTime: order.pickupTime,
-        comments: order.comments,
-        isActive: order.isActive,
-        cartId: order.cartId,
-        someonePickup: order.someonePickup,
-        pickupCode: order.pickupCode,
-        cart: {
-          id: order.cart.id,
-          clientId: order.cart.clientId,
-          cartStatus: order.cart.cartStatus
-        },
-        clientName: order.cart.client.name
-      })) as OrderData[];
-    } catch (error) {
-      this.logger.error('Error getting all orders');
-      handleException(error, 'Error getting all orders');
-    }
-  }
 
   /**
    * Creacion de una nueva order
@@ -178,6 +121,7 @@ export class OrderService {
           isActive: newOrder.isActive,
           someonePickup: newOrder.someonePickup,
           pickupCode: newOrder.pickupCode,
+          totalAmount: newOrder.totalAmount,
           cart: {
             id: newOrder.id,
             clientId: newOrder.cliendId,
@@ -192,34 +136,57 @@ export class OrderService {
   }
 
   /**
-   * Obtenemos detalles del pedido, direccion del local, codigo unico de recojo
-   * @param clientId para obtener la informacion del Client
-   * @returns El codigo unico se genera cuando se haya realizado el pago el billingDocumentType esta en 'PAID'
-   * @returns los detalles del Pedido
-   * @returns la direccion del local la obtenemos desde un modulo llamado Bussiness config que tiene el address
+   * Obtenemos detalles del pedido, dirección del local, código único de recojo
+   * @param orderId Identificador del pedido
+   * @returns Los detalles del pedido y la dirección del local
    */
-  async getOrderDetails(clientId: string): Promise<any> {
-    // Obtener el pedido (Order) activo o pendiente del cliente
+  async getOrderDetails(orderId: string): Promise<any> {
+    // Obtener el pedido por ID y asegurarse que el cliente autenticado es el propietario
     const order = await this.prisma.order.findFirst({
       where: {
-        cart: { clientId },
-        orderStatus: 'PENDING'
+        id: orderId
       },
       include: {
         cart: {
           include: {
-            cartItems: true
+            cartItems: {
+              select: {
+                id: true,
+                quantity: true,
+                price: true,
+                product: {
+                  select: {
+                    id: true,
+                    name: true,
+                    price: true
+                  }
+                }
+              }
+            }
           }
         },
         billingDocuments: {
-          where: { paymentStatus: 'PENDING' } //Debe ser en modo PAID
+          where: { paymentStatus: 'PAID' }
         }
       }
     });
 
     if (!order) {
-      throw new NotFoundException('No se encontró un pedido para este cliente.');
+      throw new NotFoundException(
+        'No se encontró un pedido para este cliente o el pedido no existe.'
+      );
     }
+
+    // Calcular totalAmount sumando (precio del producto * cantidad)
+    const totalAmount = order.cart.cartItems.reduce((total, item) => {
+      return total + item.product.price * item.quantity;
+    }, 0);
+
+    // Actualizar el totalAmount en el pedido (Order)
+    await this.prisma.order.update({
+      where: { id: order.id },
+      data: { totalAmount }
+    });
 
     // Obtener la dirección del local desde BusinessConfig
     const businessConfig = await this.prisma.businessConfig.findFirst({
@@ -228,55 +195,10 @@ export class OrderService {
 
     // Retornar la información consolidada
     return {
-      orderDetails: order,
+      orderDetails: {
+        order
+      },
       businessAddress: businessConfig?.address
     };
-  }
-
-  /**
-   * Actualiza solo el estado de un Order
-   * @param id Identificador del Order
-   * @param updateOrderStatusDto Contiene el nuevo estado del Order
-   * @returns Order actualizado con el nuevo estado
-   */
-  async updateOrderStatus(
-    id: string,
-    updateStatusOrderDto: UpdateStatusOrderDto
-  ): Promise<HttpResponse<OrderData>> {
-    const { orderStatus } = updateStatusOrderDto;
-    // Aquí actualizas el estado de la orden en la base de datos.
-    try {
-      const updatedOrder = await this.prisma.order.update({
-        where: { id },
-        data: { orderStatus },
-        select: {
-          id: true,
-          orderStatus: true,
-          pickupAddress: true,
-          pickupTime: true,
-          someonePickup: true,
-          comments: true,
-          isActive: true,
-          cartId: true,
-          pickupCode: true,
-          cart: {
-            select: {
-              id: true,
-              clientId: true,
-              cartStatus: true
-            }
-          }
-        }
-      });
-
-      // Emitir el evento de actualización del estado de la orden mediante WebSocket
-      this.orderGateway.sendOrderStatusUpdate(id, orderStatus);
-
-      return {
-        statusCode: HttpStatus.OK,
-        message: 'Order status updated successfully',
-        data: updatedOrder
-      };
-    } catch (error) {}
   }
 }
