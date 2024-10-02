@@ -151,7 +151,7 @@ export class AuthService {
       const token = this.getJwtToken({ id: clientDB.id });
 
       // Configura la cookie HttpOnly
-      res.cookie('access_token', token, {
+      res.cookie('client_access_token', token, {
         httpOnly: true,
         secure: process.env.NODE_ENV === 'production',
         sameSite: 'strict',
@@ -369,7 +369,7 @@ export class AuthService {
    */
   async logout(res: Response): Promise<void> {
     // Borra la cookie que contiene el token JWT
-    res.cookie('access_token', '', {
+    res.cookie('client_access_token', '', {
       httpOnly: true,
       expires: new Date(0) // Establece la fecha de expiración a una fecha pasada para eliminar la cookie
     });
