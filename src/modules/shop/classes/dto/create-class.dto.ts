@@ -48,7 +48,7 @@ export class CreateClassDto {
     description: 'Class date'
   })
   @IsDate()
-  @Transform(({ value }) => new Date(value), { toClassOnly: true })
+  @Transform(({ value }) => new Date(value))
   dateClass: Date;
 
   @ApiProperty({
