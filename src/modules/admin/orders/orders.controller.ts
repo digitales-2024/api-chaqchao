@@ -11,6 +11,7 @@ import { OrderStatus } from '@prisma/client';
 export class OrdersController {
   constructor(private readonly ordersService: OrdersService) {}
 
+  // TODO Documentar API
   @Get()
   findAll(@Query('date') date: string, @Query('status') status?: OrderStatus) {
     return this.ordersService.findAll(date, status);
@@ -18,6 +19,6 @@ export class OrdersController {
 
   @Get(':id')
   findOne(@Param('id') id: string) {
-    return this.ordersService.findOne(+id);
+    return this.ordersService.findOne(id);
   }
 }
