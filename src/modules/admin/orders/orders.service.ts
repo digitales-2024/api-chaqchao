@@ -1,4 +1,5 @@
 import { BadRequestException, Injectable, Logger } from '@nestjs/common';
+import { OrderStatus } from '@prisma/client';
 import { PrismaService } from 'src/prisma/prisma.service';
 import { handleException } from 'src/utils';
 
@@ -7,7 +8,7 @@ export class OrdersService {
   private logger = new Logger('OrdersService');
   constructor(private readonly prismaService: PrismaService) {}
 
-  async findAll(date: string): Promise<any> {
+  async findAll(date: string, status?: OrderStatus): Promise<any> {
     try {
       const formattedDate = new Date(date);
       if (isNaN(formattedDate.getTime())) {
@@ -19,36 +20,22 @@ export class OrdersService {
           cart: {
             select: {
               id: true,
-              cartStatus: true,
+              client: {
+                select: {
+                  id: true,
+                  name: true
+                }
+              },
               cartItems: {
                 select: {
                   id: true,
                   quantity: true,
-                  price: true,
                   product: {
                     select: {
                       id: true,
-                      name: true,
-                      description: true,
-                      image: true,
-                      isAvailable: true,
-                      category: {
-                        select: {
-                          id: true,
-                          name: true
-                        }
-                      }
+                      price: true
                     }
                   }
-                }
-              },
-              client: {
-                select: {
-                  id: true,
-                  name: true,
-                  email: true,
-                  phone: true,
-                  birthDate: true
                 }
               }
             }
@@ -58,6 +45,9 @@ export class OrdersService {
           pickupTime: {
             gte: formattedDate,
             lt: new Date(formattedDate.getTime() + 24 * 60 * 60 * 1000)
+          },
+          orderStatus: {
+            ...(status === ('ALL' as unknown as OrderStatus) ? {} : { equals: status })
           }
         }
       });
@@ -65,7 +55,10 @@ export class OrdersService {
       return orders.map((order) => ({
         ...order,
         clientName: order.cart.client.name,
-        total: order.cart.cartItems.reduce((acc, item) => acc + item.price * item.quantity, 0)
+        total: order.cart.cartItems.reduce(
+          (acc, item) => acc + item.quantity * item.product.price,
+          0
+        )
       }));
     } catch (error) {
       this.logger.error('Error get orders', error.message);
