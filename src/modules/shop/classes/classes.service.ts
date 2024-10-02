@@ -213,7 +213,7 @@ export class ClassesService {
       if (classCreated) {
         const normalizedDateClass = moment
           .utc(classCreated.dateClass)
-          .tz('America/Lima')
+          .tz('America/Lima-5')
           .format('Do [of] MMMM, dddd');
         await this.eventEmitter.emitAsync('class.new-class', {
           name: classCreated.userName.toUpperCase(),
