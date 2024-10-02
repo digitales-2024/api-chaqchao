@@ -31,4 +31,9 @@ export class CreateOrderDto {
   @IsBoolean()
   @IsOptional()
   someonePickup: boolean;
+
+  @ApiProperty()
+  @IsString()
+  @IsOptional()
+  pickupCode: string;
 }

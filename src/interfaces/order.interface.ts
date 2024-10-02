@@ -10,6 +10,7 @@ export type OrderData = Pick<
   | 'isActive'
   | 'cartId'
   | 'someonePickup'
+  | 'pickupCode'
 > & {
   cart: { id: string; clientId: string; cartStatus: CartStatus };
 };
