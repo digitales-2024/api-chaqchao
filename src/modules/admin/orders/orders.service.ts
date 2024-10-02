@@ -8,6 +8,12 @@ export class OrdersService {
   private logger = new Logger('OrdersService');
   constructor(private readonly prismaService: PrismaService) {}
 
+  /**
+   * Mostrar todos los pedidos
+   * @param date  Fecha de recogida
+   * @param status  Estado del pedido
+   * @returns  Pedidos
+   */
   async findAll(date: string, status?: OrderStatus): Promise<any> {
     try {
       const formattedDate = new Date(date);
@@ -49,16 +55,15 @@ export class OrdersService {
           orderStatus: {
             ...(status === ('ALL' as unknown as OrderStatus) ? {} : { equals: status })
           }
+        },
+        orderBy: {
+          pickupTime: 'asc'
         }
       });
 
       return orders.map((order) => ({
         ...order,
-        clientName: order.cart.client.name,
-        total: order.cart.cartItems.reduce(
-          (acc, item) => acc + item.quantity * item.product.price,
-          0
-        )
+        clientName: order.cart.client.name
       }));
     } catch (error) {
       this.logger.error('Error get orders', error.message);
@@ -69,7 +74,55 @@ export class OrdersService {
     }
   }
 
-  findOne(id: number) {
-    return `This action returns a #${id} order`;
+  /**
+   * Mostrar un pedido
+   * @param id  ID del pedido
+   * @returns  Pedido
+   */
+  async findOne(id: string): Promise<any> {
+    try {
+      const order = await this.prismaService.order.findUnique({
+        include: {
+          cart: {
+            select: {
+              id: true,
+              cartItems: {
+                select: {
+                  quantity: true,
+                  product: {
+                    select: {
+                      id: true,
+                      price: true,
+                      name: true,
+                      image: true,
+                      category: {
+                        select: {
+                          id: true,
+                          name: true
+                        }
+                      }
+                    }
+                  }
+                }
+              }
+            }
+          }
+        },
+        where: {
+          id
+        }
+      });
+
+      return {
+        ...order,
+        cart: order.cart.cartItems.flatMap(({ product, quantity }) => ({
+          ...product,
+          quantity
+        }))
+      };
+    } catch (error) {
+      this.logger.error('Error get order', error.message);
+      handleException(error, 'Error get order');
+    }
   }
 }
