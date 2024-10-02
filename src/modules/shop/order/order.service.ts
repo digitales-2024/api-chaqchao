@@ -15,7 +15,7 @@ import { CreateOrderDto } from './dto/create-order.dto';
 import { HttpResponse } from 'src/interfaces';
 import * as moment from 'moment-timezone';
 import { DayOfWeek } from '@prisma/client';
-import { OrderGateway } from './order.gateway';
+import { OrdersGateway } from 'src/modules/admin/orders/orders.gateway';
 
 @Injectable()
 export class OrderService {
@@ -25,8 +25,8 @@ export class OrderService {
     private readonly prisma: PrismaService,
     @Inject(forwardRef(() => CartService))
     private readonly cartService: CartService,
-    @Inject(forwardRef(() => OrderGateway))
-    private readonly orderGateway: OrderGateway
+    @Inject(forwardRef(() => OrdersGateway))
+    private readonly orderGateway: OrdersGateway
   ) {}
 
   /**
@@ -70,7 +70,7 @@ export class OrderService {
       }
 
       // Validar si la hora actual está dentro del rango de horarios permitidos
-      const currentTime = moment.utc(pickupTime).tz('America/Lima-5').format('HH:mm');
+      const currentTime = moment.utc(pickupTime).tz('America/Lima').format('HH:mm');
       if (currentTime < businessHours.openingTime || currentTime > businessHours.closingTime) {
         throw new BadRequestException('Orders cannot be placed outside business hours.');
       }
@@ -107,6 +107,8 @@ export class OrderService {
         });
         return order;
       });
+
+      this.orderGateway.sendOrderCreated(newOrder.id);
 
       return {
         statusCode: HttpStatus.CREATED,
