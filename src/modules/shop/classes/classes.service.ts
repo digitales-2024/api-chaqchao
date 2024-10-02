@@ -263,7 +263,9 @@ export class ClassesService {
           totalPriceAdults: true,
           totalPriceChildren: true,
           languageClass: true,
-          typeCurrency: true
+          typeCurrency: true,
+          dateClass: true,
+          scheduleClass: true
         }
       });
 
