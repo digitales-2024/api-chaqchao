@@ -108,14 +108,15 @@ export class ClassesService {
   }
 
   // Validar que el idioma de la primera clase sea el mismo que el idioma de la clase a crear
-  private validateFirstLanguageClass(
+  private validateFirstRegistrationLanguageClass(
     classesScheduleCreated: ClassesData[],
     languageClass: string,
     noClassesYet: boolean
   ) {
     if (!noClassesYet && languageClass !== classesScheduleCreated[0].languageClass) {
-      const { languageClass: firstLanguageClass } = classesScheduleCreated[0];
-      throw new BadRequestException(`The language of the class is ${firstLanguageClass}`);
+      throw new BadRequestException(
+        'The language of the class is different from the first registration class'
+      );
     }
   }
 
@@ -170,7 +171,11 @@ export class ClassesService {
       );
       const noClassesYet = classesScheduleCreated.length === 0;
 
-      this.validateFirstLanguageClass(classesScheduleCreated, languageClass, noClassesYet);
+      this.validateFirstRegistrationLanguageClass(
+        classesScheduleCreated,
+        languageClass,
+        noClassesYet
+      );
 
       this.validateClassCreation(
         currentTime,
