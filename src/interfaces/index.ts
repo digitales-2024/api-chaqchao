@@ -25,4 +25,4 @@ export { ClientDataUpdate } from './client.interface';
 export { CartData } from './cart.interface';
 export { CartItemData } from './cart-item.interface';
 export { OrderData } from './order.interface';
-export { ClassesData } from './classes.interface';
+export { ClassesData, ClassesDataAdmin } from './classes.interface';

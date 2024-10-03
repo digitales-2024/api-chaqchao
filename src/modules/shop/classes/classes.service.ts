@@ -166,7 +166,10 @@ export class ClassesService {
     const currentTime = moment().tz('America/Lima-5').format('HH:mm');
 
     try {
-      const classesScheduleCreated = await this.findClassesByscheduleClass(scheduleClass);
+      const classesScheduleCreated = await this.findClassesByscheduleClass(
+        scheduleClass,
+        dateClass
+      );
       const totalParticipantsInSchedule = classesScheduleCreated.reduce(
         (sum, classItem) => sum + classItem.totalParticipants,
         0
@@ -247,10 +250,10 @@ export class ClassesService {
    * @param scheduleClass Horario de inicio
    * @returns Clases encontradas
    */
-  async findClassesByscheduleClass(scheduleClass: string): Promise<ClassesData[]> {
+  async findClassesByscheduleClass(scheduleClass: string, dateClass: Date): Promise<ClassesData[]> {
     try {
       const classesDB = await this.prisma.classes.findMany({
-        where: { scheduleClass },
+        where: { scheduleClass, dateClass },
         select: {
           id: true,
           userName: true,
@@ -263,7 +266,9 @@ export class ClassesService {
           totalPriceAdults: true,
           totalPriceChildren: true,
           languageClass: true,
-          typeCurrency: true
+          typeCurrency: true,
+          dateClass: true,
+          scheduleClass: true
         }
       });
 

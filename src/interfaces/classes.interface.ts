@@ -14,4 +14,14 @@ export type ClassesData = Pick<
   | 'totalPriceChildren'
   | 'languageClass'
   | 'typeCurrency'
+  | 'dateClass'
+  | 'scheduleClass'
 >;
+
+export type ClassesDataAdmin = {
+  dateClass: string;
+  scheduleClass: string;
+  totalParticipants: number;
+  languageClass: string;
+  classes: ClassesData[];
+};
