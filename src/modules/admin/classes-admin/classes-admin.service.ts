@@ -113,6 +113,7 @@ export class ClassesAdminService {
    * @returns Registros de clases por fecha
    */
   async findByDate(date: string): Promise<ClassesDataAdmin[]> {
+    console.log('date', date);
     try {
       const classesRegistrations = await this.prisma.classes.findMany({
         where: {

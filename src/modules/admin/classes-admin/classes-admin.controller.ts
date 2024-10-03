@@ -17,15 +17,15 @@ import {
 export class ClassesAdminController {
   constructor(private readonly classesAdminService: ClassesAdminService) {}
 
-  @ApiOkResponse({ description: 'Get all classes' })
-  @Get()
-  findAll(): Promise<ClassesDataAdmin[]> {
-    return this.classesAdminService.findAll();
-  }
-
   @ApiOkResponse({ description: 'Get class by date' })
-  @Get('find/date')
+  @Get()
   findByDate(@Query('date') date: string): Promise<ClassesDataAdmin[]> {
     return this.classesAdminService.findByDate(date);
   }
+
+  /*   @ApiOkResponse({ description: 'Get all classes' })
+  @Get()
+  findAll(): Promise<ClassesDataAdmin[]> {
+    return this.classesAdminService.findAll();
+  } */
 }
