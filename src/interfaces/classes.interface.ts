@@ -17,3 +17,11 @@ export type ClassesData = Pick<
   | 'dateClass'
   | 'scheduleClass'
 >;
+
+export type ClassesDataAdmin = {
+  dateClass: string;
+  scheduleClass: string;
+  totalParticipants: number;
+  languageClass: string;
+  classes: ClassesData[];
+};
