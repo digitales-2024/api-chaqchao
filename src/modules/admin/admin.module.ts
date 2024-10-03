@@ -18,6 +18,7 @@ import { ClassPriceModule } from './class-price/class-price.module';
 import { ClassLanguageModule } from './class-language/class-language.module';
 import { ClassRegistrationModule } from './class-registration/class-registration.module';
 import { ClientAdminModule } from './client-admin/client-admin.module';
+import { ReportsModule } from './reports/report.module';
 
 @Module({
   imports: [
@@ -37,7 +38,8 @@ import { ClientAdminModule } from './client-admin/client-admin.module';
     ClassPriceModule,
     ClassLanguageModule,
     ClassRegistrationModule,
-    ClientAdminModule
+    ClientAdminModule,
+    ReportsModule
   ],
   controllers: [AdminController],
   providers: [AdminService]
