@@ -5,6 +5,7 @@ import { handleException } from 'src/utils';
 import { PrismaService } from 'src/prisma/prisma.service';
 import { CreateBillingDocumentDto } from './dto/create-billing-document.dto';
 import { HttpResponse } from 'src/interfaces';
+import { UpdateStatusBillingDocumentDto } from './dto/update-status-billing.dto';
 
 @Injectable()
 export class BillingDocumentService {
@@ -59,8 +60,15 @@ export class BillingDocumentService {
   async create(
     createBillingDocumentDto: CreateBillingDocumentDto
   ): Promise<HttpResponse<BillingDocumentData>> {
-    const { billingDocumentType, documentNumber, totalAmount, paymentStatus, issuedAt, orderId } =
-      createBillingDocumentDto;
+    const {
+      billingDocumentType,
+      documentNumber,
+      totalAmount,
+      paymentStatus,
+      issuedAt,
+      orderId,
+      ruc
+    } = createBillingDocumentDto;
     let newBillingDocument;
 
     try {
@@ -70,6 +78,7 @@ export class BillingDocumentService {
             billingDocumentType: billingDocumentType || 'RECEIPT',
             documentNumber,
             totalAmount,
+            ruc,
             paymentStatus: paymentStatus || 'PENDING',
             issuedAt,
             orderId
@@ -81,6 +90,7 @@ export class BillingDocumentService {
             totalAmount: true,
             paymentStatus: true,
             issuedAt: true,
+            ruc: true,
             order: {
               select: {
                 id: true
@@ -102,6 +112,7 @@ export class BillingDocumentService {
           totalAmount: newBillingDocument.totalAmount,
           paymentStatus: newBillingDocument.paymentStatus,
           orderId: newBillingDocument.orderId,
+          ruc: newBillingDocument.ruc,
           order: {
             id: newBillingDocument.order.id
           }
@@ -110,6 +121,51 @@ export class BillingDocumentService {
     } catch (error) {
       this.logger.error(`Error creating Billing Document: ${error.message}`, error.stack);
       handleException(error, 'Error creating a Billing Document');
+    }
+  }
+
+  /**
+   * Actualiza solo el estado de un Billing Document
+   * @param id Identificador del Billing Document
+   * @param updateStatusBillingDocumentDto Contiene el nuevo estado del Billing Document
+   * @returns Billing Document actualizado con el nuevo estado
+   */
+  async updateBillingDocumentStatus(
+    id: string,
+    updateStatusBillingDocumentDto: UpdateStatusBillingDocumentDto
+  ): Promise<HttpResponse<BillingDocumentData>> {
+    const { paymentStatus } = updateStatusBillingDocumentDto;
+
+    try {
+      // Actualizar solo el campo paymentStatus
+      const updatedBillingStatus = await this.prisma.billingDocument.update({
+        where: { id },
+        data: { paymentStatus },
+        select: {
+          id: true,
+          billingDocumentType: true,
+          documentNumber: true,
+          totalAmount: true,
+          paymentStatus: true,
+          issuedAt: true,
+          orderId: true,
+          ruc: true,
+          order: {
+            select: {
+              id: true
+            }
+          }
+        }
+      });
+
+      return {
+        statusCode: HttpStatus.OK,
+        message: 'Billing Document status updated successfully',
+        data: updatedBillingStatus
+      };
+    } catch (error) {
+      this.logger.error(`Error updating Billing Document status: ${error.message}`, error.stack);
+      handleException(error, 'Error updating Billing Document status');
     }
   }
 }

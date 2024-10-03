@@ -3,7 +3,7 @@ import { ProductVariationData } from './product-variation.interface';
 
 export type ProductData = Pick<
   Product,
-  'id' | 'name' | 'description' | 'price' | 'image' | 'isAvailable' | 'isActive'
+  'id' | 'name' | 'description' | 'price' | 'image' | 'isAvailable' | 'isActive' | 'isRestricted'
 > & {
   category: { id: string; name: string };
   variations: ProductVariationData[];

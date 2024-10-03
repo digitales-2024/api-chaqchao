@@ -12,6 +12,8 @@ import { CreateCartDto } from './dto/create-cart.dto';
 import { CartData, HttpResponse } from 'src/interfaces';
 import { ClientService } from '../client/client.service';
 import { handleException } from 'src/utils';
+import * as PDFDocument from 'pdfkit';
+import { writeFileSync } from 'fs';
 
 @Injectable()
 export class CartService {
@@ -207,6 +209,12 @@ export class CartService {
         throw new NotFoundException(`Cart with ID ${id} not found`);
       }
 
+      // Calcular totalAmount sumando (precio del ítem * cantidad)
+      const totalAmount = cart.cartItems.reduce((total, item) => {
+        return total + item.product.price * item.quantity;
+      }, 0);
+      console.log(totalAmount);
+
       return {
         statusCode: 200,
         message: 'Cart retrieved successfully',
@@ -214,6 +222,7 @@ export class CartService {
           id: cart.id,
           clientId: cart.clientId,
           cartStatus: cart.cartStatus,
+          totalAmount,
           client: {
             id: cart.client.id,
             name: cart.client.name
@@ -221,7 +230,7 @@ export class CartService {
           items: cart.cartItems.map((item) => ({
             id: item.id,
             quantity: item.quantity,
-            price: item.price,
+            finalprice: item.price,
             product: {
               id: item.product.id,
               name: item.product.name,
@@ -243,7 +252,7 @@ export class CartService {
    */
   async cancelCart(id: string): Promise<HttpResponse<any>> {
     try {
-      // 1. Validar el carrito
+      // Validar el carrito
       const cart = await this.prisma.cart.findUnique({
         where: { id }
       });
@@ -256,12 +265,12 @@ export class CartService {
         throw new BadRequestException('Cart is not in a valid state for cancellation');
       }
 
-      // 2. Eliminar los cartItems relacionados primero
+      // Eliminar los cartItems relacionados primero
       await this.prisma.cartItem.deleteMany({
         where: { cartId: id }
       });
 
-      // 3. Actualizar el estado del carrito a CANCELLED (o eliminar el carrito)
+      // Actualizar el estado del carrito a CANCELLED (o eliminar el carrito)
       const cartDelete: CartData = await this.prisma.cart.delete({
         where: { id },
         select: {
@@ -299,6 +308,177 @@ export class CartService {
     } catch (error) {
       this.logger.error(`Error during cart cancellation: ${error.message}`, error.stack);
       handleException(error, 'Error during cart cancellation');
+    }
+  }
+
+  /**
+   * Generamos la boleta o factura con tabla, header y footer
+   * @param cart carrito para obtener los detalles
+   * @returns los detalles del carrito en formato boleta o factura en pdf
+   */
+  async generateInvoice(cart: any): Promise<string> {
+    const doc = new PDFDocument({ margin: 50 });
+    const filePath = `./invoices/invoice_${cart.id}.pdf`;
+
+    // Convertir el PDF en un buffer y escribirlo en un archivo
+    const buffers: any[] = [];
+    doc.on('data', buffers.push.bind(buffers));
+    doc.on('end', () => {
+      const pdfData = Buffer.concat(buffers);
+      writeFileSync(filePath, pdfData);
+    });
+
+    // Encabezado
+    this.generateHeader(doc, cart);
+
+    // Tabla con los detalles de los productos
+    this.generateTable(doc, cart);
+
+    // Pie de página
+    this.generateFooter(doc);
+
+    // Finalizar el documento PDF
+    doc.end();
+
+    return filePath;
+  }
+
+  /**
+   * Genera el encabezado del PDF
+   * @param doc documento PDF
+   * @param cart datos del carrito para mostrar información del cliente
+   */
+  generateHeader(doc: any, cart: any) {
+    try {
+      // Intenta cargar la imagen
+      doc.image('images/chaqchao_logo_1.png', 50, 45, { width: 50 });
+    } catch (error) {
+      // Manejo de error si la imagen no se puede cargar
+      console.error('Error loading image: ', error.message);
+      doc.fontSize(12).text('Chaqchao Logo', 50, 57); // Texto alternativo si no se carga la imagen
+    }
+    doc
+      .fillColor('#444444')
+      .fontSize(20)
+      .text('Chaqchao Chocolates', 110, 57)
+      .fontSize(10)
+      .text('Chaqchao Chocolates', 200, 50, { align: 'right' })
+      .text('Calle 123, Arequipa, Perú', 200, 65, { align: 'right' })
+      .text('Tel: +51 999 999 999', 200, 80, { align: 'right' })
+      .moveDown();
+
+    doc.text('                       ', 70, 110);
+    doc.text('__________________________________________________________________________', 70, 110);
+
+    doc
+      .fillColor('#000000')
+      .fontSize(14)
+      .text(`Factura/Boleta: ${cart.id}`, { align: 'left' })
+      .text(`Cliente: ${cart.client.name}`, { align: 'left' })
+      .moveDown();
+
+    doc.text('_____________________________________________________', 70, 145);
+  }
+
+  /**
+   * Genera la tabla con los ítems del carrito
+   * @param doc documento PDF
+   * @param cart datos del carrito para mostrar los ítems
+   */
+  generateTable(doc: any, cart: any) {
+    const tableTop = 200;
+    const itemX = 50;
+    const quantityX = 300;
+    const priceX = 400;
+
+    doc.fontSize(12).text('Items', itemX, tableTop);
+    doc.text('Cantidad', quantityX, tableTop);
+    doc.text('Precio Unitario', priceX, tableTop);
+
+    let position = tableTop + 20;
+
+    if (cart.cartItems && Array.isArray(cart.cartItems)) {
+      cart.cartItems.forEach((item: any) => {
+        doc.fontSize(10).text(item.product.name, itemX, position);
+        doc.text(item.quantity.toString(), quantityX, position);
+        doc.text(`S/. ${item.product.price}`, priceX, position);
+        position += 20;
+      });
+
+      // Calcular el total de la factura
+      const totalPrice = cart.cartItems.reduce((sum: number, item: any) => {
+        return sum + item.quantity * item.product.price;
+      }, 0);
+
+      doc.fontSize(12).text(`Total: $${totalPrice}`, priceX, position + 20);
+    } else {
+      doc.fontSize(10).text('No se encontraron ítems en el carrito.', itemX, position);
+    }
+  }
+
+  /**
+   * Genera el pie de página del PDF
+   * @param doc documento PDF
+   */
+  generateFooter(doc: any) {
+    doc
+      .fontSize(10)
+      .text('Gracias por su compra.', 50, 700, { align: 'center', width: 500 })
+      .text('Visítanos en: www.chaqchao-chocolates.com', { align: 'center' });
+  }
+
+  /**
+   * Generamos la factura o boleta sin enviar correos
+   * @param cartId ID del carrito de compras
+   * @returns el archivo PDF generado
+   */
+  async generateAndSendInvoice(cartId: string): Promise<HttpResponse<any>> {
+    try {
+      // Buscar carrito y sus ítems asociados
+      const cart = await this.prisma.cart.findUnique({
+        where: { id: cartId },
+        select: {
+          id: true,
+          clientId: true,
+          cartStatus: true,
+          client: {
+            select: {
+              id: true,
+              name: true
+            }
+          },
+          cartItems: {
+            select: {
+              id: true,
+              quantity: true,
+              price: true,
+              product: {
+                select: {
+                  id: true,
+                  name: true,
+                  price: true
+                }
+              }
+            }
+          }
+        }
+      });
+
+      if (!cart) {
+        throw new NotFoundException(`Cart with ID ${cartId} not found`);
+      }
+
+      // Generar factura en PDF
+      const filePath = await this.generateInvoice(cart);
+
+      return {
+        statusCode: 200,
+        message: 'Invoice generated successfully',
+        data: { invoicePath: filePath }
+      };
+    } catch (error) {
+      this.logger.error(`Error generating invoice: ${error.message}`, error.stack);
+      handleException(error, 'Error generating invoice');
     }
   }
 }

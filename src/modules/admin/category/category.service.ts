@@ -72,11 +72,11 @@ export class CategoryService {
    * Mostrar un listado de todas las categorias activas
    * @returns Todas las categorias activas
    */
-  async findAll(): Promise<CategoryData[]> {
+  async findAll(user: UserData): Promise<CategoryData[]> {
     try {
       return await this.prisma.category.findMany({
-        where: { isActive: true },
-        select: { id: true, name: true, description: true }
+        where: { ...(user.isSuperAdmin ? {} : { isActive: true }) },
+        select: { id: true, name: true, description: true, isActive: true }
       });
     } catch (error) {
       this.logger.error('Error get all categories');
@@ -118,6 +118,8 @@ export class CategoryService {
       const categoryDB = await this.findById(id);
 
       const { name, description } = updateCategoryDto;
+
+      await this.findByName(name);
 
       // Verificar si hay cambios en los datos
       const hasChanges =
@@ -270,12 +272,13 @@ export class CategoryService {
       select: { id: true, name: true, description: true, isActive: true }
     });
 
+    if (!!categoryDB && !categoryDB.isActive) {
+      throw new BadRequestException(
+        'This category is inactive, contact the superadmin to reactivate it'
+      );
+    }
     if (categoryDB) {
       throw new BadRequestException('This category exists');
-    }
-
-    if (!!categoryDB && !categoryDB.isActive) {
-      throw new BadRequestException('This category exist, but is inactive');
     }
 
     return categoryDB;
