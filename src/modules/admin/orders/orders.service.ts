@@ -1,5 +1,5 @@
 import { BadRequestException, Injectable, Logger } from '@nestjs/common';
-import { OrderStatus } from '@prisma/client';
+import { Order, OrderStatus } from '@prisma/client';
 import { PrismaService } from 'src/prisma/prisma.service';
 import { handleException } from 'src/utils';
 
@@ -29,7 +29,9 @@ export class OrdersService {
               client: {
                 select: {
                   id: true,
-                  name: true
+                  name: true,
+                  phone: true,
+                  email: true
                 }
               },
               cartItems: {
@@ -63,7 +65,9 @@ export class OrdersService {
 
       return orders.map((order) => ({
         ...order,
-        clientName: order.cart.client.name
+        clientName: order.cart.client.name,
+        clientPhone: order.cart.client.phone,
+        clientEmail: order.cart.client.email
       }));
     } catch (error) {
       this.logger.error('Error get orders', error.message);
@@ -123,6 +127,30 @@ export class OrdersService {
     } catch (error) {
       this.logger.error('Error get order', error.message);
       handleException(error, 'Error get order');
+    }
+  }
+
+  /**
+   * Actualizar el estado de un pedido
+   * @param id  ID del pedido
+   * @param status  Estado del pedido
+   * @returns  Pedido actualizado
+   */
+  async updateStatus(id: string, status: OrderStatus): Promise<Order> {
+    try {
+      const order = await this.prismaService.order.update({
+        data: {
+          orderStatus: status
+        },
+        where: {
+          id
+        }
+      });
+
+      return order;
+    } catch (error) {
+      this.logger.error('Error update order', error.message);
+      handleException(error, 'Error update order');
     }
   }
 }
