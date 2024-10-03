@@ -1,7 +1,7 @@
-import { Controller, Get, Param, Delete, Query } from '@nestjs/common';
+import { Controller, Get, Query } from '@nestjs/common';
 import { ClassesAdminService } from './classes-admin.service';
 import { Auth } from '../auth/decorators';
-import { ClassesData } from 'src/interfaces';
+import { ClassesDataAdmin } from 'src/interfaces';
 import {
   ApiBadRequestResponse,
   ApiOkResponse,
@@ -19,17 +19,13 @@ export class ClassesAdminController {
 
   @ApiOkResponse({ description: 'Get all classes' })
   @Get()
-  findAll(): Promise<ClassesData[]> {
+  findAll(): Promise<ClassesDataAdmin[]> {
     return this.classesAdminService.findAll();
   }
 
   @ApiOkResponse({ description: 'Get class by date' })
   @Get('find/date')
-  findByDate(@Query('date') date: string): Promise<ClassesData[]> {
+  findByDate(@Query('date') date: string): Promise<ClassesDataAdmin[]> {
     return this.classesAdminService.findByDate(date);
-  }
-  @Delete(':id')
-  remove(@Param('id') id: string) {
-    return this.classesAdminService.remove(id);
   }
 }
