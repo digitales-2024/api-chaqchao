@@ -1,0 +1,50 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Reporte de Productos</title>
+    <style>
+      table {
+        width: 100%;
+        border-collapse: collapse;
+      }
+      h1 {
+        text-align: center;
+        color: #55482c;
+      }
+      thead th {
+        color: rgb(226, 217, 206);
+        text-align: center;
+      }
+      th,
+      td {
+        padding: 8px;
+        text-align: left;
+        border: 1px solid #2d8f76;
+      }
+      th {
+        background-color: #55482c;
+        font-weight: bold;
+      }
+    </style>
+  </head>
+  <body>
+    <h1>Reporte de Productos - CHAQCHAO</h1>
+    <table>
+      <thead>
+        <tr>
+          <th>Product ID</th>
+          <th>Nombre</th>
+          <th>Creado</th>
+          <th>Descripcion</th>
+          <th>Precio</th>
+          <th>Imagen</th>
+        </tr>
+      </thead>
+      <tbody>
+        {{products}}
+      </tbody>
+    </table>
+  </body>
+</html>
