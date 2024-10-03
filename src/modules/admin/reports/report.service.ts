@@ -7,6 +7,7 @@ import * as path from 'path'; // Asegúrate de importar el módulo 'path'
 import { Buffer } from 'buffer'; // Importa el módulo Buffer
 import * as ExcelJS from 'exceljs';
 import { ProductFilterDto } from './dto/product-filter.dto';
+import { GetTopProductsDto } from './dto/get-top-products.dto';
 
 @Injectable()
 export class ReportsService {
@@ -176,7 +177,7 @@ export class ReportsService {
   }
 
   /**
-   * Generacion de PDF con Puppeteer para Orders
+   * Generacion de PDF con Puppeteer para Products
    */
   async generatePDFProduct(data: any): Promise<Buffer> {
     // Definir la ruta a la plantilla HTML
@@ -192,7 +193,7 @@ export class ReportsService {
       throw new Error('No se pudo cargar la plantilla HTML.');
     }
 
-    // Rellenar la plantilla con los datos de los pedidos
+    // Rellenar la plantilla con los datos de los productos
     const htmlContent = templateHtml.replace('{{products}}', this.generateProductHtml(data));
 
     // Generar el PDF usando Puppeteer
@@ -208,24 +209,25 @@ export class ReportsService {
     return pdfBuffer;
   }
 
-  // Generar el contenido HTML para los pedidos
+  // Generar el contenido HTML para los productos
   private generateProductHtml(data: any): string {
-    let ordersHtml = '';
+    let productsHtml = '';
     data.forEach((product) => {
-      ordersHtml += `<tr>
+      productsHtml += `<tr>
         <td>${product.id}</td>
         <td>${product.name}</td>
         <td>${product.createdAt.toLocaleString()}</td>
         <td>${product.description}</td>
         <td>${product.price}</td>
         <td>${product.image}</td>
+        <td>${product.category.name}</td>
       </tr>`;
     });
-    return ordersHtml;
+    return productsHtml;
   }
 
   /**
-   * Filtrado de datos para Orders
+   * Filtrado de datos para Products
    * @param name filtrado por name
    * @param date filtado por fecha exacta
    * @param startDate filtrado por fecha de inicio
@@ -304,5 +306,105 @@ export class ReportsService {
     });
 
     return products;
+  }
+
+  /**
+   * Generacion de PDF para los Productos mas vendidos dentro de un rango de fechas
+   */
+  async generatePDFTopProduct(data: any): Promise<Buffer> {
+    // Definir la ruta a la plantilla HTML
+    const templatePath = path.join(
+      __dirname,
+      '../../../../',
+      'templates',
+      'productsTopReport.html'
+    );
+    console.log('Ruta de la plantilla HTML:', templatePath); // Para verificar la ruta
+
+    // Leer el contenido de la plantilla HTML
+    let templateHtml: string;
+    try {
+      templateHtml = fs.readFileSync(templatePath, 'utf8');
+    } catch (error) {
+      console.error('Error al leer la plantilla HTML:', error);
+      throw new Error('No se pudo cargar la plantilla HTML.');
+    }
+
+    // Rellenar la plantilla con los datos de los productos mas vendidos
+    const htmlContent = templateHtml.replace('{{products}}', this.generateTopProductHtml(data));
+
+    // Generar el PDF usando Puppeteer
+    const browser = await puppeteer.launch();
+    const page = await browser.newPage();
+    await page.setContent(htmlContent);
+    const pdfBufferUint8Array = await page.pdf({ format: 'A4' });
+    await browser.close();
+
+    // Convertir Uint8Array a Buffer
+    const pdfBuffer = Buffer.from(pdfBufferUint8Array);
+
+    return pdfBuffer;
+  }
+
+  // Generar el contenido HTML para los productos mas vendidos
+  private generateTopProductHtml(data: any): string {
+    let productTopHtml = '';
+    data.forEach((productTop) => {
+      productTopHtml += `<tr>
+        <td>${productTop.id}</td>
+        <td>${productTop.name}</td>
+        <td>${productTop.totalOrdered}</td>
+      </tr>`;
+    });
+    return productTopHtml;
+  }
+
+  /**
+   * Reporte de los productos ams vendidos durante una fecha especifica
+   */
+  async getTopProducts(dto: GetTopProductsDto): Promise<any> {
+    const { startDate, endDate } = dto;
+
+    // Convertir las fechas a formato ISO para evitar errores de formato
+    const start = new Date(startDate).toISOString();
+    const end = new Date(endDate).toISOString();
+
+    console.log(start, end);
+
+    // Consultar los productos más solicitados en el período de tiempo
+    const topProducts = await this.prisma.cartItem.groupBy({
+      by: ['productId'], // Agrupar por ID de producto
+      where: {
+        createdAt: {
+          gte: start,
+          lte: end
+        }
+      },
+      _sum: {
+        quantity: true // Sumar las cantidades de cada producto
+      },
+      orderBy: {
+        _sum: {
+          quantity: 'desc' // Ordenar por la cantidad solicitada
+        }
+      },
+      take: 4 // Opcional: limitar a los 10 productos más solicitados
+    });
+
+    // Incluir los detalles del producto
+    const productsWithDetails = await Promise.all(
+      topProducts.map(async (product) => {
+        const details = await this.prisma.product.findUnique({
+          where: { id: product.productId }
+        });
+        return {
+          id: details.id,
+          name: details.name,
+          totalOrdered: product._sum.quantity
+        };
+      })
+    );
+
+    return productsWithDetails;
   }
 }

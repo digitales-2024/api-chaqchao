@@ -5,6 +5,7 @@ import { Response } from 'express';
 import { ApiBadRequestResponse, ApiTags, ApiUnauthorizedResponse } from '@nestjs/swagger';
 import { Auth } from '../auth/decorators';
 import { ProductFilterDto } from './dto/product-filter.dto';
+import { GetTopProductsDto } from './dto/get-top-products.dto';
 
 @ApiTags('Reports')
 @ApiUnauthorizedResponse({ description: 'Unauthorized' })
@@ -58,7 +59,7 @@ export class ReportsController {
 
   @Get('export/product/pdf')
   async exportPdfProduct(@Res() res: Response, @Query() filter: ProductFilterDto) {
-    // Obtener los datos de órdenes filtrados
+    // Obtener los datos de productos filtrados
     const products = await this.reportsService.getFilteredProducts(filter);
     // Generar el PDF con Puppeteer
     const pdfBuffer = await this.reportsService.generatePDFProduct(products);
@@ -81,5 +82,22 @@ export class ReportsController {
 
     // Envía el archivo Excel como respuesta
     res.send(excelBuffer);
+  }
+
+  @Get('top-products')
+  async getTopProducts(@Query() getTopProductDto: GetTopProductsDto) {
+    return this.reportsService.getTopProducts(getTopProductDto);
+  }
+
+  @Get('export/top-product/pdf')
+  async exportPdfTopProduct(@Res() res: Response, @Query() filter: GetTopProductsDto) {
+    // Obtener los datos de productos top filtrados
+    const topProducts = await this.reportsService.getTopProducts(filter);
+    // Generar el PDF con Puppeteer
+    const pdfBuffer = await this.reportsService.generatePDFTopProduct(topProducts);
+    // Enviar el archivo PDF en la respuesta
+    res.setHeader('Content-Type', 'application/pdf');
+    res.setHeader('Content-Disposition', 'attachment; filename="products_top_report.pdf"');
+    res.send(pdfBuffer);
   }
 }
