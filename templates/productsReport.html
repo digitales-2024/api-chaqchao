@@ -3,7 +3,7 @@
   <head>
     <meta charset="UTF-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-    <title>Reporte de Órdenes</title>
+    <title>Reporte de Productos</title>
     <style>
       table {
         width: 100%;
@@ -30,23 +30,20 @@
     </style>
   </head>
   <body>
-    <div>
-      <h1>Reporte de Pedidos - CHAQCHAO</h1>
-    </div>
-
+    <h1>Reporte de Productos - CHAQCHAO</h1>
     <table>
       <thead>
         <tr>
-          <th>Order ID</th>
-          <th>Codigo Unico</th>
-          <th>Hora de Recojo</th>
-          <th>Estado</th>
-          <th>Total</th>
-          <th>Dirección de Recojo</th>
+          <th>Product ID</th>
+          <th>Nombre</th>
+          <th>Creado</th>
+          <th>Descripcion</th>
+          <th>Precio</th>
+          <th>Imagen</th>
         </tr>
       </thead>
       <tbody>
-        {{orders}}
+        {{products}}
       </tbody>
     </table>
   </body>
