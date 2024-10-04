@@ -4,12 +4,12 @@ import { Transform } from 'class-transformer';
 import { IsDefined, IsOptional, IsString } from 'class-validator';
 
 export class OrderFilterDto {
-  @ApiProperty()
+  @ApiProperty({ example: '2024-01-01' })
   @IsOptional()
   @IsString()
   startDate?: string;
 
-  @ApiProperty()
+  @ApiProperty({ example: '2024-01-01' })
   @IsOptional()
   @IsString()
   endDate?: string;
@@ -18,9 +18,16 @@ export class OrderFilterDto {
   @IsOptional()
   orderStatus?: OrderStatus;
 
-  @ApiProperty()
+  @ApiProperty({ example: '2024-01-01' })
   @IsOptional()
   @IsString()
+  @Transform(({ value }) => {
+    if (value) {
+      return new Date(value).toISOString();
+    }
+    console.log(value);
+    return value;
+  })
   date?: string;
 
   @ApiProperty()

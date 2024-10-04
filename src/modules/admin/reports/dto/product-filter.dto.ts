@@ -8,17 +8,17 @@ export class ProductFilterDto {
   @IsString()
   name?: string;
 
-  @ApiProperty()
+  @ApiProperty({ example: '2024-01-01' })
   @IsOptional()
   @IsString()
   startDate?: string;
 
-  @ApiProperty()
+  @ApiProperty({ example: '2024-01-01' })
   @IsOptional()
   @IsString()
   endDate?: string;
 
-  @ApiProperty()
+  @ApiProperty({ example: '2024-01-01' })
   @IsOptional()
   @IsString()
   date?: string;

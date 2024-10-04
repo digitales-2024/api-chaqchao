@@ -19,7 +19,6 @@ export class ReportsService {
     const workbook = new ExcelJS.Workbook();
     const worksheet = workbook.addWorksheet('Orders Report');
     worksheet.columns = [
-      { header: 'Order ID', key: 'id', width: 37 },
       { header: 'Codigo Unico', key: 'pickupCode', width: 13 },
       { header: 'Hora de Recojo', key: 'pickupTime', width: 20 },
       { header: 'Total', key: 'totalAmount', width: 7 },
@@ -36,7 +35,6 @@ export class ReportsService {
 
     data.forEach((order) => {
       worksheet.addRow({
-        id: order.id,
         pickupCode: order.pickupCode,
         pickupTime: order.pickupTime,
         totalAmount: order.totalAmount,
@@ -88,7 +86,6 @@ export class ReportsService {
     let ordersHtml = '';
     data.forEach((order) => {
       ordersHtml += `<tr>
-        <td>${order.id}</td>
         <td>${order.pickupCode}</td>
         <td>${order.pickupTime.toLocaleString()}</td>
         <td>${order.orderStatus}</td>
@@ -117,17 +114,33 @@ export class ReportsService {
       });
     }
     // Filtro por fechas
-    if (filter.date !== undefined) {
+    if (filter.date) {
+      const selectedDate = new Date(filter.date);
+
+      const startOfDay = new Date(selectedDate);
+      startOfDay.setUTCHours(0, 0, 0, 0);
+      const endOfDay = new Date(selectedDate);
+      endOfDay.setUTCHours(23, 59, 59, 999);
+
       whereConditions.push({
-        createdAt: filter.date
+        pickupTime: {
+          gte: startOfDay.toISOString(), // Mayor o igual al inicio del día
+          lte: endOfDay.toISOString() // Menor o igual al final del día
+        }
       });
     }
 
     if (filter.startDate && filter.endDate) {
+      const start = new Date(filter.startDate).toISOString();
+      const end = new Date(filter.endDate).toISOString();
+      const startOfDay = new Date(start);
+      startOfDay.setUTCHours(0, 0, 0, 0);
+      const endOfDay = new Date(end);
+      endOfDay.setUTCHours(23, 59, 59, 999);
       whereConditions.push({
-        createdAt: {
-          gte: filter.startDate,
-          lte: filter.endDate
+        pickupTime: {
+          gte: startOfDay,
+          lte: endOfDay
         }
       });
     }
@@ -157,7 +170,6 @@ export class ReportsService {
     const workbook = new ExcelJS.Workbook();
     const worksheet = workbook.addWorksheet('Products Report');
     worksheet.columns = [
-      { header: 'Order ID', key: 'id', width: 37 },
       { header: 'Codigo Unico', key: 'pickupCode', width: 13 },
       { header: 'Hora de Recojo', key: 'pickupTime', width: 20 },
       { header: 'Total', key: 'totalAmount', width: 7 },
@@ -171,16 +183,15 @@ export class ReportsService {
       cell.font = { bold: true };
     });
 
-    data.forEach((order) => {
+    data.forEach((product) => {
       worksheet.addRow({
-        id: order.id,
-        pickupCode: order.pickupCode,
-        pickupTime: order.pickupTime,
-        totalAmount: order.totalAmount,
-        status: order.orderStatus,
-        address: order.pickupAddress,
-        createdAt: order.createdAt,
-        updatedAt: order.updatedAt
+        pickupCode: product.pickupCode,
+        pickupTime: product.pickupTime,
+        totalAmount: product.totalAmount,
+        status: product.productStatus,
+        address: product.pickupAddress,
+        createdAt: product.createdAt,
+        updatedAt: product.updatedAt
       });
     });
     const buffer = await workbook.xlsx.writeBuffer();
@@ -225,7 +236,6 @@ export class ReportsService {
     let productsHtml = '';
     data.forEach((product) => {
       productsHtml += `<tr>
-        <td>${product.id}</td>
         <td>${product.name}</td>
         <td>${product.createdAt.toLocaleString()}</td>
         <td>${product.description}</td>
@@ -278,11 +288,29 @@ export class ReportsService {
       });
     }
 
+    if (filter.date) {
+      const selectedDate = new Date(filter.date);
+
+      const startOfDay = new Date(selectedDate);
+      startOfDay.setUTCHours(0, 0, 0, 0);
+      const endOfDay = new Date(selectedDate);
+      endOfDay.setUTCHours(23, 59, 59, 999);
+
+      whereConditions.push({
+        pickupTime: {
+          gte: startOfDay.toISOString(), // Mayor o igual al inicio del día
+          lte: endOfDay.toISOString() // Menor o igual al final del día
+        }
+      });
+    }
+
     if (filter.startDate && filter.endDate) {
+      const start = new Date(filter.startDate).toISOString();
+      const end = new Date(filter.endDate).toISOString();
       whereConditions.push({
         createdAt: {
-          gte: filter.startDate,
-          lte: filter.endDate
+          gte: start,
+          lte: end
         }
       });
     }
@@ -324,7 +352,6 @@ export class ReportsService {
     const workbook = new ExcelJS.Workbook();
     const worksheet = workbook.addWorksheet('Top Products Report');
     worksheet.columns = [
-      { header: 'Product ID', key: 'id', width: 37 },
       { header: 'Nombre', key: 'name', width: 30 },
       { header: 'Cantidad', key: 'quantity', width: 10 }
     ];
@@ -335,7 +362,6 @@ export class ReportsService {
     });
     data.forEach((topProducts) => {
       worksheet.addRow({
-        id: topProducts.id,
         name: topProducts.name,
         quantity: topProducts.totalOrdered
       });
@@ -387,7 +413,6 @@ export class ReportsService {
     let productTopHtml = '';
     data.forEach((productTop) => {
       productTopHtml += `<tr>
-        <td>${productTop.id}</td>
         <td>${productTop.name}</td>
         <td>${productTop.totalOrdered}</td>
       </tr>`;
