@@ -45,4 +45,15 @@ export class ClassesAdminController {
     // Envía el archivo Excel como respuesta
     res.send(excelBuffer);
   }
+
+  @Post('export/classes/pdf')
+  async exportPdfClasses(@Res() res: Response, @Body() data: ClassesDataAdmin[]) {
+    // Generar el PDF con Puppeteer usando los datos proporcionados
+    const pdfBuffer = await this.classesAdminService.generatePDFClassReport(data);
+
+    // Enviar el archivo PDF en la respuesta
+    res.setHeader('Content-Type', 'application/pdf');
+    res.setHeader('Content-Disposition', 'attachment; filename="class_report.pdf"');
+    res.send(pdfBuffer);
+  }
 }
