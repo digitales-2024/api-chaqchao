@@ -283,4 +283,30 @@ export class ClassScheduleService {
       throw new BadRequestException('Error deleting class schedule');
     }
   }
+
+  /**
+   * Mostrar un class schedule por su hora de inicio
+   * @param startTime Inicio de la clase
+   * @returns Horario de la clase
+   */
+  async findStartTime(startTime: string): Promise<ClassScheduleData> {
+    const classScheduleDB = await this.prisma.classSchedule.findFirst({
+      where: { startTime },
+      select: {
+        id: true,
+        startTime: true
+      }
+    });
+
+    // Verificar si el class schedule existe y está activo
+    if (!classScheduleDB) {
+      throw new BadRequestException('This class schedule does not exist');
+    }
+
+    // Mapeo al tipo ClassScheduleData
+    return {
+      id: classScheduleDB.id,
+      startTime: classScheduleDB.startTime
+    };
+  }
 }
