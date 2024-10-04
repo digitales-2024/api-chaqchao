@@ -49,7 +49,9 @@ export class ReportsService {
   }
 
   /**
-   * Generacion de PDF con Puppeteer para Orders
+   * Genera un archivo PDF que contiene un reporte de los pedidos dentro de un rango de fechas especificado.
+   * @param {any} data - Datos que representan los pedidos.
+   *                     Se espera que contenga la información necesaria para rellenar la plantilla HTML.
    */
   async generatePDFOrder(data: any): Promise<Buffer> {
     // Definir la ruta a la plantilla HTML
@@ -200,7 +202,9 @@ export class ReportsService {
   }
 
   /**
-   * Generacion de PDF con Puppeteer para Products
+   * Genera un archivo PDF que contiene un reporte de los productos dentro de un rango de fechas especificado.
+   * @param {any} data - Datos que representan los productos.
+   *                     Se espera que contenga la información necesaria para rellenar la plantilla HTML.
    */
   async generatePDFProduct(data: any): Promise<Buffer> {
     // Definir la ruta a la plantilla HTML
@@ -372,7 +376,9 @@ export class ReportsService {
   }
 
   /**
-   * Generacion de PDF para los Productos mas vendidos dentro de un rango de fechas
+   * Genera un archivo PDF que contiene un reporte de los productos más vendidos dentro de un rango de fechas especificado.
+   * @param {any} data - Datos que representan los productos más vendidos.
+   *                     Se espera que contenga la información necesaria para rellenar la plantilla HTML.
    */
   async generatePDFTopProduct(data: any): Promise<Buffer> {
     // Definir la ruta a la plantilla HTML
@@ -428,11 +434,9 @@ export class ReportsService {
    * @param {string} dto.endDate - Fecha de fin del rango en formato `YYYY-MM-DD`.
    *
    * @returns {Promise<any>} - Retorna una lista de productos con los detalles y la cantidad total vendida.
-   *
    * @throws {Error} - Lanza un error si las fechas no son válidas o no se pueden obtener los productos más vendidos.
    *
-   * @example
-   * const topProducts = await getTopProducts({ startDate: '2024-01-01', endDate: '2024-01-31' });
+   * @example - const topProducts = await getTopProducts({ startDate: '2024-01-01', endDate: '2024-01-31' });
    */
 
   async getTopProducts(dto: GetTopProductsDto): Promise<any> {
@@ -449,7 +453,7 @@ export class ReportsService {
     // Consultar los productos más solicitados en el período de tiempo
     try {
       const topProducts = await this.prisma.cartItem.groupBy({
-        by: ['productId'], // Agrupar por ID de producto
+        by: ['productId'],
         where: {
           createdAt: {
             gte: start,
@@ -461,10 +465,9 @@ export class ReportsService {
         },
         orderBy: {
           _sum: {
-            quantity: 'desc' // Ordenar por la cantidad solicitada
+            quantity: 'desc'
           }
-        },
-        take: 10 // Opcional: limitar a los 10 productos más solicitados
+        }
       });
 
       // Incluir los detalles del producto
