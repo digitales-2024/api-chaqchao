@@ -51,7 +51,6 @@ export class ReportsController {
       'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet'
     );
     res.setHeader('Content-Disposition', 'attachment; filename=orders_report.xlsx');
-
     // Envía el archivo Excel como respuesta
     res.send(excelBuffer);
   }
@@ -77,7 +76,6 @@ export class ReportsController {
       'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet'
     );
     res.setHeader('Content-Disposition', 'attachment; filename=products_report.xlsx');
-
     // Envía el archivo Excel como respuesta
     res.send(excelBuffer);
   }
