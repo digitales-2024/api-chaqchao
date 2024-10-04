@@ -3,8 +3,8 @@ import { PrismaService } from 'src/prisma/prisma.service';
 import { OrderFilterDto } from './dto/order-filter.dto';
 import * as puppeteer from 'puppeteer';
 import * as fs from 'fs';
-import * as path from 'path'; // Asegúrate de importar el módulo 'path'
-import { Buffer } from 'buffer'; // Importa el módulo Buffer
+import * as path from 'path';
+import { Buffer } from 'buffer';
 import * as ExcelJS from 'exceljs';
 import { ProductFilterDto } from './dto/product-filter.dto';
 import { GetTopProductsDto } from './dto/get-top-products.dto';
@@ -28,6 +28,12 @@ export class ReportsService {
       { header: 'Creado', key: 'createdAt', width: 20 },
       { header: 'Actualizado', key: 'updatedAt', width: 20 }
     ];
+
+    // Aplicar estilo en negrita a los encabezados
+    worksheet.getRow(1).eachCell((cell) => {
+      cell.font = { bold: true };
+    });
+
     data.forEach((order) => {
       worksheet.addRow({
         id: order.id,
@@ -146,10 +152,10 @@ export class ReportsService {
     return orders;
   }
 
-  // Método para generar Excel para Orders
+  // Método para generar Excel para Products
   async generateExcelProduct(data: any) {
     const workbook = new ExcelJS.Workbook();
-    const worksheet = workbook.addWorksheet('Orders Report');
+    const worksheet = workbook.addWorksheet('Products Report');
     worksheet.columns = [
       { header: 'Order ID', key: 'id', width: 37 },
       { header: 'Codigo Unico', key: 'pickupCode', width: 13 },
@@ -160,6 +166,11 @@ export class ReportsService {
       { header: 'Creado', key: 'createdAt', width: 20 },
       { header: 'Actualizado', key: 'updatedAt', width: 20 }
     ];
+    // Aplicar estilo en negrita a los encabezados
+    worksheet.getRow(1).eachCell((cell) => {
+      cell.font = { bold: true };
+    });
+
     data.forEach((order) => {
       worksheet.addRow({
         id: order.id,
@@ -308,6 +319,31 @@ export class ReportsService {
     return products;
   }
 
+  // Método para generar Excel para Top Products
+  async generateExcelTopProduct(data: any) {
+    const workbook = new ExcelJS.Workbook();
+    const worksheet = workbook.addWorksheet('Top Products Report');
+    worksheet.columns = [
+      { header: 'Product ID', key: 'id', width: 37 },
+      { header: 'Nombre', key: 'name', width: 30 },
+      { header: 'Cantidad', key: 'quantity', width: 10 }
+    ];
+
+    // Aplicar estilo en negrita a los encabezados
+    worksheet.getRow(1).eachCell((cell) => {
+      cell.font = { bold: true };
+    });
+    data.forEach((topProducts) => {
+      worksheet.addRow({
+        id: topProducts.id,
+        name: topProducts.name,
+        quantity: topProducts.totalOrdered
+      });
+    });
+    const buffer = await workbook.xlsx.writeBuffer();
+    return buffer;
+  }
+
   /**
    * Generacion de PDF para los Productos mas vendidos dentro de un rango de fechas
    */
@@ -365,6 +401,10 @@ export class ReportsService {
   async getTopProducts(dto: GetTopProductsDto): Promise<any> {
     const { startDate, endDate } = dto;
 
+    // Validar que las fechas existan y sean válidas
+    if (!startDate || !endDate) {
+      throw new Error('Las fechas de inicio y fin son obligatorias.');
+    }
     // Convertir las fechas a formato ISO para evitar errores de formato
     const start = new Date(startDate).toISOString();
     const end = new Date(endDate).toISOString();
@@ -372,39 +412,44 @@ export class ReportsService {
     console.log(start, end);
 
     // Consultar los productos más solicitados en el período de tiempo
-    const topProducts = await this.prisma.cartItem.groupBy({
-      by: ['productId'], // Agrupar por ID de producto
-      where: {
-        createdAt: {
-          gte: start,
-          lte: end
-        }
-      },
-      _sum: {
-        quantity: true // Sumar las cantidades de cada producto
-      },
-      orderBy: {
+    try {
+      const topProducts = await this.prisma.cartItem.groupBy({
+        by: ['productId'], // Agrupar por ID de producto
+        where: {
+          createdAt: {
+            gte: start,
+            lte: end
+          }
+        },
         _sum: {
-          quantity: 'desc' // Ordenar por la cantidad solicitada
-        }
-      },
-      take: 4 // Opcional: limitar a los 10 productos más solicitados
-    });
+          quantity: true // Sumar las cantidades de cada producto
+        },
+        orderBy: {
+          _sum: {
+            quantity: 'desc' // Ordenar por la cantidad solicitada
+          }
+        },
+        take: 10 // Opcional: limitar a los 10 productos más solicitados
+      });
 
-    // Incluir los detalles del producto
-    const productsWithDetails = await Promise.all(
-      topProducts.map(async (product) => {
-        const details = await this.prisma.product.findUnique({
-          where: { id: product.productId }
-        });
-        return {
-          id: details.id,
-          name: details.name,
-          totalOrdered: product._sum.quantity
-        };
-      })
-    );
+      // Incluir los detalles del producto
+      const productsWithDetails = await Promise.all(
+        topProducts.map(async (product) => {
+          const details = await this.prisma.product.findUnique({
+            where: { id: product.productId }
+          });
+          return {
+            id: details.id,
+            name: details.name,
+            totalOrdered: product._sum.quantity
+          };
+        })
+      );
 
-    return productsWithDetails;
+      return productsWithDetails;
+    } catch (error) {
+      console.log('Error getting top products', error);
+      throw new Error('Error getting top products');
+    }
   }
 }
