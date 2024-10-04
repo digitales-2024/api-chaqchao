@@ -25,7 +25,6 @@ export class OrderFilterDto {
     if (value) {
       return new Date(value).toISOString();
     }
-    console.log(value);
     return value;
   })
   date?: string;
