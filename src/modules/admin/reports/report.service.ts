@@ -54,7 +54,6 @@ export class ReportsService {
   async generatePDFOrder(data: any): Promise<Buffer> {
     // Definir la ruta a la plantilla HTML
     const templatePath = path.join(__dirname, '../../../../', 'templates', 'ordersReport.html');
-    console.log('Ruta de la plantilla HTML:', templatePath); // Para verificar la ruta
 
     // Leer el contenido de la plantilla HTML
     let templateHtml: string;
@@ -97,13 +96,15 @@ export class ReportsService {
   }
 
   /**
-   * Filtrado de datos para Orders
-   * @param orderStatus filtrado por Status
-   * @param date filtado por fecha exacta
-   * @param startDate filtrado por fecha de inicio
-   * @param endDate filtrado por fecha de fin
-   * @param isActive filtrado por activo e inactivo
+   * Filtrado de órdenes basado en varios criterios.
+   *
+   * @param {string} [orderStatus] - Filtrado por el estado de la orden (p.ej., 'PENDING', 'COMPLETED').
+   * @param {string} [date] - Fecha exacta para filtrar órdenes, en formato `YYYY-MM-DD`.
+   * @param {string} [startDate] - Fecha de inicio para filtrar órdenes por un rango de fechas, en formato `YYYY-MM-DD`.
+   * @param {string} [endDate] - Fecha de fin para filtrar órdenes por un rango de fechas, en formato `YYYY-MM-DD`.
+   * @param {boolean} [isActive] - Filtrado por estado activo (true) o inactivo (false).
    */
+
   async getFilteredOrders(filter: OrderFilterDto): Promise<any> {
     const whereConditions: any[] = [];
 
@@ -124,8 +125,8 @@ export class ReportsService {
 
       whereConditions.push({
         pickupTime: {
-          gte: startOfDay.toISOString(), // Mayor o igual al inicio del día
-          lte: endOfDay.toISOString() // Menor o igual al final del día
+          gte: startOfDay.toISOString(),
+          lte: endOfDay.toISOString()
         }
       });
     }
@@ -204,7 +205,6 @@ export class ReportsService {
   async generatePDFProduct(data: any): Promise<Buffer> {
     // Definir la ruta a la plantilla HTML
     const templatePath = path.join(__dirname, '../../../../', 'templates', 'productsReport.html');
-    console.log('Ruta de la plantilla HTML:', templatePath); // Para verificar la ruta
 
     // Leer el contenido de la plantilla HTML
     let templateHtml: string;
@@ -248,14 +248,15 @@ export class ReportsService {
   }
 
   /**
-   * Filtrado de datos para Products
-   * @param name filtrado por name
-   * @param date filtado por fecha exacta
-   * @param startDate filtrado por fecha de inicio
-   * @param endDate filtrado por fecha de fin
-   * @param isActive filtrado por activo e inactivo
-   * @param isAvailable filtrado por disponibilidad
-   * @param isRestricted filtrado por restriccion
+   * Filtrado de productos basado en diferentes criterios.
+   *
+   * @param {string} [name] - Nombre del producto para filtrado por coincidencia parcial (insensible a mayúsculas).
+   * @param {string} [date] - Fecha exacta para filtrar los productos, en formato `YYYY-MM-DD`.
+   * @param {string} [startDate] - Fecha de inicio para filtrar productos por un rango de fechas, en formato `YYYY-MM-DD`.
+   * @param {string} [endDate] - Fecha de fin para filtrar productos por un rango de fechas, en formato `YYYY-MM-DD`.
+   * @param {boolean} [isActive] - Filtrado por estado activo (true) o inactivo (false).
+   * @param {boolean} [isAvailable] - Filtrado por disponibilidad del producto.
+   * @param {boolean} [isRestricted] - Filtrado por productos con restricción.
    */
   async getFilteredProducts(filter: ProductFilterDto): Promise<any> {
     const whereConditions: any[] = [];
@@ -297,7 +298,7 @@ export class ReportsService {
       endOfDay.setUTCHours(23, 59, 59, 999);
 
       whereConditions.push({
-        pickupTime: {
+        createdAt: {
           gte: startOfDay.toISOString(), // Mayor o igual al inicio del día
           lte: endOfDay.toISOString() // Menor o igual al final del día
         }
@@ -381,7 +382,6 @@ export class ReportsService {
       'templates',
       'productsTopReport.html'
     );
-    console.log('Ruta de la plantilla HTML:', templatePath); // Para verificar la ruta
 
     // Leer el contenido de la plantilla HTML
     let templateHtml: string;
@@ -421,8 +421,20 @@ export class ReportsService {
   }
 
   /**
-   * Reporte de los productos ams vendidos durante una fecha especifica
+   * Obtiene los productos más vendidos dentro de un rango de fechas específico.
+   *
+   * @param {GetTopProductsDto} dto - Objeto DTO que contiene las fechas de inicio y fin para el filtrado.
+   * @param {string} dto.startDate - Fecha de inicio del rango en formato `YYYY-MM-DD`.
+   * @param {string} dto.endDate - Fecha de fin del rango en formato `YYYY-MM-DD`.
+   *
+   * @returns {Promise<any>} - Retorna una lista de productos con los detalles y la cantidad total vendida.
+   *
+   * @throws {Error} - Lanza un error si las fechas no son válidas o no se pueden obtener los productos más vendidos.
+   *
+   * @example
+   * const topProducts = await getTopProducts({ startDate: '2024-01-01', endDate: '2024-01-31' });
    */
+
   async getTopProducts(dto: GetTopProductsDto): Promise<any> {
     const { startDate, endDate } = dto;
 
@@ -433,8 +445,6 @@ export class ReportsService {
     // Convertir las fechas a formato ISO para evitar errores de formato
     const start = new Date(startDate).toISOString();
     const end = new Date(endDate).toISOString();
-
-    console.log(start, end);
 
     // Consultar los productos más solicitados en el período de tiempo
     try {

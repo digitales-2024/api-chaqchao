@@ -23,13 +23,11 @@ export class PaymentService {
 
         res.on('data', (chunk) => {
           data += chunk;
-          console.log(data, 'Que pasa ahora en esta linea');
         });
 
         res.on('end', () => {
           try {
             const parsedData = JSON.parse(data);
-            console.log(parsedData);
             resolve(parsedData);
           } catch (error) {
             reject(
