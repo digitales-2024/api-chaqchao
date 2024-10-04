@@ -4,6 +4,9 @@ import { PrismaService } from 'src/prisma/prisma.service';
 import { handleException } from 'src/utils';
 import * as moment from 'moment-timezone';
 import * as ExcelJS from 'exceljs';
+import * as puppeteer from 'puppeteer';
+import * as fs from 'fs';
+import * as path from 'path';
 
 @Injectable()
 export class ClassesAdminService {
@@ -157,7 +160,7 @@ export class ClassesAdminService {
    */
   async generateExcelClasssesAdmin(data: ClassesDataAdmin[]) {
     const workbook = new ExcelJS.Workbook();
-    const worksheet = workbook.addWorksheet('Reporte de Clases');
+    const worksheet = workbook.addWorksheet('Registro de Clases');
 
     // Definir las columnas en español y con el orden especificado
     worksheet.columns = [
@@ -200,5 +203,145 @@ export class ClassesAdminService {
     // Escribir el archivo a un buffer y devolverlo
     const buffer = await workbook.xlsx.writeBuffer();
     return buffer;
+  }
+
+  /**
+   * Exportar un archivo PDF con los datos de las clases
+   * @param data Datos de las clases
+   * @returns Archivo PDF con los datos de las clases
+   */
+  async generatePDFClassReport(data: ClassesDataAdmin[]): Promise<Buffer> {
+    // Definir la ruta a la plantilla HTML
+    const templatePath = path.join(__dirname, '../../../../', 'templates', 'classesReport.html');
+
+    // Leer el contenido de la plantilla HTML
+    let templateHtml: string;
+    try {
+      templateHtml = fs.readFileSync(templatePath, 'utf8');
+    } catch (error) {
+      console.error('Error al leer la plantilla HTML:', error);
+      throw new Error('No se pudo cargar la plantilla HTML.');
+    }
+
+    // Generar el contenido HTML para las clases
+    const classesHtml = this.generateClassHtml(data);
+
+    // Reemplazar la plantilla con el contenido HTML de las clases
+    const htmlContent = templateHtml.replace('{{classes}}', classesHtml);
+
+    // Generar el PDF usando Puppeteer
+    const browser = await puppeteer.launch();
+    const page = await browser.newPage();
+    await page.setContent(htmlContent);
+    const pdfBufferUint8Array = await page.pdf({ format: 'A4' });
+    await browser.close();
+
+    // Convertir Uint8Array a Buffer
+    const pdfBuffer = Buffer.from(pdfBufferUint8Array);
+
+    return pdfBuffer;
+  }
+
+  /**
+   * Generar el contenido HTML con los datos de las clases
+   * @param data Data de las clases
+   * @returns Generar HTML con los datos de las clases
+   */
+  private generateClassHtml(data: ClassesDataAdmin[]): string {
+    let classesHtml = '';
+
+    // Agrupar las clases por fecha y horario
+    const groupedClasses = this.groupClassesByDateAndSchedule(data);
+
+    // Iterar sobre cada grupo y generar HTML
+    for (const date in groupedClasses) {
+      classesHtml += `<h2 style="text-align: center;">Fecha: ${new Date(date).toLocaleDateString()}</h2>`;
+      for (const schedule in groupedClasses[date]) {
+        classesHtml += `<h3 style="text-align: center;">Horario: ${schedule}</h3>`;
+        classesHtml += '<div style="overflow-x:auto; margin: 0 20px;">';
+        classesHtml += '<table>';
+        classesHtml += `
+                <thead>
+                    <tr>
+                        <th>Idioma</th>
+                        <th>Nombre</th>
+                        <th>Email</th>
+                        <th>Teléfono</th>
+                        <th>Total Participantes</th>
+                        <th>Total Adultos</th>
+                        <th>Total Niños</th>
+                    </tr>
+                </thead>
+                <tbody>
+            `;
+
+        let totalParticipants = 0;
+        let totalPrice = 0;
+
+        groupedClasses[date][schedule].forEach((clase) => {
+          classesHtml += `<tr>
+                    <td>${clase.languageClass}</td>
+                    <td>${clase.userName}</td>
+                    <td class="no-capitalize">${clase.userEmail}</td>
+                    <td>${clase.userPhone}</td>
+                    <td>${clase.totalParticipants}</td>
+                    <td>${clase.totalAdults}</td>
+                    <td>${clase.totalChildren}</td>
+                </tr>`;
+
+          // Sumar los totales
+          totalParticipants += clase.totalParticipants;
+          totalPrice += clase.totalPrice;
+        });
+
+        classesHtml += '</tbody></table>';
+
+        // Determinar el símbolo de la moneda
+        const currencySymbol =
+          groupedClasses[date][schedule][0].typeCurrency === 'SOL' ? 'S/.' : '$';
+
+        // Agregar el resumen después de la tabla
+        classesHtml += `
+                <div class="summary">
+                    <p>Total de Participantes: ${totalParticipants}</p>
+                    <p>Total: ${currencySymbol} ${totalPrice.toFixed(2)}</p>
+                </div>
+            `;
+
+        classesHtml += '</div>'; // Cerrar el contenedor
+      }
+    }
+
+    return classesHtml;
+  }
+
+  /**
+   * Agrupar las clases por fecha y horario
+   * @param data Datos de las clases
+   * @returns Clases agrupadas por fecha y horario
+   */
+  private groupClassesByDateAndSchedule(
+    data: ClassesDataAdmin[]
+  ): Record<string, Record<string, ClassesData[]>> {
+    const groupedClasses: Record<string, Record<string, ClassesData[]>> = {};
+
+    data.forEach((classData) => {
+      const dateKey = classData.dateClass;
+
+      if (!groupedClasses[dateKey]) {
+        groupedClasses[dateKey] = {};
+      }
+
+      const scheduleKey = classData.scheduleClass;
+
+      if (!groupedClasses[dateKey][scheduleKey]) {
+        groupedClasses[dateKey][scheduleKey] = [];
+      }
+
+      // Agregar las clases a su respectivo grupo
+      groupedClasses[dateKey][scheduleKey].push(...classData.classes);
+    });
+
+    return groupedClasses;
   }
 }
