@@ -50,7 +50,6 @@ export class ReportsService {
   async generatePDFOrder(data: any): Promise<Buffer> {
     // Definir la ruta a la plantilla HTML
     const templatePath = path.join(__dirname, '../../../../', 'templates', 'ordersReport.html');
-    console.log('Ruta de la plantilla HTML:', templatePath); // Para verificar la ruta
 
     // Leer el contenido de la plantilla HTML
     let templateHtml: string;
