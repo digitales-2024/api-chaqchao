@@ -162,11 +162,8 @@ export class ClassesAdminService {
     const workbook = new ExcelJS.Workbook();
     const worksheet = workbook.addWorksheet('Registro de Clases');
 
-    // Definir las columnas en español y con el orden especificado
+    // Definir las columnas para la tabla de detalles
     worksheet.columns = [
-      { header: 'Fecha de Clase', key: 'dateClass', width: 15 },
-      { header: 'Horario de Clase', key: 'scheduleClass', width: 15 },
-      { header: 'Idioma de Clase', key: 'languageClass', width: 15 },
       { header: 'Nombre de Usuario', key: 'userName', width: 20 },
       { header: 'Email de Usuario', key: 'userEmail', width: 30 },
       { header: 'Teléfono de Usuario', key: 'userPhone', width: 20 },
@@ -175,30 +172,76 @@ export class ClassesAdminService {
       { header: 'Total Niños', key: 'totalChildren', width: 12 },
       { header: 'Precio Total', key: 'totalPrice', width: 12 },
       { header: 'Precio Adultos', key: 'totalPriceAdults', width: 15 },
-      { header: 'Precio Niños', key: 'totalPriceChildren', width: 15 },
-      { header: 'Tipo de Moneda', key: 'typeCurrency', width: 12 }
+      { header: 'Precio Niños', key: 'totalPriceChildren', width: 15 }
     ];
 
-    // Iterar sobre los datos de la clase y agregar cada fila
-    data.forEach((classData) => {
-      classData.classes.forEach((clase) => {
-        worksheet.addRow({
-          dateClass: clase.dateClass,
-          scheduleClass: clase.scheduleClass,
-          totalParticipants: clase.totalParticipants,
-          languageClass: clase.languageClass,
-          userName: clase.userName,
-          userEmail: clase.userEmail,
-          userPhone: clase.userPhone,
-          totalAdults: clase.totalAdults,
-          totalChildren: clase.totalChildren,
-          totalPrice: clase.totalPrice,
-          totalPriceAdults: clase.totalPriceAdults,
-          totalPriceChildren: clase.totalPriceChildren,
-          typeCurrency: clase.typeCurrency
+    // Agrupar las clases por fecha y horario
+    const groupedClasses = this.groupClassesByDateAndSchedule(data);
+
+    // Iterar sobre los grupos y agregar las tablas
+    for (const date in groupedClasses) {
+      for (const schedule in groupedClasses[date]) {
+        const classes = groupedClasses[date][schedule];
+
+        // Sumar los totales
+        let totalParticipants = 0;
+        let totalPrice = 0;
+        const typeCurrency = classes[0].typeCurrency; // Asumir que todos tienen el mismo tipo de moneda
+        const languageClass = classes[0].languageClass; // Asumir que todos tienen el mismo idioma de clase
+
+        classes.forEach((clase) => {
+          totalParticipants += clase.totalParticipants;
+          totalPrice += clase.totalPrice;
         });
-      });
-    });
+
+        // Agregar la tabla de resumen con 2 columnas y 6 filas
+        worksheet.addRow(['Fecha de Clase', date]);
+        worksheet.addRow(['Horario de Clase', schedule]);
+        worksheet.addRow(['Idioma de Clase', languageClass]);
+        worksheet.addRow(['Tipo de Moneda', typeCurrency]);
+        worksheet.addRow(['Total Participantes', totalParticipants]);
+        worksheet.addRow(['Total Precio', totalPrice.toFixed(2)]);
+
+        // Espacio entre las tablas
+        worksheet.addRow([]);
+
+        // Agregar los detalles de cada clase en la segunda tabla
+        worksheet.addRow({
+          userName: 'Nombre de Usuario',
+          userEmail: 'Email de Usuario',
+          userPhone: 'Teléfono de Usuario',
+          totalParticipants: 'Total Participantes',
+          totalAdults: 'Total Adultos',
+          totalChildren: 'Total Niños',
+          totalPrice: 'Precio Total',
+          totalPriceAdults: 'Precio Adultos',
+          totalPriceChildren: 'Precio Niños'
+        });
+
+        // Agregar los detalles de cada clase
+        classes.forEach((clase) => {
+          worksheet.addRow({
+            userName: clase.userName,
+            userEmail: clase.userEmail,
+            userPhone: clase.userPhone,
+            totalParticipants: clase.totalParticipants,
+            totalAdults: clase.totalAdults,
+            totalChildren: clase.totalChildren,
+            totalPrice: clase.totalPrice,
+            totalPriceAdults: clase.totalPriceAdults,
+            totalPriceChildren: clase.totalPriceChildren
+          });
+        });
+
+        // Agregar una fila vacía después de cada grupo
+        worksheet.addRow([]);
+      }
+    }
+
+    // Eliminar el contenido de las celdas de la fila 1 (A1 a I1)
+    for (let col = 1; col <= 9; col++) {
+      worksheet.getCell(1, col).value = null; // Limpia la celda en la fila 1, columna col
+    }
 
     // Escribir el archivo a un buffer y devolverlo
     const buffer = await workbook.xlsx.writeBuffer();
