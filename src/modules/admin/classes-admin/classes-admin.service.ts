@@ -74,44 +74,6 @@ export class ClassesAdminService {
   }
 
   /**
-   * Mostar todas las clases registradass
-   * @returns Clases registradas
-   */
-  async findAll(): Promise<ClassesDataAdmin[]> {
-    try {
-      const classesRegistrations = await this.prisma.classes.findMany({
-        select: {
-          id: true,
-          userName: true,
-          userEmail: true,
-          userPhone: true,
-          totalParticipants: true,
-          totalAdults: true,
-          totalChildren: true,
-          totalPrice: true,
-          totalPriceAdults: true,
-          totalPriceChildren: true,
-          languageClass: true,
-          typeCurrency: true,
-          dateClass: true,
-          scheduleClass: true
-        },
-        orderBy: {
-          createdAt: 'asc'
-        }
-      });
-
-      // Llamar a la función de agrupación
-      const result = this.groupClassesData(classesRegistrations);
-
-      return result as ClassesDataAdmin[];
-    } catch (error) {
-      this.logger.error('Error getting all products');
-      handleException(error, 'Error getting all products');
-    }
-  }
-
-  /**
    * Mostrar todos los registros de clases por fecha
    * @param date Fecha de la clase
    * @returns Registros de clases por fecha
@@ -148,8 +110,8 @@ export class ClassesAdminService {
 
       return result as ClassesDataAdmin[];
     } catch (error) {
-      this.logger.error('Error getting all products');
-      handleException(error, 'Error getting all products');
+      this.logger.error('Error getting all classes by date');
+      handleException(error, 'Error getting all classes by date');
     }
   }
 
