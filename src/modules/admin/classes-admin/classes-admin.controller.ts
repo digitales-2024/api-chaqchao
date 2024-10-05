@@ -24,6 +24,7 @@ export class ClassesAdminController {
     return this.classesAdminService.findByDate(date);
   }
 
+  @ApiOkResponse({ description: 'PDF file download' })
   @Post('export/classes/excel')
   async exportExcelClasses(@Res() res: Response, @Body() data: ClassesDataAdmin[]) {
     // Genera el archivo Excel usando el servicio
@@ -40,6 +41,7 @@ export class ClassesAdminController {
     res.send(excelBuffer);
   }
 
+  @ApiOkResponse({ description: 'Excel file download' })
   @Post('export/classes/pdf')
   async exportPdfClasses(@Res() res: Response, @Body() data: ClassesDataAdmin[]) {
     // Generar el PDF con Puppeteer usando los datos proporcionados
