@@ -1,0 +1,107 @@
+<!doctype html>
+<html lang="es">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Registro de Clases - CHAQCHAO</title>
+    <style>
+      body {
+        font-family: Arial, sans-serif;
+        margin: 0;
+        padding: 0;
+        background-color: #f9f9f9;
+        color: #333;
+      }
+
+      header {
+        background-color: #55482c;
+        padding: 20px;
+        text-align: center;
+        color: #e2d9ce;
+      }
+
+      h1 {
+        margin: 0;
+        font-size: 26px;
+      }
+
+      .company-info p {
+        margin: 2px 0;
+      }
+
+      .content {
+        padding: 20px;
+      }
+
+      h2 {
+        font-size: 20px;
+        color: #55482c;
+        border-bottom: 2px solid #55482c;
+        padding-bottom: 10px;
+        margin-bottom: 20px;
+      }
+
+      table {
+        width: 100%;
+        max-width: 800px;
+        margin: 20px auto;
+        border-collapse: collapse;
+        font-size: 14px;
+        background-color: #fff;
+        border: 1px solid #55482c;
+        padding: 10px;
+      }
+
+      th,
+      td {
+        padding: 10px;
+        border: 1px solid #4c4c4c;
+        text-align: center;
+        text-transform: capitalize;
+      }
+
+      .no-capitalize {
+        text-transform: none;
+      }
+
+      tbody tr:nth-child(even) {
+        background-color: #f4f4f4;
+      }
+
+      tbody tr:nth-child(odd) {
+        background-color: #fff;
+      }
+
+      .footer {
+        text-align: center;
+        padding: 10px;
+        background-color: #55482c;
+        color: #e2d9ce;
+        font-size: 12px;
+        margin-top: 20px;
+      }
+
+      .summary {
+        margin-top: 10px;
+        font-size: 14px;
+        text-align: right;
+        color: #333;
+        padding: 10px;
+      }
+    </style>
+  </head>
+  <body>
+    <header>
+      <h1>Registro de Clases - CHAQCHAO</h1>
+    </header>
+
+    <div class="content">
+      <h2>Detalles de las Clases</h2>
+      <div id="class-reports">{{classes}}</div>
+    </div>
+
+    <div class="footer">
+      <p>Registro generado automáticamente por CHAQCHAO</p>
+    </div>
+  </body>
+</html>
