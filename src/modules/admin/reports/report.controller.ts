@@ -34,7 +34,6 @@ export class ReportsController {
   async exportPdf(@Res() res: Response, @Query() filter: OrderFilterDto) {
     // Obtener los datos de órdenes filtrados
     const orders = await this.reportsService.getFilteredOrders(filter);
-    // Generar el PDF con Puppeteer
     const pdfBuffer = await this.reportsService.generatePDFOrder(orders);
     // Enviar el archivo PDF en la respuesta
     res.setHeader('Content-Type', 'application/pdf');
@@ -52,7 +51,6 @@ export class ReportsController {
       'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet'
     );
     res.setHeader('Content-Disposition', 'attachment; filename=orders_report.xlsx');
-
     // Envía el archivo Excel como respuesta
     res.send(excelBuffer);
   }
@@ -61,7 +59,6 @@ export class ReportsController {
   async exportPdfProduct(@Res() res: Response, @Query() filter: ProductFilterDto) {
     // Obtener los datos de productos filtrados
     const products = await this.reportsService.getFilteredProducts(filter);
-    // Generar el PDF con Puppeteer
     const pdfBuffer = await this.reportsService.generatePDFProduct(products);
     // Enviar el archivo PDF en la respuesta
     res.setHeader('Content-Type', 'application/pdf');
@@ -79,7 +76,6 @@ export class ReportsController {
       'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet'
     );
     res.setHeader('Content-Disposition', 'attachment; filename=products_report.xlsx');
-
     // Envía el archivo Excel como respuesta
     res.send(excelBuffer);
   }
@@ -93,11 +89,25 @@ export class ReportsController {
   async exportPdfTopProduct(@Res() res: Response, @Query() filter: GetTopProductsDto) {
     // Obtener los datos de productos top filtrados
     const topProducts = await this.reportsService.getTopProducts(filter);
-    // Generar el PDF con Puppeteer
     const pdfBuffer = await this.reportsService.generatePDFTopProduct(topProducts);
     // Enviar el archivo PDF en la respuesta
     res.setHeader('Content-Type', 'application/pdf');
     res.setHeader('Content-Disposition', 'attachment; filename="products_top_report.pdf"');
     res.send(pdfBuffer);
+  }
+
+  @Get('export/top-product/excel')
+  async exportExcelTopProduct(@Res() res: Response, @Query() filter: GetTopProductsDto) {
+    const data = await this.reportsService.getTopProducts(filter);
+    const excelBuffer = await this.reportsService.generateExcelTopProduct(data);
+    // Configura los encabezados para la descarga del archivo
+    res.setHeader(
+      'Content-Type',
+      'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet'
+    );
+    res.setHeader('Content-Disposition', 'attachment; filename=top_products_report.xlsx');
+
+    // Envía el archivo Excel como respuesta
+    res.send(excelBuffer);
   }
 }

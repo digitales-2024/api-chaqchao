@@ -20,6 +20,7 @@ import { ClassRegistrationModule } from './class-registration/class-registration
 import { ClientAdminModule } from './client-admin/client-admin.module';
 import { ReportsModule } from './reports/report.module';
 import { ClassesAdminModule } from './classes-admin/classes-admin.module';
+import { OrdersModule } from './orders/orders.module';
 
 @Module({
   imports: [
@@ -41,7 +42,8 @@ import { ClassesAdminModule } from './classes-admin/classes-admin.module';
     ClassRegistrationModule,
     ClientAdminModule,
     ReportsModule,
-    ClassesAdminModule
+    ClassesAdminModule,
+    OrdersModule
   ],
   controllers: [AdminController],
   providers: [AdminService]

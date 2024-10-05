@@ -3,8 +3,8 @@ import { PrismaService } from 'src/prisma/prisma.service';
 import { OrderFilterDto } from './dto/order-filter.dto';
 import * as puppeteer from 'puppeteer';
 import * as fs from 'fs';
-import * as path from 'path'; // Asegúrate de importar el módulo 'path'
-import { Buffer } from 'buffer'; // Importa el módulo Buffer
+import * as path from 'path';
+import { Buffer } from 'buffer';
 import * as ExcelJS from 'exceljs';
 import { ProductFilterDto } from './dto/product-filter.dto';
 import { GetTopProductsDto } from './dto/get-top-products.dto';
@@ -19,7 +19,6 @@ export class ReportsService {
     const workbook = new ExcelJS.Workbook();
     const worksheet = workbook.addWorksheet('Orders Report');
     worksheet.columns = [
-      { header: 'Order ID', key: 'id', width: 37 },
       { header: 'Codigo Unico', key: 'pickupCode', width: 13 },
       { header: 'Hora de Recojo', key: 'pickupTime', width: 20 },
       { header: 'Total', key: 'totalAmount', width: 7 },
@@ -28,9 +27,14 @@ export class ReportsService {
       { header: 'Creado', key: 'createdAt', width: 20 },
       { header: 'Actualizado', key: 'updatedAt', width: 20 }
     ];
+
+    // Aplicar estilo en negrita a los encabezados
+    worksheet.getRow(1).eachCell((cell) => {
+      cell.font = { bold: true };
+    });
+
     data.forEach((order) => {
       worksheet.addRow({
-        id: order.id,
         pickupCode: order.pickupCode,
         pickupTime: order.pickupTime,
         totalAmount: order.totalAmount,
@@ -45,7 +49,9 @@ export class ReportsService {
   }
 
   /**
-   * Generacion de PDF con Puppeteer para Orders
+   * Genera un archivo PDF que contiene un reporte de los pedidos dentro de un rango de fechas especificado.
+   * @param {any} data - Datos que representan los pedidos.
+   *                     Se espera que contenga la información necesaria para rellenar la plantilla HTML.
    */
   async generatePDFOrder(data: any): Promise<Buffer> {
     // Definir la ruta a la plantilla HTML
@@ -81,7 +87,6 @@ export class ReportsService {
     let ordersHtml = '';
     data.forEach((order) => {
       ordersHtml += `<tr>
-        <td>${order.id}</td>
         <td>${order.pickupCode}</td>
         <td>${order.pickupTime.toLocaleString()}</td>
         <td>${order.orderStatus}</td>
@@ -93,13 +98,15 @@ export class ReportsService {
   }
 
   /**
-   * Filtrado de datos para Orders
-   * @param orderStatus filtrado por Status
-   * @param date filtado por fecha exacta
-   * @param startDate filtrado por fecha de inicio
-   * @param endDate filtrado por fecha de fin
-   * @param isActive filtrado por activo e inactivo
+   * Filtrado de órdenes basado en varios criterios.
+   *
+   * @param {string} [orderStatus] - Filtrado por el estado de la orden (p.ej., 'PENDING', 'COMPLETED').
+   * @param {string} [date] - Fecha exacta para filtrar órdenes, en formato `YYYY-MM-DD`.
+   * @param {string} [startDate] - Fecha de inicio para filtrar órdenes por un rango de fechas, en formato `YYYY-MM-DD`.
+   * @param {string} [endDate] - Fecha de fin para filtrar órdenes por un rango de fechas, en formato `YYYY-MM-DD`.
+   * @param {boolean} [isActive] - Filtrado por estado activo (true) o inactivo (false).
    */
+
   async getFilteredOrders(filter: OrderFilterDto): Promise<any> {
     const whereConditions: any[] = [];
 
@@ -110,17 +117,33 @@ export class ReportsService {
       });
     }
     // Filtro por fechas
-    if (filter.date !== undefined) {
+    if (filter.date) {
+      const selectedDate = new Date(filter.date);
+
+      const startOfDay = new Date(selectedDate);
+      startOfDay.setUTCHours(0, 0, 0, 0);
+      const endOfDay = new Date(selectedDate);
+      endOfDay.setUTCHours(23, 59, 59, 999);
+
       whereConditions.push({
-        createdAt: filter.date
+        pickupTime: {
+          gte: startOfDay.toISOString(),
+          lte: endOfDay.toISOString()
+        }
       });
     }
 
     if (filter.startDate && filter.endDate) {
+      const start = new Date(filter.startDate).toISOString();
+      const end = new Date(filter.endDate).toISOString();
+      const startOfDay = new Date(start);
+      startOfDay.setUTCHours(0, 0, 0, 0);
+      const endOfDay = new Date(end);
+      endOfDay.setUTCHours(23, 59, 59, 999);
       whereConditions.push({
-        createdAt: {
-          gte: filter.startDate,
-          lte: filter.endDate
+        pickupTime: {
+          gte: startOfDay,
+          lte: endOfDay
         }
       });
     }
@@ -145,12 +168,11 @@ export class ReportsService {
     return orders;
   }
 
-  // Método para generar Excel para Orders
+  // Método para generar Excel para Products
   async generateExcelProduct(data: any) {
     const workbook = new ExcelJS.Workbook();
-    const worksheet = workbook.addWorksheet('Orders Report');
+    const worksheet = workbook.addWorksheet('Products Report');
     worksheet.columns = [
-      { header: 'Order ID', key: 'id', width: 37 },
       { header: 'Codigo Unico', key: 'pickupCode', width: 13 },
       { header: 'Hora de Recojo', key: 'pickupTime', width: 20 },
       { header: 'Total', key: 'totalAmount', width: 7 },
@@ -159,16 +181,20 @@ export class ReportsService {
       { header: 'Creado', key: 'createdAt', width: 20 },
       { header: 'Actualizado', key: 'updatedAt', width: 20 }
     ];
-    data.forEach((order) => {
+    // Aplicar estilo en negrita a los encabezados
+    worksheet.getRow(1).eachCell((cell) => {
+      cell.font = { bold: true };
+    });
+
+    data.forEach((product) => {
       worksheet.addRow({
-        id: order.id,
-        pickupCode: order.pickupCode,
-        pickupTime: order.pickupTime,
-        totalAmount: order.totalAmount,
-        status: order.orderStatus,
-        address: order.pickupAddress,
-        createdAt: order.createdAt,
-        updatedAt: order.updatedAt
+        pickupCode: product.pickupCode,
+        pickupTime: product.pickupTime,
+        totalAmount: product.totalAmount,
+        status: product.productStatus,
+        address: product.pickupAddress,
+        createdAt: product.createdAt,
+        updatedAt: product.updatedAt
       });
     });
     const buffer = await workbook.xlsx.writeBuffer();
@@ -176,12 +202,13 @@ export class ReportsService {
   }
 
   /**
-   * Generacion de PDF con Puppeteer para Products
+   * Genera un archivo PDF que contiene un reporte de los productos dentro de un rango de fechas especificado.
+   * @param {any} data - Datos que representan los productos.
+   *                     Se espera que contenga la información necesaria para rellenar la plantilla HTML.
    */
   async generatePDFProduct(data: any): Promise<Buffer> {
     // Definir la ruta a la plantilla HTML
     const templatePath = path.join(__dirname, '../../../../', 'templates', 'productsReport.html');
-    console.log('Ruta de la plantilla HTML:', templatePath); // Para verificar la ruta
 
     // Leer el contenido de la plantilla HTML
     let templateHtml: string;
@@ -213,7 +240,6 @@ export class ReportsService {
     let productsHtml = '';
     data.forEach((product) => {
       productsHtml += `<tr>
-        <td>${product.id}</td>
         <td>${product.name}</td>
         <td>${product.createdAt.toLocaleString()}</td>
         <td>${product.description}</td>
@@ -226,14 +252,15 @@ export class ReportsService {
   }
 
   /**
-   * Filtrado de datos para Products
-   * @param name filtrado por name
-   * @param date filtado por fecha exacta
-   * @param startDate filtrado por fecha de inicio
-   * @param endDate filtrado por fecha de fin
-   * @param isActive filtrado por activo e inactivo
-   * @param isAvailable filtrado por disponibilidad
-   * @param isRestricted filtrado por restriccion
+   * Filtrado de productos basado en diferentes criterios.
+   *
+   * @param {string} [name] - Nombre del producto para filtrado por coincidencia parcial (insensible a mayúsculas).
+   * @param {string} [date] - Fecha exacta para filtrar los productos, en formato `YYYY-MM-DD`.
+   * @param {string} [startDate] - Fecha de inicio para filtrar productos por un rango de fechas, en formato `YYYY-MM-DD`.
+   * @param {string} [endDate] - Fecha de fin para filtrar productos por un rango de fechas, en formato `YYYY-MM-DD`.
+   * @param {boolean} [isActive] - Filtrado por estado activo (true) o inactivo (false).
+   * @param {boolean} [isAvailable] - Filtrado por disponibilidad del producto.
+   * @param {boolean} [isRestricted] - Filtrado por productos con restricción.
    */
   async getFilteredProducts(filter: ProductFilterDto): Promise<any> {
     const whereConditions: any[] = [];
@@ -266,11 +293,29 @@ export class ReportsService {
       });
     }
 
-    if (filter.startDate && filter.endDate) {
+    if (filter.date) {
+      const selectedDate = new Date(filter.date);
+
+      const startOfDay = new Date(selectedDate);
+      startOfDay.setUTCHours(0, 0, 0, 0);
+      const endOfDay = new Date(selectedDate);
+      endOfDay.setUTCHours(23, 59, 59, 999);
+
       whereConditions.push({
         createdAt: {
-          gte: filter.startDate,
-          lte: filter.endDate
+          gte: startOfDay.toISOString(), // Mayor o igual al inicio del día
+          lte: endOfDay.toISOString() // Menor o igual al final del día
+        }
+      });
+    }
+
+    if (filter.startDate && filter.endDate) {
+      const start = new Date(filter.startDate).toISOString();
+      const end = new Date(filter.endDate).toISOString();
+      whereConditions.push({
+        createdAt: {
+          gte: start,
+          lte: end
         }
       });
     }
@@ -307,8 +352,33 @@ export class ReportsService {
     return products;
   }
 
+  // Método para generar Excel para Top Products
+  async generateExcelTopProduct(data: any) {
+    const workbook = new ExcelJS.Workbook();
+    const worksheet = workbook.addWorksheet('Top Products Report');
+    worksheet.columns = [
+      { header: 'Nombre', key: 'name', width: 30 },
+      { header: 'Cantidad', key: 'quantity', width: 10 }
+    ];
+
+    // Aplicar estilo en negrita a los encabezados
+    worksheet.getRow(1).eachCell((cell) => {
+      cell.font = { bold: true };
+    });
+    data.forEach((topProducts) => {
+      worksheet.addRow({
+        name: topProducts.name,
+        quantity: topProducts.totalOrdered
+      });
+    });
+    const buffer = await workbook.xlsx.writeBuffer();
+    return buffer;
+  }
+
   /**
-   * Generacion de PDF para los Productos mas vendidos dentro de un rango de fechas
+   * Genera un archivo PDF que contiene un reporte de los productos más vendidos dentro de un rango de fechas especificado.
+   * @param {any} data - Datos que representan los productos más vendidos.
+   *                     Se espera que contenga la información necesaria para rellenar la plantilla HTML.
    */
   async generatePDFTopProduct(data: any): Promise<Buffer> {
     // Definir la ruta a la plantilla HTML
@@ -318,7 +388,6 @@ export class ReportsService {
       'templates',
       'productsTopReport.html'
     );
-    console.log('Ruta de la plantilla HTML:', templatePath); // Para verificar la ruta
 
     // Leer el contenido de la plantilla HTML
     let templateHtml: string;
@@ -350,7 +419,6 @@ export class ReportsService {
     let productTopHtml = '';
     data.forEach((productTop) => {
       productTopHtml += `<tr>
-        <td>${productTop.id}</td>
         <td>${productTop.name}</td>
         <td>${productTop.totalOrdered}</td>
       </tr>`;
@@ -359,51 +427,67 @@ export class ReportsService {
   }
 
   /**
-   * Reporte de los productos ams vendidos durante una fecha especifica
+   * Obtiene los productos más vendidos dentro de un rango de fechas específico.
+   *
+   * @param {GetTopProductsDto} dto - Objeto DTO que contiene las fechas de inicio y fin para el filtrado.
+   * @param {string} dto.startDate - Fecha de inicio del rango en formato `YYYY-MM-DD`.
+   * @param {string} dto.endDate - Fecha de fin del rango en formato `YYYY-MM-DD`.
+   *
+   * @returns {Promise<any>} - Retorna una lista de productos con los detalles y la cantidad total vendida.
+   * @throws {Error} - Lanza un error si las fechas no son válidas o no se pueden obtener los productos más vendidos.
+   *
+   * @example - const topProducts = await getTopProducts({ startDate: '2024-01-01', endDate: '2024-01-31' });
    */
+
   async getTopProducts(dto: GetTopProductsDto): Promise<any> {
     const { startDate, endDate } = dto;
 
+    // Validar que las fechas existan y sean válidas
+    if (!startDate || !endDate) {
+      throw new Error('Las fechas de inicio y fin son obligatorias.');
+    }
     // Convertir las fechas a formato ISO para evitar errores de formato
     const start = new Date(startDate).toISOString();
     const end = new Date(endDate).toISOString();
 
-    console.log(start, end);
-
     // Consultar los productos más solicitados en el período de tiempo
-    const topProducts = await this.prisma.cartItem.groupBy({
-      by: ['productId'], // Agrupar por ID de producto
-      where: {
-        createdAt: {
-          gte: start,
-          lte: end
-        }
-      },
-      _sum: {
-        quantity: true // Sumar las cantidades de cada producto
-      },
-      orderBy: {
+    try {
+      const topProducts = await this.prisma.cartItem.groupBy({
+        by: ['productId'],
+        where: {
+          createdAt: {
+            gte: start,
+            lte: end
+          }
+        },
         _sum: {
-          quantity: 'desc' // Ordenar por la cantidad solicitada
+          quantity: true // Sumar las cantidades de cada producto
+        },
+        orderBy: {
+          _sum: {
+            quantity: 'desc'
+          }
         }
-      },
-      take: 4 // Opcional: limitar a los 10 productos más solicitados
-    });
+      });
 
-    // Incluir los detalles del producto
-    const productsWithDetails = await Promise.all(
-      topProducts.map(async (product) => {
-        const details = await this.prisma.product.findUnique({
-          where: { id: product.productId }
-        });
-        return {
-          id: details.id,
-          name: details.name,
-          totalOrdered: product._sum.quantity
-        };
-      })
-    );
+      // Incluir los detalles del producto
+      const productsWithDetails = await Promise.all(
+        topProducts.map(async (product) => {
+          const details = await this.prisma.product.findUnique({
+            where: { id: product.productId }
+          });
+          return {
+            id: details.id,
+            name: details.name,
+            totalOrdered: product._sum.quantity
+          };
+        })
+      );
 
-    return productsWithDetails;
+      return productsWithDetails;
+    } catch (error) {
+      console.log('Error getting top products', error);
+      throw new Error('Error getting top products');
+    }
   }
 }

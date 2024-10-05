@@ -213,7 +213,6 @@ export class CartService {
       const totalAmount = cart.cartItems.reduce((total, item) => {
         return total + item.product.price * item.quantity;
       }, 0);
-      console.log(totalAmount);
 
       return {
         statusCode: 200,
