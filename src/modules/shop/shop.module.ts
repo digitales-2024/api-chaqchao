@@ -9,6 +9,7 @@ import { BillingDocumentModule } from './billing-document/billing-document.modul
 import { NotificationModule } from './notification/notification.module';
 import { PaymentModule } from './payment/payment.module';
 import { ClassesModule } from './classes/classes.module';
+import { CatalogModule } from './catalog/catalog.module';
 
 @Module({
   imports: [
@@ -21,6 +22,7 @@ import { ClassesModule } from './classes/classes.module';
     BillingDocumentModule,
     NotificationModule,
     ClassesModule,
+    CatalogModule,
     PaymentModule
   ]
 })
