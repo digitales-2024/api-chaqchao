@@ -14,7 +14,7 @@ import {
 @ApiBadRequestResponse({ description: 'Bad Request' })
 @ApiUnauthorizedResponse({ description: 'Unauthorized' })
 @Auth()
-@Controller({ path: 'admin/class', version: '1' })
+@Controller({ path: '/class/admin', version: '1' })
 export class ClassesAdminController {
   constructor(private readonly classesAdminService: ClassesAdminService) {}
 
@@ -23,12 +23,6 @@ export class ClassesAdminController {
   findByDate(@Query('date') date: string): Promise<ClassesDataAdmin[]> {
     return this.classesAdminService.findByDate(date);
   }
-
-  /*   @ApiOkResponse({ description: 'Get all classes' })
-  @Get()
-  findAll(): Promise<ClassesDataAdmin[]> {
-    return this.classesAdminService.findAll();
-  } */
 
   @Post('export/classes/excel')
   async exportExcelClasses(@Res() res: Response, @Body() data: ClassesDataAdmin[]) {
