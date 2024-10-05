@@ -90,6 +90,14 @@ export class OrdersService {
           cart: {
             select: {
               id: true,
+              client: {
+                select: {
+                  id: true,
+                  name: true,
+                  phone: true,
+                  email: true
+                }
+              },
               cartItems: {
                 select: {
                   quantity: true,
@@ -122,7 +130,12 @@ export class OrdersService {
         cart: order.cart.cartItems.flatMap(({ product, quantity }) => ({
           ...product,
           quantity
-        }))
+        })),
+        client: {
+          name: order.cart.client.name,
+          phone: order.cart.client.phone,
+          email: order.cart.client.email
+        }
       };
     } catch (error) {
       this.logger.error('Error get order', error.message);
