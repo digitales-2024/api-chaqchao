@@ -1,6 +1,6 @@
 import { ApiProperty } from '@nestjs/swagger';
 import { Transform } from 'class-transformer';
-import { IsDefined, IsOptional, IsString } from 'class-validator';
+import { IsDefined, IsNumber, IsOptional, IsString } from 'class-validator';
 
 export class ProductFilterDto {
   @ApiProperty()
@@ -25,13 +25,15 @@ export class ProductFilterDto {
 
   @ApiProperty()
   @IsOptional()
-  @IsString()
-  priceMax?: string;
+  @IsNumber()
+  @Transform(({ value }) => parseFloat(value))
+  priceMax?: number;
 
   @ApiProperty()
   @IsOptional()
-  @IsString()
-  priceMin?: string;
+  @IsNumber()
+  @Transform(({ value }) => parseFloat(value))
+  priceMin?: number;
 
   @ApiProperty()
   @IsOptional()
