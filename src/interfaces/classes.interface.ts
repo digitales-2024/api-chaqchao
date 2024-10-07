@@ -16,6 +16,7 @@ export type ClassesData = Pick<
   | 'typeCurrency'
   | 'dateClass'
   | 'scheduleClass'
+  | 'comments'
 >;
 
 export type ClassesDataAdmin = {
