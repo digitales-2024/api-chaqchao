@@ -3,6 +3,7 @@ import { Order, OrderStatus } from '@prisma/client';
 import { PrismaService } from 'src/prisma/prisma.service';
 import { handleException } from 'src/utils';
 import { AdminGateway } from '../admin.gateway';
+import { OrderDetails, OrderInfo } from 'src/interfaces';
 
 @Injectable()
 export class OrdersService {
@@ -18,7 +19,7 @@ export class OrdersService {
    * @param status  Estado del pedido
    * @returns  Pedidos
    */
-  async findAll(date: string, status?: OrderStatus): Promise<any> {
+  async findAll(date: string, status?: OrderStatus): Promise<OrderInfo[]> {
     try {
       const formattedDate = new Date(date);
       if (isNaN(formattedDate.getTime())) {
@@ -68,10 +69,20 @@ export class OrdersService {
       });
 
       return orders.map((order) => ({
-        ...order,
-        clientName: order.cart.client.name,
-        clientPhone: order.cart.client.phone,
-        clientEmail: order.cart.client.email
+        id: order.id,
+        orderStatus: order.orderStatus,
+        pickupAddress: order.pickupAddress,
+        pickupTime: order.pickupTime,
+        isActive: order.isActive,
+        someonePickup: order.someonePickup,
+        pickupCode: order.pickupCode,
+        totalAmount: order.totalAmount,
+        client: {
+          id: order.cart.client.id,
+          name: order.cart.client.name,
+          phone: order.cart.client.phone,
+          email: order.cart.client.email
+        }
       }));
     } catch (error) {
       this.logger.error('Error get orders', error.message);
@@ -87,7 +98,7 @@ export class OrdersService {
    * @param id  ID del pedido
    * @returns  Pedido
    */
-  async findOne(id: string): Promise<any> {
+  async findOne(id: string): Promise<OrderDetails> {
     try {
       const order = await this.prismaService.order.findUnique({
         include: {
@@ -130,12 +141,23 @@ export class OrdersService {
       });
 
       return {
-        ...order,
-        cart: order.cart.cartItems.flatMap(({ product, quantity }) => ({
-          ...product,
-          quantity
-        })),
+        id: order.id,
+        orderStatus: order.orderStatus,
+        pickupAddress: order.pickupAddress,
+        pickupTime: order.pickupTime,
+        isActive: order.isActive,
+        someonePickup: order.someonePickup,
+        pickupCode: order.pickupCode,
+        totalAmount: order.totalAmount,
+        cart: {
+          quantity: order.cart.cartItems.reduce((acc, { quantity }) => acc + quantity, 0),
+          products: order.cart.cartItems.flatMap(({ product }) => ({
+            ...product,
+            quantity: order.cart.cartItems.find((item) => item.product.id === product.id).quantity
+          }))
+        },
         client: {
+          id: order.cart.client.id,
           name: order.cart.client.name,
           phone: order.cart.client.phone,
           email: order.cart.client.email
@@ -170,6 +192,88 @@ export class OrdersService {
     } catch (error) {
       this.logger.error('Error update order status', error.message);
       handleException(error, 'Error update order status');
+    }
+  }
+
+  /**
+   * Mostrar pedidos por cliente
+   * @param id  ID del cliente
+   * @returns  Pedidos
+   * @throws  Error
+   */
+  async findByClient(id: string): Promise<OrderInfo[]> {
+    try {
+      const ordersByClient = await this.prismaService.order.findMany({
+        where: {
+          cart: {
+            clientId: id
+          }
+        },
+        select: {
+          id: true,
+          orderStatus: true,
+          pickupAddress: true,
+          pickupTime: true,
+          comments: true,
+          isActive: true,
+          someonePickup: true,
+          pickupCode: true,
+          totalAmount: true,
+          cart: {
+            select: {
+              id: true,
+              client: {
+                select: {
+                  id: true,
+                  name: true,
+                  phone: true,
+                  email: true
+                }
+              },
+              cartItems: {
+                select: {
+                  quantity: true,
+                  product: {
+                    select: {
+                      id: true,
+                      name: true,
+                      price: true,
+                      image: true,
+                      category: {
+                        select: {
+                          id: true,
+                          name: true
+                        }
+                      }
+                    }
+                  }
+                }
+              }
+            }
+          }
+        }
+      });
+      return ordersByClient.map((order) => {
+        return {
+          id: order.id,
+          orderStatus: order.orderStatus,
+          pickupAddress: order.pickupAddress,
+          pickupTime: order.pickupTime,
+          isActive: order.isActive,
+          someonePickup: order.someonePickup,
+          pickupCode: order.pickupCode,
+          totalAmount: order.totalAmount,
+          client: {
+            id: order.cart.client.id,
+            name: order.cart.client.name,
+            phone: order.cart.client.phone,
+            email: order.cart.client.email
+          }
+        };
+      });
+    } catch (error) {
+      this.logger.error('Error get orders by client', error.message);
+      handleException(error, 'Error get orders by client');
     }
   }
 }

@@ -41,4 +41,11 @@ export class OrdersController {
   updateStatus(@Param('id') id: string, @Body('status') status: OrderStatus) {
     return this.ordersService.updateStatus(id, status);
   }
+
+  @ApiBadRequestResponse({ description: 'Orders no found' })
+  @ApiOkResponse({ description: 'Orders found' })
+  @Get('client/:id')
+  findByClient(@Param('id') id: string) {
+    return this.ordersService.findByClient(id);
+  }
 }
