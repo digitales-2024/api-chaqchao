@@ -2,11 +2,15 @@ import { BadRequestException, Injectable, Logger } from '@nestjs/common';
 import { Order, OrderStatus } from '@prisma/client';
 import { PrismaService } from 'src/prisma/prisma.service';
 import { handleException } from 'src/utils';
+import { AdminGateway } from '../admin.gateway';
 
 @Injectable()
 export class OrdersService {
   private logger = new Logger('OrdersService');
-  constructor(private readonly prismaService: PrismaService) {}
+  constructor(
+    private readonly prismaService: PrismaService,
+    private readonly adminGateway: AdminGateway
+  ) {}
 
   /**
    * Mostrar todos los pedidos
@@ -59,7 +63,7 @@ export class OrdersService {
           }
         },
         orderBy: {
-          pickupTime: 'asc'
+          pickupCode: 'desc'
         }
       });
 
@@ -160,10 +164,12 @@ export class OrdersService {
         }
       });
 
+      this.adminGateway.sendOrderStatusUpdated(order.id, order.orderStatus);
+
       return order;
     } catch (error) {
-      this.logger.error('Error update order', error.message);
-      handleException(error, 'Error update order');
+      this.logger.error('Error update order status', error.message);
+      handleException(error, 'Error update order status');
     }
   }
 }

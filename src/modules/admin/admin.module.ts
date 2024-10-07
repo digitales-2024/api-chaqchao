@@ -21,6 +21,7 @@ import { ClientAdminModule } from './client-admin/client-admin.module';
 import { ReportsModule } from './reports/report.module';
 import { ClassesAdminModule } from './classes-admin/classes-admin.module';
 import { OrdersModule } from './orders/orders.module';
+import { AdminGateway } from './admin.gateway';
 
 @Module({
   imports: [
@@ -46,6 +47,7 @@ import { OrdersModule } from './orders/orders.module';
     OrdersModule
   ],
   controllers: [AdminController],
-  providers: [AdminService]
+  providers: [AdminService, AdminGateway],
+  exports: [AdminGateway]
 })
 export class AdminModule {}
