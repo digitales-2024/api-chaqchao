@@ -26,7 +26,11 @@ export class CloudflareService {
     this.publicUrl = `${this.configService.get('PUBLIC_URL_IMAGE')}`;
   }
 
-  // Método para subir la imagen a Cloudflare R2
+  /**
+   * Subir una imagen a Cloudflare R2
+   * @param file Archivo a subir
+   * @returns URL pública del archivo subido
+   */
   async uploadImage(file: Express.Multer.File): Promise<string> {
     const fileExtension = extname(file.originalname); // Obtiene la extensión del archivo
     const fileName = `${randomUUID()}${fileExtension}`; // Genera un nombre único para el archivo
@@ -46,6 +50,12 @@ export class CloudflareService {
     return `${this.publicUrl}/${fileName}`;
   }
 
+  /**
+   * Actualizar una imagen en Cloudflare R2
+   * @param file Archivo a actualizar
+   * @param existingFileName Nombre del archivo existente
+   * @returns URL pública del archivo actualizado
+   */
   async updateImage(file: Express.Multer.File, existingFileName: string): Promise<string> {
     // Extraer la extensión del nuevo archivo
     const newExtension = file.originalname.split('.').pop();
