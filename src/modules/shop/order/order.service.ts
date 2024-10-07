@@ -15,7 +15,7 @@ import { CreateOrderDto } from './dto/create-order.dto';
 import { HttpResponse } from 'src/interfaces';
 import * as moment from 'moment-timezone';
 import { DayOfWeek } from '@prisma/client';
-import { OrdersGateway } from 'src/modules/admin/orders/orders.gateway';
+import { AdminGateway } from 'src/modules/admin/admin.gateway';
 
 @Injectable()
 export class OrderService {
@@ -25,8 +25,8 @@ export class OrderService {
     private readonly prisma: PrismaService,
     @Inject(forwardRef(() => CartService))
     private readonly cartService: CartService,
-    @Inject(forwardRef(() => OrdersGateway))
-    private readonly orderGateway: OrdersGateway
+    @Inject(forwardRef(() => AdminGateway))
+    private readonly orderGateway: AdminGateway
   ) {}
 
   /**

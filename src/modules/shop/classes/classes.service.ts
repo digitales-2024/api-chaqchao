@@ -15,7 +15,7 @@ import * as moment from 'moment-timezone';
 import { ClassesData, HttpResponse } from 'src/interfaces';
 import { ClassPriceService } from 'src/modules/admin/class-price/class-price.service';
 import { TypedEventEmitter } from 'src/event-emitter/typed-event-emitter.class';
-import { OrdersGateway } from 'src/modules/admin/orders/orders.gateway';
+import { AdminGateway } from 'src/modules/admin/admin.gateway';
 
 @Injectable()
 export class ClassesService {
@@ -28,7 +28,7 @@ export class ClassesService {
     private readonly classLanguageService: ClassLanguageService,
     private readonly classPriceService: ClassPriceService,
     private readonly eventEmitter: TypedEventEmitter,
-    private readonly orderGateway: OrdersGateway
+    private readonly adminGateway: AdminGateway
   ) {}
 
   /**
@@ -232,7 +232,7 @@ export class ClassesService {
         });
       }
 
-      this.orderGateway.sendNewClassRegister(classCreated.id);
+      this.adminGateway.sendNewClassRegister(classCreated.id);
 
       return {
         statusCode: HttpStatus.CREATED,

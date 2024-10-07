@@ -9,11 +9,11 @@ import {
 import { Socket, Server } from 'socket.io';
 
 @WebSocketGateway({ cors: true })
-export class OrdersGateway implements OnGatewayConnection, OnGatewayDisconnect {
+export class AdminGateway implements OnGatewayConnection, OnGatewayDisconnect {
   @WebSocketServer()
   server: Server;
 
-  private readonly logger = new Logger(OrdersGateway.name);
+  private readonly logger = new Logger(AdminGateway.name);
   constructor(private readonly config: ConfigService) {}
 
   afterInit(server: Server) {

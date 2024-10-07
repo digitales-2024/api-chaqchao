@@ -3,11 +3,11 @@ import { OrderController } from './order.controller';
 import { OrderService } from './order.service';
 import { PrismaModule } from 'src/prisma/prisma.module';
 import { CartModule } from '../cart/cart.module';
-import { OrdersGateway } from 'src/modules/admin/orders/orders.gateway';
+import { AdminGateway } from 'src/modules/admin/admin.gateway';
 
 @Module({
   controllers: [OrderController],
-  providers: [OrderService, OrdersGateway],
+  providers: [OrderService, AdminGateway],
   imports: [PrismaModule, forwardRef(() => CartModule)],
   exports: [OrderService]
 })
