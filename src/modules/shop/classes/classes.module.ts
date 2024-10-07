@@ -6,10 +6,11 @@ import { ClassScheduleModule } from 'src/modules/admin/class-schedule/class-sche
 import { ClassRegistrationModule } from 'src/modules/admin/class-registration/class-registration.module';
 import { ClassLanguageModule } from 'src/modules/admin/class-language/class-language.module';
 import { ClassPriceModule } from 'src/modules/admin/class-price/class-price.module';
+import { OrdersGateway } from 'src/modules/admin/orders/orders.gateway';
 
 @Module({
   controllers: [ClassesController],
-  providers: [ClassesService],
+  providers: [ClassesService, OrdersGateway],
   imports: [
     PrismaModule,
     ClassScheduleModule,
