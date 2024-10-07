@@ -53,13 +53,6 @@ export class CreateClassDto {
   dateClass: Date;
 
   @ApiProperty({
-    name: 'totalParticipants',
-    description: 'Total participants'
-  })
-  @IsNumber()
-  totalParticipants: number;
-
-  @ApiProperty({
     name: 'totalAdults',
     description: 'Total adults'
   })
@@ -72,27 +65,6 @@ export class CreateClassDto {
   })
   @IsNumber()
   totalChildren: number;
-
-  @ApiProperty({
-    name: 'totalPriceAdults',
-    description: 'Total price adults'
-  })
-  @IsNumber()
-  totalPriceAdults: number;
-
-  @ApiProperty({
-    name: 'totalPriceChildren',
-    description: 'Total price children'
-  })
-  @IsNumber()
-  totalPriceChildren: number;
-
-  @ApiProperty({
-    name: 'totalPrice',
-    description: 'Total price'
-  })
-  @IsNumber()
-  totalPrice: number;
 
   @ApiProperty({
     name: 'typeCurrency',
