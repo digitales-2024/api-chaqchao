@@ -33,4 +33,9 @@ export class OrdersGateway implements OnGatewayConnection, OnGatewayDisconnect {
   sendOrderCreated(orderId: string) {
     this.server.emit('new-order', { orderId });
   }
+
+  // Emitir la creación de una nueva clase a los clientes
+  sendNewClassRegister(classId: string) {
+    this.server.emit('new-class-register', { classId });
+  }
 }
