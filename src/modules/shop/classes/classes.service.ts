@@ -16,6 +16,7 @@ import { ClassesData, HttpResponse } from 'src/interfaces';
 import { ClassPriceService } from 'src/modules/admin/class-price/class-price.service';
 import { TypedEventEmitter } from 'src/event-emitter/typed-event-emitter.class';
 import { AdminGateway } from 'src/modules/admin/admin.gateway';
+import { TypeCurrency } from '@prisma/client';
 
 @Injectable()
 export class ClassesService {
@@ -71,6 +72,59 @@ export class ClassesService {
   }
 
   /**
+   * Calcular los precios de la clase
+   * @param typeCurrency Tipo de moneda
+   * @param totalAdults Total de adultos
+   * @param totalChildren Total de niños
+   * @returns Retorna los precios calculados
+   */
+  private async calculatePrices(
+    typeCurrency: string,
+    totalAdults: number,
+    totalChildren: number
+  ): Promise<{ totalPriceAdults: number; totalPriceChildren: number; totalPrice: number }> {
+    const pricesClassDB = await this.classPriceService.findClassPriceByTypeCurrency(
+      typeCurrency as TypeCurrency
+    );
+
+    let priceAdults = 0;
+    let priceChildren = 0;
+
+    // Iterar sobre los precios y asignar los valores correspondientes
+    pricesClassDB.forEach((priceEntry) => {
+      if (priceEntry.classTypeUser === 'ADULT') {
+        if (priceEntry.price !== undefined) {
+          priceAdults = priceEntry.price;
+        }
+      } else if (priceEntry.classTypeUser === 'CHILD') {
+        if (priceEntry.price !== undefined) {
+          priceChildren = priceEntry.price;
+        }
+      }
+    });
+
+    // Verificar si los precios han sido definidos
+    if (totalAdults > 0 && priceAdults === 0) {
+      throw new NotFoundException('The price for adults is not defined');
+    }
+    if (totalChildren > 0 && priceChildren === 0) {
+      throw new NotFoundException('The price for children is not defined');
+    }
+
+    // Calcular los precios totales
+    const totalPriceAdults = priceAdults * totalAdults;
+    const totalPriceChildren = priceChildren * totalChildren;
+    const totalPrice = totalPriceAdults + totalPriceChildren;
+
+    // Retornar los precios calculados
+    return {
+      totalPriceAdults: totalPriceAdults,
+      totalPriceChildren: totalPriceChildren,
+      totalPrice: totalPrice
+    };
+  }
+
+  /**
    * Verificar reglas y condiciones antes de la creación de la clase
    */
   private validateClassCreation(
@@ -79,16 +133,10 @@ export class ClassesService {
     finalRegistrationDate: string,
     totalParticipants: number,
     totalParticipantsInSchedule: number,
-    totalAdults: number,
-    totalChildren: number,
     noClassesYet: boolean
   ) {
     if (totalParticipantsInSchedule + totalParticipants > 8) {
       throw new BadRequestException('There are no more spots available.');
-    }
-
-    if (totalChildren + totalAdults !== totalParticipants) {
-      throw new BadRequestException('Invalid number of participants (adults and children)');
     }
 
     if (noClassesYet) {
@@ -129,15 +177,8 @@ export class ClassesService {
    * @param createClassDto Data para crear una clase
    */
   async create(createClassDto: CreateClassDto): Promise<HttpResponse<ClassesData>> {
-    const {
-      scheduleClass,
-      dateClass,
-      languageClass,
-      totalParticipants,
-      totalAdults,
-      totalChildren,
-      typeCurrency
-    } = createClassDto;
+    const { scheduleClass, dateClass, languageClass, totalAdults, totalChildren, typeCurrency } =
+      createClassDto;
 
     await Promise.all([
       this.classScheduleService.findStartTime(scheduleClass),
@@ -165,6 +206,12 @@ export class ClassesService {
       closeBeforeStartInterval,
       finalRegistrationCloseInterval
     );
+
+    const { totalPriceAdults, totalPriceChildren, totalPrice } = await this.calculatePrices(
+      typeCurrency,
+      totalAdults,
+      totalChildren
+    );
     const currentTime = moment().tz('America/Lima-5').format('HH:mm');
 
     try {
@@ -184,19 +231,25 @@ export class ClassesService {
         noClassesYet
       );
 
-      this.validateClassCreation(
+      const totalParticipants = totalAdults + totalChildren;
+
+      await this.validateClassCreation(
         currentTime,
         closeBeforeDate,
         finalRegistrationDate,
         totalParticipants,
         totalParticipantsInSchedule,
-        totalAdults,
-        totalChildren,
         noClassesYet
       );
 
       const classCreated = await this.prisma.classes.create({
-        data: { ...createClassDto },
+        data: {
+          ...createClassDto,
+          totalPrice,
+          totalPriceAdults,
+          totalPriceChildren,
+          totalParticipants
+        },
         select: {
           id: true,
           userName: true,
@@ -211,7 +264,8 @@ export class ClassesService {
           languageClass: true,
           typeCurrency: true,
           scheduleClass: true,
-          dateClass: true
+          dateClass: true,
+          comments: true
         }
       });
 
@@ -272,7 +326,8 @@ export class ClassesService {
           languageClass: true,
           typeCurrency: true,
           dateClass: true,
-          scheduleClass: true
+          scheduleClass: true,
+          comments: true
         }
       });
 

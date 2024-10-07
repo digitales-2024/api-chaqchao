@@ -361,9 +361,9 @@ export class ClassPriceService {
   }
 
   /**
-   * Encontrar clases por el tipo de usuario
-   * @param classTypeUser Tipo de usuario
-   * @returns Clases encontradas
+   * Encontrar precio de las clases por el tipo de moneda
+   * @param typeCurrency Tipo de moneda
+   * @returns Precios de las clases
    */
   async findClassPriceByTypeCurrency(typeCurrency: TypeCurrency): Promise<ClassPriceConfigData[]> {
     try {
