@@ -29,9 +29,14 @@ export class AdminGateway implements OnGatewayConnection, OnGatewayDisconnect {
     this.logger.log(`Client disconnected: ${client.id}`);
   }
 
+  // Pedidos
   // Emitir la creación de un nuevo pedido a los clientes
   sendOrderCreated(orderId: string) {
     this.server.emit('new-order', { orderId });
+  }
+  // Actualizar el estado de un pedido
+  sendOrderStatusUpdated(orderId: string, status: string) {
+    this.server.emit('order-status-updated', { orderId, status });
   }
 
   // Emitir la creación de una nueva clase a los clientes
