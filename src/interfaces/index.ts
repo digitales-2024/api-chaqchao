@@ -24,5 +24,5 @@ export { ClientPayload } from './client.interface';
 export { ClientDataUpdate } from './client.interface';
 export { CartData } from './cart.interface';
 export { CartItemData } from './cart-item.interface';
-export { OrderData } from './order.interface';
+export { OrderDetails, OrderInfo, OrderData } from './order.interface';
 export { ClassesData, ClassesDataAdmin } from './classes.interface';
