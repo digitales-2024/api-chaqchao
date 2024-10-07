@@ -7,6 +7,7 @@ import { OrdersGateway } from './orders.gateway';
 @Module({
   controllers: [OrdersController],
   providers: [OrdersService, OrdersGateway],
-  imports: [PrismaModule]
+  imports: [PrismaModule],
+  exports: [OrdersGateway]
 })
 export class OrdersModule {}
