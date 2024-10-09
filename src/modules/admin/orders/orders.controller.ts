@@ -1,4 +1,4 @@
-import { Body, Controller, Get, Param, Patch, Query, Res } from '@nestjs/common';
+import { Body, Controller, Get, Param, Patch, Post, Query, Res } from '@nestjs/common';
 import { OrdersService } from './orders.service';
 import { Auth } from '../auth/decorators';
 import { OrderStatus } from '@prisma/client';
@@ -50,7 +50,7 @@ export class OrdersController {
     return this.ordersService.findByClient(id);
   }
 
-  @Get('export/pdf/:id')
+  @Post('export/pdf/:id')
   async exportPdf(@Res() res: Response, @Param('id') id: string) {
     const { code, pdfBuffer } = await this.ordersService.exportPdf(id);
     // Enviar el archivo PDF en la respuesta
