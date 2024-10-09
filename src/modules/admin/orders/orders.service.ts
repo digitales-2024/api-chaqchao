@@ -1,9 +1,12 @@
+import * as puppeteer from 'puppeteer';
+import * as path from 'path';
 import { BadRequestException, Injectable, Logger } from '@nestjs/common';
 import { Order, OrderStatus } from '@prisma/client';
 import { PrismaService } from 'src/prisma/prisma.service';
 import { handleException } from 'src/utils';
 import { AdminGateway } from '../admin.gateway';
 import { OrderDetails, OrderInfo } from 'src/interfaces';
+import * as fs from 'fs';
 
 @Injectable()
 export class OrdersService {
@@ -275,5 +278,125 @@ export class OrdersService {
       this.logger.error('Error get orders by client', error.message);
       handleException(error, 'Error get orders by client');
     }
+  }
+
+  /**
+   * Exportar un pedido en formato PDF
+   * @param id  ID del pedido
+   * @returns  Archivo PDF
+   * @throws  Error
+   */
+  async exportPdf(id: string): Promise<{ code: string; pdfBuffer: Buffer }> {
+    const order = await this.findOne(id);
+
+    const templatePath = path.join(__dirname, '../../../../', 'templates', 'orderEnvoice.html');
+
+    // Leer el contenido de la plantilla HTML
+    let templateHtml: string;
+    try {
+      templateHtml = fs.readFileSync(templatePath, 'utf8');
+    } catch (error) {
+      console.error('Error al leer la plantilla HTML:', error);
+      throw new Error('No se pudo cargar la plantilla HTML.');
+    }
+
+    const orderHtml = this.generateOrderHtml(order);
+
+    const htmlContent = templateHtml.replace('{{order}}', orderHtml);
+
+    // Generar el archivo PDF
+    const browser = await puppeteer.launch();
+    const page = await browser.newPage();
+    await page.setContent(htmlContent);
+    const pdfBuffer = await page.pdf({ format: 'A4' });
+    await browser.close();
+
+    // Convertir Uint8Array a Buffer
+    return { code: order.pickupCode, pdfBuffer: Buffer.from(pdfBuffer) };
+  }
+
+  /**
+   * Generar el contenido HTML del pedido
+   * @param order  Pedido
+   * @returns  Contenido HTML
+   */
+  private generateOrderHtml(orderData: OrderDetails): string {
+    const translateStatus: Record<Order['orderStatus'], string> = {
+      CONFIRMED: 'Pendiente',
+      READY: 'Listo',
+      COMPLETED: 'Completado',
+      CANCELLED: 'Cancelado',
+      PENDING: 'Pendiente'
+    };
+    let invoiceHtml = '';
+
+    // Encabezado de la factura
+    invoiceHtml += `<div style="max-width: 800px; margin: auto; padding: 10px; border: 1px solid #ccc; border-radius: 8px; background-color: #fff;">
+    <h2 style="text-align: center;">Pedido# ${orderData.pickupCode}</h2>
+    <p style="text-align: center;">Fecha: ${new Date(orderData.pickupTime).toLocaleDateString()} a las ${new Date(orderData.pickupTime).toLocaleTimeString()}</p>
+    <p style="text-align: center;">Estado: <span style="color: #3498db;">${translateStatus[orderData.orderStatus]}</span></p>
+</div>`;
+
+    // Detalles del pedido
+    invoiceHtml += '<div style="margin: 20px 0;">';
+    invoiceHtml += '<h3>Detalles del pedido</h3>';
+    invoiceHtml += '<table style="width: 100%; border-collapse: collapse;">';
+    invoiceHtml += `
+    <thead>
+        <tr>
+            <th style="border: 1px solid #ccc; padding: 8px;">Producto</th>
+            <th style="border: 1px solid #ccc; padding: 8px;">Cantidad</th>
+            <th style="border: 1px solid #ccc; padding: 8px;">Precio</th>
+        </tr>
+    </thead>
+    <tbody>
+`;
+
+    orderData.cart.products.forEach((product) => {
+      invoiceHtml += `<tr>
+        <td style="border: 1px solid #ccc; padding: 8px;">
+            <img src="${product.image}" alt="${product.name}" style="width: 50px; height: auto; margin-right: 10px; vertical-align: middle;" />
+            ${product.name}
+        </td>
+        <td style="border: 1px solid #ccc; padding: 8px;">x ${product.quantity}</td>
+        <td style="border: 1px solid #ccc; padding: 8px;">S/. ${product.price.toFixed(2)}</td>
+    </tr>`;
+    });
+
+    // Calcular total
+    const totalPrice = orderData.cart.products.reduce(
+      (total, product) => total + product.price * product.quantity,
+      0
+    );
+    invoiceHtml += '</tbody></table>';
+    invoiceHtml += '</div>'; // Cerrar detalles del pedido
+
+    // Totales
+    invoiceHtml += '<div style="margin: 20px 0;width:100%;">';
+    invoiceHtml += '<h3>Totales</h3>';
+    invoiceHtml += `
+    <p style="text-align: right;">Subtotal: S/. ${totalPrice.toFixed(2)}</p>
+    <p style="text-align: right;">Impuesto: S/. 0.00</p>
+    <p style="font-weight: bold;text-align: right;">Total: S/. ${totalPrice.toFixed(2)}</p>
+</div>`;
+
+    // Información del cliente
+    invoiceHtml += '<div style="margin: 20px 0; ">';
+    invoiceHtml += '<h3>Información del cliente</h3>';
+    invoiceHtml += `    
+    <p style="text-transform: capitalize;"><strong>Cliente:</strong> ${orderData.client.name}</p>
+    <p><strong>Correo electrónico:</strong> ${orderData.client.email}</p>
+    <p><strong>Teléfono:</strong> ${orderData.client.phone}</p>
+    
+</div>`;
+
+    // Pie de página
+    invoiceHtml += '<div style="text-align: center; margin-top: 20px;">';
+    invoiceHtml += `<p>© CHAQCHAO ${new Date().getFullYear()} </p>`;
+    invoiceHtml += `<p style="font-size: 10px;">${new Date().toLocaleString()} </p>`;
+    invoiceHtml += '</div>';
+
+    // Devolver el HTML generado
+    return invoiceHtml;
   }
 }
