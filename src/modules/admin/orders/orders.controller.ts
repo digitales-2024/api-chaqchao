@@ -1,4 +1,4 @@
-import { Body, Controller, Get, Param, Patch, Query } from '@nestjs/common';
+import { Body, Controller, Get, Param, Patch, Query, Res } from '@nestjs/common';
 import { OrdersService } from './orders.service';
 import { Auth } from '../auth/decorators';
 import { OrderStatus } from '@prisma/client';
@@ -9,6 +9,7 @@ import {
   ApiTags,
   ApiUnauthorizedResponse
 } from '@nestjs/swagger';
+import { Response } from 'express';
 
 @ApiTags('Orders')
 @ApiUnauthorizedResponse({ description: 'Unauthorized' })
@@ -47,5 +48,14 @@ export class OrdersController {
   @Get('client/:id')
   findByClient(@Param('id') id: string) {
     return this.ordersService.findByClient(id);
+  }
+
+  @Get('export/pdf/:id')
+  async exportPdf(@Res() res: Response, @Param('id') id: string) {
+    const { code, pdfBuffer } = await this.ordersService.exportPdf(id);
+    // Enviar el archivo PDF en la respuesta
+    res.setHeader('Content-Type', 'application/pdf');
+    res.setHeader('Content-Disposition', `attachment; filename="Pedido-${code}.pdf"`);
+    res.send(pdfBuffer);
   }
 }
