@@ -50,6 +50,8 @@ export class OrdersController {
     return this.ordersService.findByClient(id);
   }
 
+  @ApiBadRequestResponse({ description: 'Order no found' })
+  @ApiOkResponse({ description: 'Order download' })
   @Post('export/pdf/:id')
   async exportPdf(@Res() res: Response, @Param('id') id: string) {
     const { code, pdfBuffer } = await this.ordersService.exportPdf(id);
