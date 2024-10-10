@@ -173,13 +173,15 @@ export class ReportsService {
     const workbook = new ExcelJS.Workbook();
     const worksheet = workbook.addWorksheet('Products Report');
     worksheet.columns = [
-      { header: 'Codigo Unico', key: 'pickupCode', width: 13 },
-      { header: 'Hora de Recojo', key: 'pickupTime', width: 20 },
-      { header: 'Total', key: 'totalAmount', width: 7 },
-      { header: 'Estado', key: 'status', width: 12 },
-      { header: 'Direccion de Recojo', key: 'address', width: 50 },
-      { header: 'Creado', key: 'createdAt', width: 20 },
-      { header: 'Actualizado', key: 'updatedAt', width: 20 }
+      { header: 'Nombre', key: 'name', width: 13 },
+      { header: 'Descripción', key: 'description', width: 20 },
+      { header: 'Precio', key: 'price', width: 7 },
+      { header: 'Imagen', key: 'image', width: 50 },
+      { header: 'Disponible', key: 'isAvailable', width: 15 },
+      { header: 'Estado', key: 'isActive', width: 15 },
+      { header: 'Restringido', key: 'isRestricted', width: 15 },
+      { header: 'Creado', key: 'createdAt', width: 15 },
+      { header: 'Actualizado', key: 'updatedAt', width: 15 }
     ];
     // Aplicar estilo en negrita a los encabezados
     worksheet.getRow(1).eachCell((cell) => {
@@ -188,11 +190,13 @@ export class ReportsService {
 
     data.forEach((product) => {
       worksheet.addRow({
-        pickupCode: product.pickupCode,
-        pickupTime: product.pickupTime,
-        totalAmount: product.totalAmount,
-        status: product.productStatus,
-        address: product.pickupAddress,
+        name: product.name,
+        description: product.description,
+        price: product.price,
+        image: product.image,
+        isAvailable: product.isAvailable,
+        isActive: product.isActive,
+        isRestricted: product.isRestricted,
         createdAt: product.createdAt,
         updatedAt: product.updatedAt
       });
