@@ -133,6 +133,15 @@ export class ReportsService {
       });
     }
 
+    if (filter.priceMin && filter.priceMax) {
+      whereConditions.push({
+        totalAmount: {
+          gte: filter.priceMin,
+          lte: filter.priceMax
+        }
+      });
+    }
+
     if (filter.startDate && filter.endDate) {
       const start = new Date(filter.startDate).toISOString();
       const end = new Date(filter.endDate).toISOString();
