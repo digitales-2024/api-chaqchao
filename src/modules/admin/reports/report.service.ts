@@ -511,6 +511,7 @@ export class ReportsService {
             name: details.name,
             isActive: details.isActive,
             price: details.price,
+            image: details.image,
             category: {
               id: details.category.id,
               name: details.category.name,
