@@ -1,7 +1,7 @@
 import { ApiProperty } from '@nestjs/swagger';
 import { OrderStatus } from '@prisma/client';
 import { Transform } from 'class-transformer';
-import { IsDefined, IsOptional, IsString } from 'class-validator';
+import { IsDefined, IsNumber, IsOptional, IsString } from 'class-validator';
 
 export class OrderFilterDto {
   @ApiProperty({ example: '2024-01-01' })
@@ -31,7 +31,15 @@ export class OrderFilterDto {
 
   @ApiProperty()
   @IsOptional()
-  totalAmount: number;
+  @IsNumber()
+  @Transform(({ value }) => parseFloat(value))
+  priceMax?: number;
+
+  @ApiProperty()
+  @IsOptional()
+  @IsNumber()
+  @Transform(({ value }) => parseFloat(value))
+  priceMin?: number;
 
   @ApiProperty()
   @IsOptional()
