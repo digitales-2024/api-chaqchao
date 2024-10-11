@@ -119,8 +119,6 @@ export class CategoryService {
 
       const { name, description } = updateCategoryDto;
 
-      await this.findByName(name);
-
       // Verificar si hay cambios en los datos
       const hasChanges =
         (name && name !== categoryDB.name) ||
@@ -128,6 +126,11 @@ export class CategoryService {
 
       if (hasChanges) {
         const updatedCategory = await this.prisma.$transaction(async (prisma) => {
+          // Verificar si el nombre de la categoría ya existe
+          if (name && name !== categoryDB.name) {
+            await this.findByName(name);
+          }
+
           // Proceder a actualizar los datos si ha habido cambios
           const categoryUpdate = await prisma.category.update({
             where: { id },
