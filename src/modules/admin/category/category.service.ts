@@ -196,6 +196,7 @@ export class CategoryService {
 
       // Obtener todos los productos asociados a la categoría
       const productsDB = await this.productsService.findProductsByIdCategory(id);
+      console.log('🚀 ~ CategoryService ~ remove ~ productsDB:', productsDB);
 
       // Verificar si no hay productos asignados
       if (productsDB.length === 0) {
@@ -222,8 +223,8 @@ export class CategoryService {
         };
       }
 
-      // Verificar si todos los productos están activos
-      const isAllProductsActive = productsDB.every((product) => product.isActive);
+      // Verificar si almenos uno de los productos están activos
+      const isAllProductsActive = productsDB.some((product) => product.isActive);
       if (isAllProductsActive) {
         throw new BadRequestException('Category assigned to active products');
       }
