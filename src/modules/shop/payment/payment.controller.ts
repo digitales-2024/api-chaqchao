@@ -1,4 +1,4 @@
-import { Controller, Post, Req, Res, Headers, HttpException, HttpStatus } from '@nestjs/common';
+import { Body, Controller, Headers, Post, Req, Res } from '@nestjs/common';
 import { PaymentService } from './payment.service';
 import { Request, Response } from 'express';
 import { ApiBadRequestResponse, ApiTags, ApiUnauthorizedResponse } from '@nestjs/swagger';
@@ -13,24 +13,48 @@ import { ApiBadRequestResponse, ApiTags, ApiUnauthorizedResponse } from '@nestjs
 export class PaymentController {
   constructor(private readonly paymentService: PaymentService) {}
 
-  @Post('/token')
-  async generateToken(
-    @Req() req: Request,
-    @Res() res: Response,
-    @Headers('transactionId') transactionId: string
+  @Post('/sdktest')
+  async postSDKTest(@Req() req: Request, @Res() res: Response) {
+    const result = await this.paymentService.postSDKTest(req.body);
+    return res.json(result);
+  }
+
+  @Post('/create-payment')
+  async postCreatePayment(@Req() req: Request, @Res() res: Response) {
+    const result = await this.paymentService.postCreatePayment(req.body);
+    return res.json(result);
+  }
+
+  @Post('/create-token')
+  async postCreateToken(@Req() req: Request, @Res() res: Response) {
+    const result = await this.paymentService.postCreateToken(req.body);
+    return res.json(result);
+  }
+
+  @Post('create-session-token')
+  async createSessionToken(
+    @Headers('transactionId') transactionId: string, // transactionId enviado en los headers
+    @Body() body: any // El resto de los parámetros vienen en el cuerpo de la solicitud
   ) {
-    try {
-      // Validar si todos los campos están presentes
-      const { requestSource, merchantCode, orderNumber, publicKey, amount } = req.body;
+    const { merchantCode, orderNumber, publicKey, amount } = body;
 
-      if (!requestSource || !merchantCode || !orderNumber || !publicKey || !amount) {
-        throw new HttpException('Missing fields in the body', HttpStatus.BAD_REQUEST);
-      }
+    // Llamar al servicio de pago y pasar los parámetros
+    return await this.paymentService.createSessionToken(transactionId, {
+      requestSource: 'ECOMMERCE', // Default value
+      merchantCode,
+      orderNumber,
+      publicKey,
+      amount
+    });
+  }
 
-      const result = await this.paymentService.getTokenSession(req.body, transactionId);
-      return res.json(result);
-    } catch (error) {
-      throw new HttpException('Error generating token', HttpStatus.INTERNAL_SERVER_ERROR);
-    }
+  @Post('validate-account')
+  async validateAccount(
+    @Headers('transactionId') transactionId: string,
+    @Headers('Authorization') token: string,
+    @Body() accountData: any
+  ) {
+    // Llamar al servicio de pago para validar la cuenta
+    return await this.paymentService.validateAccount(transactionId, token, accountData);
   }
 }
