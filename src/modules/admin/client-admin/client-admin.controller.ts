@@ -1,4 +1,4 @@
-import { Controller, Get, Patch, Param, Body } from '@nestjs/common';
+import { Controller, Get, Patch, Param, Body, Query, Res } from '@nestjs/common';
 import { ClientAdminService } from './client-admin.service';
 import { UpdateClientDto } from '../../shop/client/dto/update-client.dto';
 import {
@@ -9,6 +9,8 @@ import {
 } from '@nestjs/swagger';
 import { Auth, GetUser } from '../auth/decorators';
 import { ClientPayload, UserData } from 'src/interfaces';
+import { Response } from 'express';
+import { ClientFilterDto } from './dto/client-filter.dto';
 
 @ApiTags('Client Admin')
 @ApiUnauthorizedResponse({ description: 'Unauthorized' })
@@ -39,5 +41,12 @@ export class ClientAdminController {
   @Patch('desactivate/:id')
   reactivate(@Param('id') id: string, @GetUser() user: UserData): Promise<ClientPayload> {
     return this.clientAdminService.toggleActivation(id, user);
+  }
+
+  @ApiOkResponse({ description: 'Get all client' })
+  @Get('/all')
+  async getClients(@Query() filter: ClientFilterDto, @Res() res: Response) {
+    const orders = await this.clientAdminService.getClients(filter);
+    res.json(orders);
   }
 }

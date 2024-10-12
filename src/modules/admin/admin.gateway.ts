@@ -1,5 +1,4 @@
 import { Logger } from '@nestjs/common';
-import { ConfigService } from '@nestjs/config';
 import {
   WebSocketGateway,
   WebSocketServer,
@@ -8,18 +7,12 @@ import {
 } from '@nestjs/websockets';
 import { Socket, Server } from 'socket.io';
 
-@WebSocketGateway(5000, { cors: true })
+@WebSocketGateway(Number(process.env.WEBSOCKET_PORT) || 5000, { cors: true })
 export class AdminGateway implements OnGatewayConnection, OnGatewayDisconnect {
   @WebSocketServer()
   server: Server;
 
   private readonly logger = new Logger(AdminGateway.name);
-  constructor(private readonly config: ConfigService) {}
-
-  /* afterInit(server: Server) {
-    const port = this.config.get('WEBSOCKET_PORT');
-    server.listen(port);
-  } */
 
   handleConnection(client: Socket) {
     this.logger.log(`Client connected: ${client.id}`);

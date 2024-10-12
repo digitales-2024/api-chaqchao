@@ -3,6 +3,7 @@ import { AuditActionType } from '@prisma/client';
 import { ClientPayload, UserData } from 'src/interfaces';
 import { PrismaService } from 'src/prisma/prisma.service';
 import { handleException } from 'src/utils';
+import { ClientFilterDto } from './dto/client-filter.dto';
 
 @Injectable()
 export class ClientAdminService {
@@ -146,6 +147,55 @@ export class ClientAdminService {
     } catch (error) {
       this.logger.error('Error toggling activation for Client Admin with id: ${id}', error.stack);
       handleException(error, 'Error toggling activation for Client Admin');
+    }
+  }
+
+  /**
+   * Obtiene todos los clientes basados en un filtro
+   * @param {string} [startDate]  Fecha de inicio
+   * @param {string} [endDate] Fecha de fin
+   * @returns Todos los clientes
+   */
+  async getClients(filter: ClientFilterDto): Promise<ClientPayload[]> {
+    try {
+      const startDate = new Date(filter.startDate);
+      const endDate = new Date(filter.endDate);
+
+      startDate.setUTCHours(0, 0, 0, 0);
+      endDate.setUTCHours(23, 59, 59, 999);
+      const clients = await this.prisma.client.findMany({
+        where: {
+          createdAt: {
+            gte: startDate.toISOString(),
+            lte: endDate.toISOString()
+          }
+        },
+        select: {
+          id: true,
+          name: true,
+          email: true,
+          phone: true,
+          birthDate: true,
+          isGoogleAuth: true,
+          lastLogin: true,
+          isActive: true
+        }
+      });
+
+      // Mapea los resultados al tipo ClientPayload
+      return clients.map((client) => ({
+        id: client.id,
+        name: client.name,
+        email: client.email,
+        phone: client.phone,
+        birthDate: client.birthDate,
+        isGoogleAuth: client.isGoogleAuth,
+        lastLogin: client.lastLogin,
+        isActive: client.isActive
+      })) as ClientPayload[];
+    } catch (error) {
+      this.logger.error('Error getting all clients');
+      handleException(error, 'Error getting all clients');
     }
   }
 }
