@@ -8,7 +8,7 @@ import {
 } from '@nestjs/websockets';
 import { Socket, Server } from 'socket.io';
 
-@WebSocketGateway({ cors: true })
+@WebSocketGateway(5000, { cors: true })
 export class AdminGateway implements OnGatewayConnection, OnGatewayDisconnect {
   @WebSocketServer()
   server: Server;
@@ -16,10 +16,10 @@ export class AdminGateway implements OnGatewayConnection, OnGatewayDisconnect {
   private readonly logger = new Logger(AdminGateway.name);
   constructor(private readonly config: ConfigService) {}
 
-  afterInit(server: Server) {
+  /* afterInit(server: Server) {
     const port = this.config.get('WEBSOCKET_PORT');
     server.listen(port);
-  }
+  } */
 
   handleConnection(client: Socket) {
     this.logger.log(`Client connected: ${client.id}`);
