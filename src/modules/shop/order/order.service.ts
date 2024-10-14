@@ -9,10 +9,9 @@ import {
 } from '@nestjs/common';
 import { PrismaService } from 'src/prisma/prisma.service';
 import { CartService } from '../cart/cart.service';
-import { OrderData } from 'src/interfaces/order.interface';
 import { handleException } from 'src/utils';
 import { CreateOrderDto } from './dto/create-order.dto';
-import { HttpResponse } from 'src/interfaces';
+import { HttpResponse, OrderInfo } from 'src/interfaces';
 import * as moment from 'moment-timezone';
 import { DayOfWeek } from '@prisma/client';
 import { AdminGateway } from 'src/modules/admin/admin.gateway';
@@ -34,10 +33,10 @@ export class OrderService {
    * @param CreateOrderDto Data del Order
    * @returns Order creada correctamente
    */
-  async create(CreateOrderDto: CreateOrderDto): Promise<HttpResponse<OrderData>> {
+  async create(CreateOrderDto: CreateOrderDto): Promise<HttpResponse<OrderInfo>> {
     const { cartId, orderStatus, pickupAddress, pickupTime, comments, someonePickup } =
       CreateOrderDto;
-    let newOrder;
+    let newOrder: OrderInfo;
 
     try {
       // Obtener el día actual de la semana
@@ -92,44 +91,51 @@ export class OrderService {
           },
           select: {
             id: true,
-            cartId: true,
+            orderStatus: true,
             pickupAddress: true,
             pickupTime: true,
-            comments: true,
             someonePickup: true,
             pickupCode: true,
+            totalAmount: true,
+            isActive: true,
             cart: {
               select: {
-                id: true
+                id: true,
+                client: {
+                  select: {
+                    id: true,
+                    name: true,
+                    email: true,
+                    phone: true
+                  }
+                }
               }
             }
           }
         });
-        return order;
+        return {
+          id: order.id,
+          orderStatus: order.orderStatus,
+          pickupAddress: order.pickupAddress,
+          pickupTime: order.pickupTime,
+          someonePickup: order.someonePickup,
+          pickupCode: order.pickupCode,
+          totalAmount: order.totalAmount,
+          isActive: order.isActive,
+          client: {
+            id: order.cart.client.id,
+            name: order.cart.client.name,
+            email: order.cart.client.email,
+            phone: order.cart.client.phone
+          }
+        };
       });
-
-      this.orderGateway.sendOrderCreated(newOrder.id);
+      this.orderGateway.sendOrderCreated(newOrder);
 
       return {
         statusCode: HttpStatus.CREATED,
         message: 'Order created successfully',
-        data: {
-          id: newOrder.id,
-          cartId: newOrder.cartId,
-          orderStatus: newOrder.orderStatus,
-          pickupAddress: newOrder.pickupAddress,
-          pickupTime: newOrder.pickupTime,
-          comments: newOrder.comments,
-          isActive: newOrder.isActive,
-          someonePickup: newOrder.someonePickup,
-          pickupCode: newOrder.pickupCode,
-          totalAmount: newOrder.totalAmount,
-          cart: {
-            id: newOrder.id,
-            clientId: newOrder.cliendId,
-            cartStatus: newOrder.cartStatus
-          }
-        }
+        data: newOrder
       };
     } catch (error) {
       this.logger.error(`Error creating Order: ${error.message}`, error.stack);

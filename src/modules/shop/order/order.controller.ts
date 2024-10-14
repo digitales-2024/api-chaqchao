@@ -7,7 +7,7 @@ import {
 } from '@nestjs/swagger';
 import { Body, Controller, Get, Param, Post } from '@nestjs/common';
 import { OrderService } from './order.service';
-import { OrderData } from 'src/interfaces/order.interface';
+import { OrderInfo } from 'src/interfaces/order.interface';
 import { CreateOrderDto } from './dto/create-order.dto';
 import { ClientAuth } from '../auth/decorators/client-auth.decorator';
 import { HttpResponse } from 'src/interfaces';
@@ -26,7 +26,7 @@ export class OrderController {
 
   @ApiOkResponse({ description: 'Order Created' })
   @Post()
-  create(@Body() createOrderDto: CreateOrderDto): Promise<HttpResponse<OrderData>> {
+  create(@Body() createOrderDto: CreateOrderDto): Promise<HttpResponse<OrderInfo>> {
     return this.orderService.create(createOrderDto);
   }
 
