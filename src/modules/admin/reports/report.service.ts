@@ -171,6 +171,9 @@ export class ReportsService {
       },
       include: {
         cart: true
+      },
+      orderBy: {
+        createdAt: 'asc'
       }
     });
 
@@ -359,6 +362,9 @@ export class ReportsService {
       include: {
         category: true,
         productVariations: true
+      },
+      orderBy: {
+        createdAt: 'asc'
       }
     });
 
