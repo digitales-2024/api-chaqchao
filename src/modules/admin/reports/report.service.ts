@@ -232,13 +232,40 @@ export class ReportsService {
       throw new Error('No se pudo cargar la plantilla HTML.');
     }
 
+    const infoBussiness = await this.prisma.businessConfig.findFirst({
+      select: {
+        businessName: true,
+        email: true,
+        contactNumber: true,
+        address: true
+      }
+    });
+
+    const htmlInfo = `<h2>${infoBussiness.businessName.toUpperCase() || ''}</h2>
+        <p>${infoBussiness.address || ''}</p>
+        <p>Tel: ${infoBussiness.contactNumber || ''}</p>
+        <p>${infoBussiness.email || ''}</p>
+    `;
+
     // Rellenar la plantilla con los datos de los productos
     const htmlContent = templateHtml.replace('{{products}}', this.generateProductHtml(data));
+    const htmlContentWithInfo = htmlContent.replace('{{bussiness}}', htmlInfo);
+    const htmlDateReport = htmlContentWithInfo.replace(
+      '{{dateReport}}',
+      new Date().toLocaleDateString()
+    );
+    const htmlFooterReport = htmlDateReport.replace(
+      '{{footerReport}}',
+      `© ${new Date().getFullYear()} ${infoBussiness.businessName.toUpperCase()}`
+    );
 
     // Generar el PDF usando Puppeteer
     const browser = await puppeteer.launch();
     const page = await browser.newPage();
     await page.setContent(htmlContent);
+    await page.setContent(htmlContentWithInfo);
+    await page.setContent(htmlDateReport);
+    await page.setContent(htmlFooterReport);
     const pdfBufferUint8Array = await page.pdf({ format: 'A4' });
     await browser.close();
 
@@ -253,12 +280,12 @@ export class ReportsService {
     let productsHtml = '';
     data.forEach((product) => {
       productsHtml += `<tr>
-        <td>${product.name}</td>
-        <td>${product.createdAt.toLocaleString()}</td>
-        <td>${product.description}</td>
-        <td>${product.price}</td>
-        <td>${product.image}</td>
+      <td>
+      <img src="${product.image}" alt="${product.name}" style="width: 100px; height: 100px;"></td>
+      <td>${product.name}</td>
+        <td style="width: 200px">${product.description}</td>
         <td>${product.category.name}</td>
+        <td>${product.price}</td>
       </tr>`;
     });
     return productsHtml;
