@@ -1,4 +1,4 @@
-import { Injectable, Logger } from '@nestjs/common';
+import { BadRequestException, Injectable, Logger, NotFoundException } from '@nestjs/common';
 import { PrismaService } from 'src/prisma/prisma.service';
 import { OrderFilterDto } from './dto/order-filter.dto';
 import * as puppeteer from 'puppeteer';
@@ -281,34 +281,7 @@ export class ReportsService {
   async getFilteredProducts(filter: ProductFilterDto): Promise<any> {
     const whereConditions: any[] = [];
 
-    // Filtro por booleanos (isActive, isAvailable, isRestricted)
-    if (filter.isActive !== undefined) {
-      whereConditions.push({
-        isActive: filter.isActive
-      });
-    }
-
-    if (filter.isRestricted !== undefined) {
-      whereConditions.push({
-        isRestricted: filter.isRestricted
-      });
-    }
-
-    if (filter.isAvailable !== undefined) {
-      whereConditions.push({
-        isAvailable: filter.isAvailable
-      });
-    }
-
-    if (filter.name) {
-      whereConditions.push({
-        name: {
-          contains: filter.name,
-          mode: 'insensitive'
-        }
-      });
-    }
-
+    // Filtro por una fecha específica
     if (filter.date) {
       const selectedDate = new Date(filter.date);
 
@@ -318,57 +291,101 @@ export class ReportsService {
       endOfDay.setUTCHours(23, 59, 59, 999);
 
       whereConditions.push({
-        createdAt: {
+        pickupTime: {
           gte: startOfDay.toISOString(), // Mayor o igual al inicio del día
           lte: endOfDay.toISOString() // Menor o igual al final del día
         }
       });
     }
 
+    // Filtro por rango de fechas (startDate - endDate)
     if (filter.startDate && filter.endDate) {
       const start = new Date(filter.startDate).toISOString();
       const end = new Date(filter.endDate).toISOString();
       whereConditions.push({
-        createdAt: {
+        pickupTime: {
           gte: start,
           lte: end
         }
       });
     }
 
-    if (filter.priceMin && filter.priceMax) {
-      whereConditions.push({
-        price: {
-          gte: filter.priceMin,
-          lte: filter.priceMax
-        }
-      });
-    }
-
+    // Filtro por nombre de la categoría del producto
     if (filter.categoryName) {
       whereConditions.push({
-        category: {
-          name: {
-            contains: filter.categoryName
+        cart: {
+          cartItems: {
+            some: {
+              product: {
+                category: {
+                  name: {
+                    contains: filter.categoryName, // Filtra por el nombre de la categoría
+                    mode: 'insensitive' // Case-insensitive
+                  }
+                }
+              }
+            }
           }
         }
       });
     }
 
-    const products = await this.prisma.product.findMany({
+    const orders = await this.prisma.order.findMany({
       where: {
-        AND: whereConditions
+        AND: whereConditions // Aplica todos los filtros juntos
       },
       include: {
-        category: true,
-        productVariations: true
+        cart: {
+          include: {
+            cartItems: {
+              include: {
+                product: {
+                  include: {
+                    category: true // Incluir detalles de la categoría
+                  }
+                }
+              }
+            }
+          }
+        }
       },
       orderBy: {
-        createdAt: 'asc'
+        createdAt: 'asc' // Ordenar por la fecha de creación
       }
     });
 
-    return products;
+    // Extraer los detalles del producto de los cartItems y eliminar duplicados
+    const productMap = new Map();
+    orders.forEach((order) => {
+      order.cart.cartItems.forEach((item) => {
+        const product = item.product;
+        // Filtrar por categoría si se especifica
+        if (
+          !filter.categoryName ||
+          (product.category && product.category.name === filter.categoryName)
+        ) {
+          if (!productMap.has(product.id)) {
+            productMap.set(product.id, {
+              id: product.id,
+              name: product.name,
+              description: product.description,
+              price: product.price,
+              image: product.image,
+              isAvailable: product.isAvailable,
+              isRestricted: product.isRestricted,
+              isActive: product.isActive,
+              category: {
+                id: product.category.id,
+                name: product.category.name,
+                description: product.category.description
+              }
+            });
+          }
+        }
+      });
+    });
+
+    return Array.from(productMap.values()); // Devolver los productos filtrados sin duplicados
   }
 
   // Método para generar Excel para Top Products
@@ -459,12 +476,25 @@ export class ReportsService {
    */
 
   async getTopProducts(dto: GetTopProductsDto): Promise<any> {
-    const { startDate, endDate } = dto;
+    const { startDate, endDate, limit } = dto;
 
     // Validar que las fechas existan y sean válidas
     if (!startDate || !endDate) {
       throw new Error('Las fechas de inicio y fin son obligatorias.');
     }
+
+    // Asignar un valor por defecto si el límite no está presente
+    let numericLimit;
+    if (limit) {
+      numericLimit = Number(limit);
+
+      // Validar que el límite sea uno de los permitidos
+      const allowedLimits = [10, 15, 20];
+      if (!allowedLimits.includes(numericLimit)) {
+        throw new Error('The limit must be one of the following values: 10, 15, 20.');
+      }
+    }
+
     // Convertir las fechas a formato ISO para evitar errores de formato
     const start = new Date(startDate).toISOString();
     const end = new Date(endDate).toISOString();
@@ -486,7 +516,8 @@ export class ReportsService {
           _sum: {
             quantity: 'desc'
           }
-        }
+        },
+        ...(numericLimit && { take: numericLimit }) // Limitar la cantidad de productos si hay un límite
       });
 
       // Incluir los detalles del producto
@@ -531,6 +562,9 @@ export class ReportsService {
       return productsWithDetails;
     } catch (error) {
       console.log('Error getting top products', error);
+      if (error instanceof BadRequestException || error instanceof NotFoundException) {
+        throw error;
+      }
       throw new Error('Error getting top products');
     }
   }
