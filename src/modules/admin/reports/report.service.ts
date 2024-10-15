@@ -281,34 +281,7 @@ export class ReportsService {
   async getFilteredProducts(filter: ProductFilterDto): Promise<any> {
     const whereConditions: any[] = [];
 
-    // Filtro por booleanos (isActive, isAvailable, isRestricted)
-    if (filter.isActive !== undefined) {
-      whereConditions.push({
-        isActive: filter.isActive
-      });
-    }
-
-    if (filter.isRestricted !== undefined) {
-      whereConditions.push({
-        isRestricted: filter.isRestricted
-      });
-    }
-
-    if (filter.isAvailable !== undefined) {
-      whereConditions.push({
-        isAvailable: filter.isAvailable
-      });
-    }
-
-    if (filter.name) {
-      whereConditions.push({
-        name: {
-          contains: filter.name,
-          mode: 'insensitive'
-        }
-      });
-    }
-
+    // Filtro por una fecha específica
     if (filter.date) {
       const selectedDate = new Date(filter.date);
 
@@ -318,57 +291,101 @@ export class ReportsService {
       endOfDay.setUTCHours(23, 59, 59, 999);
 
       whereConditions.push({
-        createdAt: {
+        pickupTime: {
           gte: startOfDay.toISOString(), // Mayor o igual al inicio del día
           lte: endOfDay.toISOString() // Menor o igual al final del día
         }
       });
     }
 
+    // Filtro por rango de fechas (startDate - endDate)
     if (filter.startDate && filter.endDate) {
       const start = new Date(filter.startDate).toISOString();
       const end = new Date(filter.endDate).toISOString();
       whereConditions.push({
-        createdAt: {
+        pickupTime: {
           gte: start,
           lte: end
         }
       });
     }
 
-    if (filter.priceMin && filter.priceMax) {
-      whereConditions.push({
-        price: {
-          gte: filter.priceMin,
-          lte: filter.priceMax
-        }
-      });
-    }
-
+    // Filtro por nombre de la categoría del producto
     if (filter.categoryName) {
       whereConditions.push({
-        category: {
-          name: {
-            contains: filter.categoryName
+        cart: {
+          cartItems: {
+            some: {
+              product: {
+                category: {
+                  name: {
+                    contains: filter.categoryName, // Filtra por el nombre de la categoría
+                    mode: 'insensitive' // Case-insensitive
+                  }
+                }
+              }
+            }
           }
         }
       });
     }
 
-    const products = await this.prisma.product.findMany({
+    const orders = await this.prisma.order.findMany({
       where: {
-        AND: whereConditions
+        AND: whereConditions // Aplica todos los filtros juntos
       },
       include: {
-        category: true,
-        productVariations: true
+        cart: {
+          include: {
+            cartItems: {
+              include: {
+                product: {
+                  include: {
+                    category: true // Incluir detalles de la categoría
+                  }
+                }
+              }
+            }
+          }
+        }
       },
       orderBy: {
-        createdAt: 'asc'
+        createdAt: 'asc' // Ordenar por la fecha de creación
       }
     });
 
-    return products;
+    // Extraer los detalles del producto de los cartItems y eliminar duplicados
+    const productMap = new Map();
+    orders.forEach((order) => {
+      order.cart.cartItems.forEach((item) => {
+        const product = item.product;
+        // Filtrar por categoría si se especifica
+        if (
+          !filter.categoryName ||
+          (product.category && product.category.name === filter.categoryName)
+        ) {
+          if (!productMap.has(product.id)) {
+            productMap.set(product.id, {
+              id: product.id,
+              name: product.name,
+              description: product.description,
+              price: product.price,
+              image: product.image,
+              isAvailable: product.isAvailable,
+              isRestricted: product.isRestricted,
+              isActive: product.isActive,
+              category: {
+                id: product.category.id,
+                name: product.category.name,
+                description: product.category.description
+              }
+            });
+          }
+        }
+      });
+    });
+
+    return Array.from(productMap.values()); // Devolver los productos filtrados sin duplicados
   }
 
   // Método para generar Excel para Top Products
