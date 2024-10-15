@@ -1,4 +1,4 @@
-import { Injectable, Logger } from '@nestjs/common';
+import { BadRequestException, Injectable, Logger, NotFoundException } from '@nestjs/common';
 import { PrismaService } from 'src/prisma/prisma.service';
 import { OrderFilterDto } from './dto/order-filter.dto';
 import * as puppeteer from 'puppeteer';
@@ -459,12 +459,25 @@ export class ReportsService {
    */
 
   async getTopProducts(dto: GetTopProductsDto): Promise<any> {
-    const { startDate, endDate } = dto;
+    const { startDate, endDate, limit } = dto;
 
     // Validar que las fechas existan y sean válidas
     if (!startDate || !endDate) {
       throw new Error('Las fechas de inicio y fin son obligatorias.');
     }
+
+    // Asignar un valor por defecto si el límite no está presente
+    let numericLimit;
+    if (limit) {
+      numericLimit = Number(limit);
+
+      // Validar que el límite sea uno de los permitidos
+      const allowedLimits = [10, 15, 20];
+      if (!allowedLimits.includes(numericLimit)) {
+        throw new Error('The limit must be one of the following values: 10, 15, 20.');
+      }
+    }
+
     // Convertir las fechas a formato ISO para evitar errores de formato
     const start = new Date(startDate).toISOString();
     const end = new Date(endDate).toISOString();
@@ -486,7 +499,8 @@ export class ReportsService {
           _sum: {
             quantity: 'desc'
           }
-        }
+        },
+        ...(numericLimit && { take: numericLimit }) // Limitar la cantidad de productos si hay un límite
       });
 
       // Incluir los detalles del producto
@@ -531,6 +545,9 @@ export class ReportsService {
       return productsWithDetails;
     } catch (error) {
       console.log('Error getting top products', error);
+      if (error instanceof BadRequestException || error instanceof NotFoundException) {
+        throw error;
+      }
       throw new Error('Error getting top products');
     }
   }
