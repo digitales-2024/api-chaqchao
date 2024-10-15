@@ -188,7 +188,6 @@ export class ReportsService {
       { header: 'Nombre', key: 'name', width: 13 },
       { header: 'Descripción', key: 'description', width: 20 },
       { header: 'Precio', key: 'price', width: 7 },
-      { header: 'Imagen', key: 'image', width: 50 },
       { header: 'Disponible', key: 'isAvailable', width: 15 },
       { header: 'Estado', key: 'isActive', width: 15 },
       { header: 'Restringido', key: 'isRestricted', width: 15 },
@@ -205,10 +204,9 @@ export class ReportsService {
         name: product.name,
         description: product.description,
         price: product.price,
-        image: product.image,
-        isAvailable: product.isAvailable,
-        isActive: product.isActive,
-        isRestricted: product.isRestricted,
+        isAvailable: product.isAvailable ? 'Disponible' : 'No disponible',
+        isActive: product.isActive ? 'Activo' : 'Inactivo',
+        isRestricted: product.isRestricted ? 'Restringido' : 'No restringido',
         createdAt: product.createdAt,
         updatedAt: product.updatedAt
       });
