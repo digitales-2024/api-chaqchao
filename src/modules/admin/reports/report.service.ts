@@ -283,8 +283,6 @@ export class ReportsService {
     let productsHtml = '';
     data.forEach((product) => {
       productsHtml += `<tr>
-      <td>
-      <img src="${product.image}" alt="${product.name}" style="width: 100px; height: 100px;"></td>
       <td>${product.name}</td>
         <td style="width: 200px">${product.description}</td>
         <td>${product.category.name}</td>
