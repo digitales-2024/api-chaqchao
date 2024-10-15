@@ -171,6 +171,9 @@ export class ReportsService {
       },
       include: {
         cart: true
+      },
+      orderBy: {
+        createdAt: 'asc'
       }
     });
 
@@ -386,6 +389,9 @@ export class ReportsService {
       include: {
         category: true,
         productVariations: true
+      },
+      orderBy: {
+        createdAt: 'asc'
       }
     });
 
@@ -514,11 +520,36 @@ export class ReportsService {
       const productsWithDetails = await Promise.all(
         topProducts.map(async (product) => {
           const details = await this.prisma.product.findUnique({
-            where: { id: product.productId }
+            where: { id: product.productId },
+            select: {
+              id: true,
+              name: true,
+              description: true,
+              price: true,
+              image: true,
+              isAvailable: true,
+              isRestricted: true,
+              isActive: true,
+              category: {
+                select: {
+                  id: true,
+                  name: true,
+                  description: true
+                }
+              }
+            }
           });
           return {
             id: details.id,
             name: details.name,
+            isActive: details.isActive,
+            price: details.price,
+            image: details.image,
+            category: {
+              id: details.category.id,
+              name: details.category.name,
+              description: details.category.description
+            },
             totalOrdered: product._sum.quantity
           };
         })
