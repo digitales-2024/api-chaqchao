@@ -262,7 +262,7 @@ export class ClassesAdminService {
 
     // Iterar sobre cada grupo y generar HTML
     for (const date in groupedClasses) {
-      classesHtml += `<h2 style="text-align: center;">Fecha: ${new Date(date).toLocaleDateString()}</h2>`;
+      classesHtml += `<h2 style="text-align: center;">Fecha: ${moment.utc(new Date()).tz('America/Lima-5').format('DD-MM-YYYY')}</h2>`;
       for (const schedule in groupedClasses[date]) {
         classesHtml += `<h3 style="text-align: center;">Horario: ${schedule}</h3>`;
         classesHtml += '<div style="overflow-x:auto; margin: 0 20px;">';
