@@ -218,7 +218,6 @@ export class ClassesAdminService {
    * @returns Archivo PDF con los datos de las clases
    */
   async generatePDFClassReport(data: ClassesDataAdmin[]): Promise<Buffer> {
-    console.log('🚀 ~ ClassesAdminService ~ generatePDFClassReport ~ data:', data);
     // Definir la ruta a la plantilla HTML
     const templatePath = path.join(__dirname, '../../../../', 'templates', 'classesReport.html');
 
@@ -238,7 +237,7 @@ export class ClassesAdminService {
     });
 
     const htmlInfo = `<h2>${infoBussiness.businessName.toUpperCase() || ''}</h2>
-    <p>Fecha de las clases: ${data[0].dateClass || ''} </p>
+    <p>Fecha de las clases: ${(data.length !== 0 ? data[0].dateClass : '') || ''} </p>
     `;
 
     // Generar el contenido HTML para las clases
