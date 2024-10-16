@@ -59,7 +59,7 @@ export class ReportsController {
   async exportPdfProduct(@Res() res: Response, @Query() filter: ProductFilterDto) {
     // Obtener los datos de productos filtrados
     const products = await this.reportsService.getFilteredProducts(filter);
-    const pdfBuffer = await this.reportsService.generatePDFProduct(products);
+    const pdfBuffer = await this.reportsService.generatePDFProduct(products, filter);
     // Enviar el archivo PDF en la respuesta
     res.setHeader('Content-Type', 'application/pdf');
     res.setHeader('Content-Disposition', 'attachment; filename="products_report.pdf"');
