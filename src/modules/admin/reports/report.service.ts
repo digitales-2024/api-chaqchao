@@ -8,6 +8,23 @@ import { Buffer } from 'buffer';
 import * as ExcelJS from 'exceljs';
 import { ProductFilterDto } from './dto/product-filter.dto';
 import { GetTopProductsDto } from './dto/get-top-products.dto';
+import { Prisma } from '@prisma/client';
+
+interface Product {
+  id: string;
+  name: string;
+  description: string;
+  price: number;
+  image: string;
+  isAvailable: boolean;
+  isRestricted: boolean;
+  isActive: boolean;
+  category: {
+    id: string;
+    name: string;
+    description: string;
+  };
+}
 
 @Injectable()
 export class ReportsService {
@@ -181,21 +198,48 @@ export class ReportsService {
   }
 
   // Método para generar Excel para Products
-  async generateExcelProduct(data: any) {
+  async generateExcelProduct(data: any, filter: ProductFilterDto) {
     const workbook = new ExcelJS.Workbook();
     const worksheet = workbook.addWorksheet('Products Report');
     worksheet.columns = [
-      { header: 'Nombre', key: 'name', width: 13 },
+      { header: 'Nombre', key: 'name', width: 20 },
       { header: 'Descripción', key: 'description', width: 20 },
-      { header: 'Precio', key: 'price', width: 7 },
-      { header: 'Disponible', key: 'isAvailable', width: 15 },
-      { header: 'Estado', key: 'isActive', width: 15 },
-      { header: 'Restringido', key: 'isRestricted', width: 15 },
-      { header: 'Creado', key: 'createdAt', width: 15 },
-      { header: 'Actualizado', key: 'updatedAt', width: 15 }
+      { header: 'Categoría', key: 'category', width: 10 },
+      { header: 'Precio', key: 'price', width: 7 }
     ];
+
+    worksheet.addRow({});
+    worksheet.addRow({
+      name: 'Reporte de Productos'
+    });
+
+    worksheet.addRow({
+      name: 'Fecha de Reporte: ',
+      description: filter.startDate + ' - ' + filter.endDate
+    });
+    if (filter.categoryName) {
+      worksheet.addRow({
+        name: 'Categoría: ',
+        description: filter.categoryName
+      });
+    }
+
+    worksheet.addRow({});
+    // Eliminar el contenido de las celdas de la fila 1 (A1 a I1)
+    for (let col = 1; col <= 9; col++) {
+      worksheet.getCell(1, col).value = null; // Limpia la celda en la fila 1, columna col
+    }
+
+    worksheet.addRow({
+      name: 'Nombre',
+      description: 'Descripción',
+      category: 'Categoría',
+      price: 'Precio'
+    });
+
+    const numRow = filter.categoryName ? 7 : 6;
     // Aplicar estilo en negrita a los encabezados
-    worksheet.getRow(1).eachCell((cell) => {
+    worksheet.getRow(numRow).eachCell((cell) => {
       cell.font = { bold: true };
     });
 
@@ -204,11 +248,7 @@ export class ReportsService {
         name: product.name,
         description: product.description,
         price: product.price,
-        isAvailable: product.isAvailable ? 'Disponible' : 'No disponible',
-        isActive: product.isActive ? 'Activo' : 'Inactivo',
-        isRestricted: product.isRestricted ? 'Restringido' : 'No restringido',
-        createdAt: product.createdAt,
-        updatedAt: product.updatedAt
+        category: product.category.name
       });
     });
     const buffer = await workbook.xlsx.writeBuffer();
@@ -217,10 +257,10 @@ export class ReportsService {
 
   /**
    * Genera un archivo PDF que contiene un reporte de los productos dentro de un rango de fechas especificado.
-   * @param {any} data - Datos que representan los productos.
+   * @param {Producto[]} data - Datos que representan los productos.
    *                     Se espera que contenga la información necesaria para rellenar la plantilla HTML.
    */
-  async generatePDFProduct(data: any, filter: ProductFilterDto): Promise<Buffer> {
+  async generatePDFProduct(data: Product[], filter: ProductFilterDto): Promise<Buffer> {
     // Definir la ruta a la plantilla HTML
     const templatePath = path.join(__dirname, '../../../../', 'templates', 'productsReport.html');
 
@@ -276,7 +316,7 @@ export class ReportsService {
   }
 
   // Generar el contenido HTML para los productos
-  private generateProductHtml(data: any): string {
+  private generateProductHtml(data: Product[]): string {
     let productsHtml = '';
     data.forEach((product) => {
       productsHtml += `<tr>
@@ -300,8 +340,8 @@ export class ReportsService {
    * @param {boolean} [isAvailable] - Filtrado por disponibilidad del producto.
    * @param {boolean} [isRestricted] - Filtrado por productos con restricción.
    */
-  async getFilteredProducts(filter: ProductFilterDto): Promise<any> {
-    const whereConditions: any[] = [];
+  async getFilteredProducts(filter: ProductFilterDto): Promise<Product[]> {
+    const whereConditions: Prisma.OrderWhereInput[] = [];
 
     // Filtro por una fecha específica
     if (filter.date) {
@@ -395,7 +435,7 @@ export class ReportsService {
     });
 
     // Extraer los detalles del producto de los cartItems y eliminar duplicados
-    const productMap = new Map();
+    const productMap = new Map<string, Product>();
     orders.forEach((order) => {
       order.cart.cartItems.forEach((item) => {
         const product = item.product;
