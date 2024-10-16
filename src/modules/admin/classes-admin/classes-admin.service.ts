@@ -218,6 +218,7 @@ export class ClassesAdminService {
    * @returns Archivo PDF con los datos de las clases
    */
   async generatePDFClassReport(data: ClassesDataAdmin[]): Promise<Buffer> {
+    console.log('🚀 ~ ClassesAdminService ~ generatePDFClassReport ~ data:', data);
     // Definir la ruta a la plantilla HTML
     const templatePath = path.join(__dirname, '../../../../', 'templates', 'classesReport.html');
 
@@ -230,16 +231,38 @@ export class ClassesAdminService {
       throw new Error('No se pudo cargar la plantilla HTML.');
     }
 
+    const infoBussiness = await this.prisma.businessConfig.findFirst({
+      select: {
+        businessName: true
+      }
+    });
+
+    const htmlInfo = `<h2>${infoBussiness.businessName.toUpperCase() || ''}</h2>
+    <p>Fecha de las clases: ${data[0].dateClass || ''} </p>
+    `;
+
     // Generar el contenido HTML para las clases
     const classesHtml = this.generateClassHtml(data);
 
     // Reemplazar la plantilla con el contenido HTML de las clases
-    const htmlContent = templateHtml.replace('{{classes}}', classesHtml);
+    const htmlContent = templateHtml.replace('{{classess}}', classesHtml);
+    const htmlContentWithInfo = htmlContent.replace('{{bussiness}}', htmlInfo);
+    const htmlDateReport = htmlContentWithInfo.replace(
+      '{{dateReport}}',
+      new Date().toLocaleDateString()
+    );
+    const htmlFooterReport = htmlDateReport.replace(
+      '{{footerReport}}',
+      `© ${new Date().getFullYear()} ${infoBussiness.businessName.toUpperCase()}`
+    );
 
     // Generar el PDF usando Puppeteer
     const browser = await puppeteer.launch();
     const page = await browser.newPage();
     await page.setContent(htmlContent);
+    await page.setContent(htmlContentWithInfo);
+    await page.setContent(htmlDateReport);
+    await page.setContent(htmlFooterReport);
     const pdfBufferUint8Array = await page.pdf({ format: 'A4' });
     await browser.close();
 
@@ -262,7 +285,6 @@ export class ClassesAdminService {
 
     // Iterar sobre cada grupo y generar HTML
     for (const date in groupedClasses) {
-      classesHtml += `<h2 style="text-align: center;">Fecha: ${moment.utc(new Date()).tz('America/Lima-5').format('DD-MM-YYYY')}</h2>`;
       for (const schedule in groupedClasses[date]) {
         classesHtml += `<h3 style="text-align: center;">Horario: ${schedule}</h3>`;
         classesHtml += '<div style="overflow-x:auto; margin: 0 20px;">';
@@ -270,13 +292,13 @@ export class ClassesAdminService {
         classesHtml += `
                 <thead>
                     <tr>
-                        <th>Idioma</th>
-                        <th>Nombre</th>
-                        <th>Email</th>
-                        <th>Teléfono</th>
-                        <th>Total Participantes</th>
-                        <th>Total Adultos</th>
-                        <th>Total Niños</th>
+                    <th>Nombre</th>
+                    <th>Email</th>
+                    <th>Teléfono</th>
+                    <th>Idioma</th>
+                    <th>Total Adultos</th>
+                    <th>Total Niños</th>
+                    <th>Total Participantes</th>
                     </tr>
                 </thead>
                 <tbody>
@@ -287,13 +309,13 @@ export class ClassesAdminService {
 
         groupedClasses[date][schedule].forEach((clase) => {
           classesHtml += `<tr>
-                    <td>${clase.languageClass}</td>
-                    <td>${clase.userName}</td>
-                    <td class="no-capitalize">${clase.userEmail}</td>
-                    <td>${clase.userPhone}</td>
-                    <td>${clase.totalParticipants}</td>
-                    <td>${clase.totalAdults}</td>
-                    <td>${clase.totalChildren}</td>
+          <td style="text-transform: capitalize;">${clase.userName}</td>
+          <td>${clase.userEmail}</td>
+          <td>${clase.userPhone}</td>
+          <td>${clase.languageClass}</td>
+          <td>${clase.totalAdults}</td>
+          <td>${clase.totalChildren}</td>
+          <td>${clase.totalParticipants}</td>
                 </tr>`;
 
           // Sumar los totales
@@ -309,7 +331,7 @@ export class ClassesAdminService {
 
         // Agregar el resumen después de la tabla
         classesHtml += `
-                <div class="summary">
+                <div class="company-info">
                     <p>Total de Participantes: ${totalParticipants}</p>
                     <p>Total: ${currencySymbol} ${totalPrice.toFixed(2)}</p>
                 </div>
