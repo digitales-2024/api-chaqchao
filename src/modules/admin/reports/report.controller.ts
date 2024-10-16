@@ -34,7 +34,7 @@ export class ReportsController {
   async exportPdf(@Res() res: Response, @Query() filter: OrderFilterDto) {
     // Obtener los datos de órdenes filtrados
     const orders = await this.reportsService.getFilteredOrders(filter);
-    const pdfBuffer = await this.reportsService.generatePDFOrder(orders);
+    const pdfBuffer = await this.reportsService.generatePDFOrder(orders, filter);
     // Enviar el archivo PDF en la respuesta
     res.setHeader('Content-Type', 'application/pdf');
     res.setHeader('Content-Disposition', 'attachment; filename="orders_report.pdf"');
@@ -44,7 +44,7 @@ export class ReportsController {
   @Get('export/order/excel')
   async exportExcel(@Res() res: Response, @Query() filter: OrderFilterDto) {
     const data = await this.reportsService.getFilteredOrders(filter);
-    const excelBuffer = await this.reportsService.generateExcelOrder(data);
+    const excelBuffer = await this.reportsService.generateExcelOrder(data, filter);
     // Configura los encabezados para la descarga del archivo
     res.setHeader(
       'Content-Type',
