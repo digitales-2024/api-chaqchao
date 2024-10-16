@@ -17,6 +17,7 @@ import { GetClient } from './decorators/get-client.decorator';
 import { ClientData, HttpResponse } from 'src/interfaces';
 import {
   ApiBadRequestResponse,
+  ApiCreatedResponse,
   ApiInternalServerErrorResponse,
   ApiNotFoundResponse,
   ApiOkResponse,
@@ -29,6 +30,7 @@ import { CreateClientDto } from './dto/create-client.dto';
 import { ForgotPasswordClientDto } from './dto/forgot-password-client.dto';
 import { ResetPasswordClientDto } from './dto/reset-password-client.dto';
 import { ClientAuth } from './decorators/client-auth.decorator';
+import { ClientRefreshAuth } from './decorators/client-refresh-auth.decorator';
 
 @ApiTags('Auth Client')
 @ApiInternalServerErrorResponse({ description: 'Internal server error' })
@@ -89,8 +91,9 @@ export class AuthController {
   @ApiBadRequestResponse({ description: 'Bad request' })
   @ApiOkResponse({ description: 'Client successfully registered' })
   @Post('register')
-  async register(@Body() createClientDto: CreateClientDto): Promise<HttpResponse<ClientData>> {
-    return this.authService.create(createClientDto);
+  async register(@Body() createClientDto: CreateClientDto, @Res() res: Response): Promise<void> {
+    const clientDataRegister = await this.authService.create(createClientDto, res);
+    res.status(HttpStatus.OK).json(clientDataRegister);
   }
 
   @ApiBadRequestResponse({ description: 'Bad request' })
@@ -120,5 +123,12 @@ export class AuthController {
   @Get('logout')
   async logout(@Res() res: Response): Promise<void> {
     return this.authService.logout(res);
+  }
+
+  @ApiCreatedResponse({ description: 'Refresh token' })
+  @ClientRefreshAuth()
+  @Post('refresh-token')
+  async refreshToken(@Req() req: Request, @Res() res: Response): Promise<void> {
+    return this.authService.refreshToken(req, res);
   }
 }
