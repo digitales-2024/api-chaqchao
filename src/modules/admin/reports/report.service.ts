@@ -26,6 +26,20 @@ interface Product {
   };
 }
 
+export interface ProductTop {
+  id: string;
+  name: string;
+  isActive: boolean;
+  price: number;
+  image: string;
+  category: {
+    id: string;
+    name: string;
+    description: string;
+  };
+  totalOrdered: number;
+}
+
 interface Order {
   id: string;
   cartId: string;
@@ -540,7 +554,7 @@ export class ReportsService {
   }
 
   // Método para generar Excel para Top Products
-  async generateExcelTopProduct(data: any) {
+  async generateExcelTopProduct(data: ProductTop[], filter: GetTopProductsDto) {
     const workbook = new ExcelJS.Workbook();
     const worksheet = workbook.addWorksheet('Top Products Report');
     worksheet.columns = [
@@ -548,10 +562,31 @@ export class ReportsService {
       { header: 'Cantidad', key: 'quantity', width: 10 }
     ];
 
-    // Aplicar estilo en negrita a los encabezados
-    worksheet.getRow(1).eachCell((cell) => {
-      cell.font = { bold: true };
+    worksheet.addRow({
+      name: 'Productos más vendidos'
     });
+
+    worksheet.addRow({
+      name: 'Fecha de Reporte: ',
+      quantity: filter.startDate + ' / ' + filter.endDate
+    });
+
+    if (filter.limit) {
+      worksheet.addRow({
+        name: 'Límite: ',
+        quantity: filter.limit
+      });
+    }
+
+    for (let col = 1; col <= 9; col++) {
+      worksheet.getCell(1, col).value = null; // Limpia la celda en la fila 1, columna col
+    }
+
+    worksheet.addRow({
+      name: 'Nombre',
+      quantity: 'Cantidad'
+    });
+
     data.forEach((topProducts) => {
       worksheet.addRow({
         name: topProducts.name,
@@ -564,10 +599,10 @@ export class ReportsService {
 
   /**
    * Genera un archivo PDF que contiene un reporte de los productos más vendidos dentro de un rango de fechas especificado.
-   * @param {any} data - Datos que representan los productos más vendidos.
+   * @param {ProductTop[]} data - Datos que representan los productos más vendidos.
    *                     Se espera que contenga la información necesaria para rellenar la plantilla HTML.
    */
-  async generatePDFTopProduct(data: any): Promise<Buffer> {
+  async generatePDFTopProduct(data: ProductTop[], filter: GetTopProductsDto): Promise<Buffer> {
     // Definir la ruta a la plantilla HTML
     const templatePath = path.join(
       __dirname,
@@ -585,13 +620,36 @@ export class ReportsService {
       throw new Error('No se pudo cargar la plantilla HTML.');
     }
 
+    const infoBussiness = await this.prisma.businessConfig.findFirst({
+      select: {
+        businessName: true
+      }
+    });
+
+    const htmlInfo = `<h2>${infoBussiness.businessName.toUpperCase() || ''}</h2>
+        <p>Fechas: ${filter.startDate || ''} / ${filter.endDate} </p>
+        ${filter.limit ? '<p>Límite: ' + filter.limit + ' </p>' : ''}
+    `;
+
     // Rellenar la plantilla con los datos de los productos mas vendidos
     const htmlContent = templateHtml.replace('{{products}}', this.generateTopProductHtml(data));
+    const htmlContentWithInfo = htmlContent.replace('{{bussiness}}', htmlInfo);
+    const htmlDateReport = htmlContentWithInfo.replace(
+      '{{dateReport}}',
+      new Date().toLocaleDateString()
+    );
+    const htmlFooterReport = htmlDateReport.replace(
+      '{{footerReport}}',
+      `© ${new Date().getFullYear()} ${infoBussiness.businessName.toUpperCase()}`
+    );
 
     // Generar el PDF usando Puppeteer
     const browser = await puppeteer.launch();
     const page = await browser.newPage();
     await page.setContent(htmlContent);
+    await page.setContent(htmlContentWithInfo);
+    await page.setContent(htmlDateReport);
+    await page.setContent(htmlFooterReport);
     const pdfBufferUint8Array = await page.pdf({ format: 'A4' });
     await browser.close();
 
@@ -602,7 +660,7 @@ export class ReportsService {
   }
 
   // Generar el contenido HTML para los productos mas vendidos
-  private generateTopProductHtml(data: any): string {
+  private generateTopProductHtml(data: ProductTop[]): string {
     let productTopHtml = '';
     data.forEach((productTop) => {
       productTopHtml += `<tr>
@@ -620,13 +678,13 @@ export class ReportsService {
    * @param {string} dto.startDate - Fecha de inicio del rango en formato `YYYY-MM-DD`.
    * @param {string} dto.endDate - Fecha de fin del rango en formato `YYYY-MM-DD`.
    *
-   * @returns {Promise<any>} - Retorna una lista de productos con los detalles y la cantidad total vendida.
+   * @returns {Promise<ProductTop[]>} - Retorna una lista de productos con los detalles y la cantidad total vendida.
    * @throws {Error} - Lanza un error si las fechas no son válidas o no se pueden obtener los productos más vendidos.
    *
    * @example - const topProducts = await getTopProducts({ startDate: '2024-01-01', endDate: '2024-01-31' });
    */
 
-  async getTopProducts(dto: GetTopProductsDto): Promise<any> {
+  async getTopProducts(dto: GetTopProductsDto): Promise<ProductTop[]> {
     const { startDate, endDate, limit } = dto;
 
     // Validar que las fechas existan y sean válidas
@@ -635,7 +693,7 @@ export class ReportsService {
     }
 
     // Asignar un valor por defecto si el límite no está presente
-    let numericLimit;
+    let numericLimit: number | undefined;
     if (limit) {
       numericLimit = Number(limit);
 
