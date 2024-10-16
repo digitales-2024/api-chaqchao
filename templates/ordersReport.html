@@ -3,50 +3,122 @@
   <head>
     <meta charset="UTF-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-    <title>Reporte de Órdenes</title>
+    <title>Reporte de Pedidos</title>
     <style>
+      @page {
+        size: A4;
+        margin: 10mm;
+      }
+      header {
+        display: flex;
+        justify-content: space-between;
+        align-items: center;
+        margin-bottom: 20px;
+      }
+
+      .company-info {
+        text-align: right;
+        font-size: 12px;
+      }
+      .company-info p {
+        margin: 0;
+      }
+
+      body {
+        font-family: Arial, sans-serif;
+        margin: 0;
+        padding: 0;
+        background-color: #f4f4f4;
+      }
+      .report-details {
+        text-align: right;
+      }
+      .report-title {
+        text-transform: uppercase;
+        letter-spacing: 5px;
+        color: #aaa;
+        margin: 0;
+      }
+      .report-info {
+        display: flex;
+        justify-content: space-between;
+        margin-bottom: 20px;
+      }
+      .report-info div {
+        font-size: 12px;
+      }
+      .report-info h2 {
+        font-size: 16px;
+        margin-bottom: 5px;
+      }
       table {
         width: 100%;
         border-collapse: collapse;
+        margin-top: 20px;
       }
-      h1 {
-        text-align: center;
-        color: #55482c;
-      }
-      thead th {
-        color: rgb(226, 217, 206);
-        text-align: center;
-      }
-      th,
-      td {
-        padding: 8px;
+      table th,
+      table td {
+        padding: 8px 12px;
+        border-bottom: 1px solid #ddd;
         text-align: left;
-        border: 1px solid #2d8f76;
       }
-      th {
-        background-color: #55482c;
-        font-weight: bold;
+      table th {
+        text-transform: uppercase;
+        font-weight: 600;
+        font-size: 12px;
+        color: #333;
+      }
+      table td {
+        font-size: 12px;
+      }
+      footer {
+        margin-top: 40px;
+        display: flex;
+        justify-content: space-between;
+        font-size: 12px;
+      }
+      footer .company-footer {
+        width: 100%;
+        text-align: right;
       }
     </style>
   </head>
   <body>
-    <div>
-      <h1>Reporte de Pedidos - CHAQCHAO</h1>
+    <!-- Encabezado -->
+    <header>
+      <div></div>
+      <div class="company-info">
+        <p>Reporte</p>
+      </div>
+    </header>
+    <!-- Título e Información de Reporte -->
+    <div class="report-info">
+      <div>{{bussiness}}</div>
+      <div class="report-details">
+        <h3 class="report-title">Pedidos</h3>
+        <p>Fecha: <strong>{{dateReport}}</strong></p>
+      </div>
     </div>
-
+    <!-- Tabla de Detalles de Reporte -->
     <table>
       <thead>
         <tr>
-          <th>Codigo Unico</th>
-          <th>Hora de Recojo</th>
-          <th>Estado</th>
+          <th>Codigo Único</th>
+          <th>Fecha de Recojo</th>
           <th>Total</th>
-          <th>Dirección de Recojo</th>
+          <th>Estado</th>
+          <th>Modo de Recojo</th>
         </tr>
       </thead>
       <tbody>
         {{orders}}
       </tbody>
     </table>
+    <!-- Pie de Página -->
+    <footer>
+      <div class="company-footer">
+        <p>{{footerReport}}</p>
+      </div>
+    </footer>
   </body>
 </html>
