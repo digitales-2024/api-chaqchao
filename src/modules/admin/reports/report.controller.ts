@@ -69,13 +69,16 @@ export class ReportsController {
   @Get('export/product/excel')
   async exportExcelProduct(@Res() res: Response, @Query() filter: ProductFilterDto) {
     const data = await this.reportsService.getFilteredProducts(filter);
-    const excelBuffer = await this.reportsService.generateExcelProduct(data);
+    const excelBuffer = await this.reportsService.generateExcelProduct(data, filter);
     // Configura los encabezados para la descarga del archivo
     res.setHeader(
       'Content-Type',
       'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet'
     );
-    res.setHeader('Content-Disposition', 'attachment; filename=products_report.xlsx');
+    res.setHeader(
+      'Content-Disposition',
+      `attachment; filename=products_report_${new Date().getFullYear()}.xlsx`
+    );
     // Envía el archivo Excel como respuesta
     res.send(excelBuffer);
   }
