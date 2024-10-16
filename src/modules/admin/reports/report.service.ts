@@ -8,7 +8,7 @@ import { Buffer } from 'buffer';
 import * as ExcelJS from 'exceljs';
 import { ProductFilterDto } from './dto/product-filter.dto';
 import { GetTopProductsDto } from './dto/get-top-products.dto';
-import { Prisma } from '@prisma/client';
+import { CartStatus, Prisma } from '@prisma/client';
 
 interface Product {
   id: string;
@@ -26,28 +26,86 @@ interface Product {
   };
 }
 
+interface Order {
+  id: string;
+  cartId: string;
+  pickupCode: string;
+  totalAmount: string;
+  pickupTime: string;
+  orderStatus: string;
+  pickupAddress: string;
+  someonePickup: boolean;
+  comments: string;
+  isActive: boolean;
+  createdAt: string;
+  updatedAt: string;
+  cart: {
+    id: string;
+    clientId: string;
+    cartStatus: CartStatus;
+    createdAt: string;
+    updatedAt: string;
+  };
+}
+const translateStatus: Record<Order['orderStatus'], string> = {
+  CONFIRMED: 'Confirmado',
+  READY: 'Listo',
+  COMPLETED: 'Completado',
+  CANCELLED: 'Cancelado',
+  PENDING: 'Pendiente'
+};
+
 @Injectable()
 export class ReportsService {
   private readonly logger = new Logger(ReportsService.name);
   constructor(private prisma: PrismaService) {}
 
   // Método para generar Excel para Orders
-  async generateExcelOrder(data: any) {
+  async generateExcelOrder(data: Order[], filter: OrderFilterDto) {
     const workbook = new ExcelJS.Workbook();
     const worksheet = workbook.addWorksheet('Orders Report');
     worksheet.columns = [
-      { header: 'Codigo Unico', key: 'pickupCode', width: 13 },
-      { header: 'Hora de Recojo', key: 'pickupTime', width: 20 },
+      { header: 'Codigo Único', key: 'pickupCode', width: 20 },
+      { header: 'Fecha de Recojo', key: 'pickupTime', width: 20 },
       { header: 'Total', key: 'totalAmount', width: 7 },
       { header: 'Estado', key: 'status', width: 12 },
-      { header: 'Direccion de Recojo', key: 'address', width: 50 },
-      { header: 'Creado', key: 'createdAt', width: 20 },
-      { header: 'Actualizado', key: 'updatedAt', width: 20 }
+      { header: 'Modo de Recojo', key: 'mode', width: 12 }
     ];
 
-    // Aplicar estilo en negrita a los encabezados
-    worksheet.getRow(1).eachCell((cell) => {
-      cell.font = { bold: true };
+    worksheet.addRow({
+      pickupCode: 'Reporte de Pedidos'
+    });
+
+    worksheet.addRow({
+      pickupCode: 'Fecha de Reporte: ',
+      pickupTime: filter.startDate + ' / ' + filter.endDate
+    });
+
+    if (filter.orderStatus) {
+      worksheet.addRow({
+        pickupCode: 'Estado: ',
+        pickupTime: translateStatus[filter.orderStatus]
+      });
+    }
+
+    if (filter.priceMin !== undefined && filter.priceMax !== undefined) {
+      worksheet.addRow({
+        pickupCode: 'Rango de Precios: ',
+        pickupTime: filter.priceMin + ' - ' + filter.priceMax
+      });
+    }
+
+    // Eliminar el contenido de las celdas de la fila 1 (A1 a I1)
+    for (let col = 1; col <= 9; col++) {
+      worksheet.getCell(1, col).value = null; // Limpia la celda en la fila 1, columna col
+    }
+
+    worksheet.addRow({
+      pickupCode: 'Codigo Único',
+      pickupTime: 'Fecha de Recojo',
+      totalAmount: 'Total',
+      status: 'Estado',
+      mode: 'Modo de Recojo'
     });
 
     data.forEach((order) => {
@@ -55,10 +113,8 @@ export class ReportsService {
         pickupCode: order.pickupCode,
         pickupTime: order.pickupTime,
         totalAmount: order.totalAmount,
-        status: order.orderStatus,
-        address: order.pickupAddress,
-        createdAt: order.createdAt,
-        updatedAt: order.updatedAt
+        status: translateStatus[order.orderStatus],
+        mode: order.someonePickup ? 'Recoge otra persona' : 'Recoge el cliente'
       });
     });
     const buffer = await workbook.xlsx.writeBuffer();
@@ -67,10 +123,10 @@ export class ReportsService {
 
   /**
    * Genera un archivo PDF que contiene un reporte de los pedidos dentro de un rango de fechas especificado.
-   * @param {any} data - Datos que representan los pedidos.
+   * @param {Order[]} data - Datos que representan los pedidos.
    *                     Se espera que contenga la información necesaria para rellenar la plantilla HTML.
    */
-  async generatePDFOrder(data: any): Promise<Buffer> {
+  async generatePDFOrder(data: Order[], filter: OrderFilterDto): Promise<Buffer> {
     // Definir la ruta a la plantilla HTML
     const templatePath = path.join(__dirname, '../../../../', 'templates', 'ordersReport.html');
 
@@ -83,13 +139,37 @@ export class ReportsService {
       throw new Error('No se pudo cargar la plantilla HTML.');
     }
 
+    const infoBussiness = await this.prisma.businessConfig.findFirst({
+      select: {
+        businessName: true
+      }
+    });
+
+    const htmlInfo = `<h2>${infoBussiness.businessName.toUpperCase() || ''}</h2>
+<p>Fechas: ${filter.startDate || ''} / ${filter.endDate} </p>
+        ${filter.orderStatus ? '<p>Estado: ' + translateStatus[filter.orderStatus] + ' </p>' : ''}
+        ${filter.priceMin !== undefined && filter.priceMax !== undefined ? '<p>Rango de Precios: ' + filter.priceMin + ' - ' + filter.priceMax + ' </p>' : ''}
+    `;
+
     // Rellenar la plantilla con los datos de los pedidos
     const htmlContent = templateHtml.replace('{{orders}}', this.generateOrderHtml(data));
+    const htmlContentWithInfo = htmlContent.replace('{{bussiness}}', htmlInfo);
+    const htmlDateReport = htmlContentWithInfo.replace(
+      '{{dateReport}}',
+      new Date().toLocaleDateString()
+    );
+    const htmlFooterReport = htmlDateReport.replace(
+      '{{footerReport}}',
+      `© ${new Date().getFullYear()} ${infoBussiness.businessName.toUpperCase()}`
+    );
 
     // Generar el PDF usando Puppeteer
     const browser = await puppeteer.launch();
     const page = await browser.newPage();
     await page.setContent(htmlContent);
+    await page.setContent(htmlContentWithInfo);
+    await page.setContent(htmlDateReport);
+    await page.setContent(htmlFooterReport);
     const pdfBufferUint8Array = await page.pdf({ format: 'A4' });
     await browser.close();
 
@@ -100,15 +180,15 @@ export class ReportsService {
   }
 
   // Generar el contenido HTML para los pedidos
-  private generateOrderHtml(data: any): string {
+  private generateOrderHtml(data: Order[]): string {
     let ordersHtml = '';
     data.forEach((order) => {
       ordersHtml += `<tr>
         <td>${order.pickupCode}</td>
         <td>${order.pickupTime.toLocaleString()}</td>
-        <td>${order.orderStatus}</td>
         <td>${order.totalAmount}</td>
-        <td>${order.pickupAddress}</td>
+        <td>${translateStatus[order.orderStatus]}</td>
+        <td>${order.someonePickup ? 'Recoge otra persona' : 'Recoge el cliente'}</td>
       </tr>`;
     });
     return ordersHtml;
@@ -125,7 +205,7 @@ export class ReportsService {
    */
 
   async getFilteredOrders(filter: OrderFilterDto): Promise<any> {
-    const whereConditions: any[] = [];
+    const whereConditions: Prisma.OrderWhereInput[] = [];
 
     // Filtro por booleanos (isActive)
     if (filter.isActive !== undefined) {
@@ -150,7 +230,7 @@ export class ReportsService {
       });
     }
 
-    if (filter.priceMin && filter.priceMax) {
+    if (filter.priceMin !== undefined && filter.priceMax !== undefined) {
       whereConditions.push({
         totalAmount: {
           gte: filter.priceMin,
@@ -198,7 +278,7 @@ export class ReportsService {
   }
 
   // Método para generar Excel para Products
-  async generateExcelProduct(data: any, filter: ProductFilterDto) {
+  async generateExcelProduct(data: Product[], filter: ProductFilterDto) {
     const workbook = new ExcelJS.Workbook();
     const worksheet = workbook.addWorksheet('Products Report');
     worksheet.columns = [
@@ -208,14 +288,13 @@ export class ReportsService {
       { header: 'Precio', key: 'price', width: 7 }
     ];
 
-    worksheet.addRow({});
     worksheet.addRow({
       name: 'Reporte de Productos'
     });
 
     worksheet.addRow({
       name: 'Fecha de Reporte: ',
-      description: filter.startDate + ' - ' + filter.endDate
+      description: filter.startDate + ' / ' + filter.endDate
     });
     if (filter.categoryName) {
       worksheet.addRow({
@@ -224,7 +303,6 @@ export class ReportsService {
       });
     }
 
-    worksheet.addRow({});
     // Eliminar el contenido de las celdas de la fila 1 (A1 a I1)
     for (let col = 1; col <= 9; col++) {
       worksheet.getCell(1, col).value = null; // Limpia la celda en la fila 1, columna col
@@ -235,12 +313,6 @@ export class ReportsService {
       description: 'Descripción',
       category: 'Categoría',
       price: 'Precio'
-    });
-
-    const numRow = filter.categoryName ? 7 : 6;
-    // Aplicar estilo en negrita a los encabezados
-    worksheet.getRow(numRow).eachCell((cell) => {
-      cell.font = { bold: true };
     });
 
     data.forEach((product) => {
@@ -275,15 +347,12 @@ export class ReportsService {
 
     const infoBussiness = await this.prisma.businessConfig.findFirst({
       select: {
-        businessName: true,
-        email: true,
-        contactNumber: true,
-        address: true
+        businessName: true
       }
     });
 
     const htmlInfo = `<h2>${infoBussiness.businessName.toUpperCase() || ''}</h2>
-        <p>Fechas: ${filter.startDate || ''} - ${filter.endDate} </p>
+        <p>Fechas: ${filter.startDate || ''} / ${filter.endDate} </p>
         ${filter.categoryName ? '<p>Categoría: ' + filter.categoryName + ' </p>' : ''}
     `;
 
