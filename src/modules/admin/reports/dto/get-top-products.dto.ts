@@ -11,4 +11,9 @@ export class GetTopProductsDto {
   @IsOptional()
   @IsString()
   endDate: string;
+
+  @ApiProperty({ example: 10 })
+  @IsOptional()
+  @IsString()
+  limit: string;
 }
