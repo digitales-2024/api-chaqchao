@@ -34,7 +34,7 @@ export class ReportsController {
   async exportPdf(@Res() res: Response, @Query() filter: OrderFilterDto) {
     // Obtener los datos de órdenes filtrados
     const orders = await this.reportsService.getFilteredOrders(filter);
-    const pdfBuffer = await this.reportsService.generatePDFOrder(orders);
+    const pdfBuffer = await this.reportsService.generatePDFOrder(orders, filter);
     // Enviar el archivo PDF en la respuesta
     res.setHeader('Content-Type', 'application/pdf');
     res.setHeader('Content-Disposition', 'attachment; filename="orders_report.pdf"');
@@ -44,7 +44,7 @@ export class ReportsController {
   @Get('export/order/excel')
   async exportExcel(@Res() res: Response, @Query() filter: OrderFilterDto) {
     const data = await this.reportsService.getFilteredOrders(filter);
-    const excelBuffer = await this.reportsService.generateExcelOrder(data);
+    const excelBuffer = await this.reportsService.generateExcelOrder(data, filter);
     // Configura los encabezados para la descarga del archivo
     res.setHeader(
       'Content-Type',
@@ -59,7 +59,7 @@ export class ReportsController {
   async exportPdfProduct(@Res() res: Response, @Query() filter: ProductFilterDto) {
     // Obtener los datos de productos filtrados
     const products = await this.reportsService.getFilteredProducts(filter);
-    const pdfBuffer = await this.reportsService.generatePDFProduct(products);
+    const pdfBuffer = await this.reportsService.generatePDFProduct(products, filter);
     // Enviar el archivo PDF en la respuesta
     res.setHeader('Content-Type', 'application/pdf');
     res.setHeader('Content-Disposition', 'attachment; filename="products_report.pdf"');
@@ -69,27 +69,31 @@ export class ReportsController {
   @Get('export/product/excel')
   async exportExcelProduct(@Res() res: Response, @Query() filter: ProductFilterDto) {
     const data = await this.reportsService.getFilteredProducts(filter);
-    const excelBuffer = await this.reportsService.generateExcelProduct(data);
+    const excelBuffer = await this.reportsService.generateExcelProduct(data, filter);
     // Configura los encabezados para la descarga del archivo
     res.setHeader(
       'Content-Type',
       'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet'
     );
-    res.setHeader('Content-Disposition', 'attachment; filename=products_report.xlsx');
+    res.setHeader(
+      'Content-Disposition',
+      `attachment; filename=products_report_${new Date().getFullYear()}.xlsx`
+    );
     // Envía el archivo Excel como respuesta
     res.send(excelBuffer);
   }
 
   @Get('top-products')
-  async getTopProducts(@Query() getTopProductDto: GetTopProductsDto) {
-    return this.reportsService.getTopProducts(getTopProductDto);
+  async getTopProducts(@Query() getTopProductDto: GetTopProductsDto, @Res() res: Response) {
+    const topProducts = await this.reportsService.getTopProducts(getTopProductDto);
+    res.json(topProducts);
   }
 
   @Get('export/top-product/pdf')
   async exportPdfTopProduct(@Res() res: Response, @Query() filter: GetTopProductsDto) {
     // Obtener los datos de productos top filtrados
     const topProducts = await this.reportsService.getTopProducts(filter);
-    const pdfBuffer = await this.reportsService.generatePDFTopProduct(topProducts);
+    const pdfBuffer = await this.reportsService.generatePDFTopProduct(topProducts, filter);
     // Enviar el archivo PDF en la respuesta
     res.setHeader('Content-Type', 'application/pdf');
     res.setHeader('Content-Disposition', 'attachment; filename="products_top_report.pdf"');
@@ -99,7 +103,7 @@ export class ReportsController {
   @Get('export/top-product/excel')
   async exportExcelTopProduct(@Res() res: Response, @Query() filter: GetTopProductsDto) {
     const data = await this.reportsService.getTopProducts(filter);
-    const excelBuffer = await this.reportsService.generateExcelTopProduct(data);
+    const excelBuffer = await this.reportsService.generateExcelTopProduct(data, filter);
     // Configura los encabezados para la descarga del archivo
     res.setHeader(
       'Content-Type',
