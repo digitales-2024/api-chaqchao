@@ -220,7 +220,7 @@ export class ReportsService {
    * @param {any} data - Datos que representan los productos.
    *                     Se espera que contenga la información necesaria para rellenar la plantilla HTML.
    */
-  async generatePDFProduct(data: any): Promise<Buffer> {
+  async generatePDFProduct(data: any, filter: ProductFilterDto): Promise<Buffer> {
     // Definir la ruta a la plantilla HTML
     const templatePath = path.join(__dirname, '../../../../', 'templates', 'productsReport.html');
 
@@ -243,9 +243,8 @@ export class ReportsService {
     });
 
     const htmlInfo = `<h2>${infoBussiness.businessName.toUpperCase() || ''}</h2>
-        <p>${infoBussiness.address || ''}</p>
-        <p>Tel: ${infoBussiness.contactNumber || ''}</p>
-        <p>${infoBussiness.email || ''}</p>
+        <p>Fechas: ${filter.startDate || ''} - ${filter.endDate} </p>
+        ${filter.categoryName ? '<p>Categoría: ' + filter.categoryName + ' </p>' : ''}
     `;
 
     // Rellenar la plantilla con los datos de los productos
