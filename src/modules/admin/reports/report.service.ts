@@ -352,6 +352,24 @@ export class ReportsService {
       });
     }
 
+    // Filtro por rango de precios (priceMin - priceMax)
+    if (filter.priceMin !== undefined && filter.priceMax !== undefined) {
+      whereConditions.push({
+        cart: {
+          cartItems: {
+            some: {
+              product: {
+                price: {
+                  gte: filter.priceMin,
+                  lte: filter.priceMax
+                }
+              }
+            }
+          }
+        }
+      });
+    }
+
     const orders = await this.prisma.order.findMany({
       where: {
         AND: whereConditions // Aplica todos los filtros juntos
@@ -383,8 +401,10 @@ export class ReportsService {
         const product = item.product;
         // Filtrar por categoría si se especifica
         if (
-          !filter.categoryName ||
-          (product.category && product.category.name === filter.categoryName)
+          (!filter.categoryName ||
+            (product.category && product.category.name === filter.categoryName)) &&
+          (!filter.priceMin || product.price >= filter.priceMin) &&
+          (!filter.priceMax || product.price <= filter.priceMax)
         ) {
           if (!productMap.has(product.id)) {
             productMap.set(product.id, {
