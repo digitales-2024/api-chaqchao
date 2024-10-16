@@ -84,15 +84,16 @@ export class ReportsController {
   }
 
   @Get('top-products')
-  async getTopProducts(@Query() getTopProductDto: GetTopProductsDto) {
-    return this.reportsService.getTopProducts(getTopProductDto);
+  async getTopProducts(@Query() getTopProductDto: GetTopProductsDto, @Res() res: Response) {
+    const topProducts = await this.reportsService.getTopProducts(getTopProductDto);
+    res.json(topProducts);
   }
 
   @Get('export/top-product/pdf')
   async exportPdfTopProduct(@Res() res: Response, @Query() filter: GetTopProductsDto) {
     // Obtener los datos de productos top filtrados
     const topProducts = await this.reportsService.getTopProducts(filter);
-    const pdfBuffer = await this.reportsService.generatePDFTopProduct(topProducts);
+    const pdfBuffer = await this.reportsService.generatePDFTopProduct(topProducts, filter);
     // Enviar el archivo PDF en la respuesta
     res.setHeader('Content-Type', 'application/pdf');
     res.setHeader('Content-Disposition', 'attachment; filename="products_top_report.pdf"');
@@ -102,7 +103,7 @@ export class ReportsController {
   @Get('export/top-product/excel')
   async exportExcelTopProduct(@Res() res: Response, @Query() filter: GetTopProductsDto) {
     const data = await this.reportsService.getTopProducts(filter);
-    const excelBuffer = await this.reportsService.generateExcelTopProduct(data);
+    const excelBuffer = await this.reportsService.generateExcelTopProduct(data, filter);
     // Configura los encabezados para la descarga del archivo
     res.setHeader(
       'Content-Type',
