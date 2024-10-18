@@ -1,11 +1,36 @@
 import { Injectable, Logger } from '@nestjs/common';
 import { PrismaService } from 'src/prisma/prisma.service';
 import { GetCategoryDto } from './dto/get-category.dto';
+import { CategoryData } from 'src/interfaces';
 
 @Injectable()
 export class CatalogService {
   private readonly logger = new Logger(CatalogService.name);
   constructor(private prisma: PrismaService) {}
+
+  /**
+   * Obtiene todas las categorías activas.
+   * @returns Lista de categorías activas.
+   * @throws Error - Si no hay categorías activas.
+   */
+  async getAllCategories(): Promise<CategoryData[]> {
+    const categories = await this.prisma.category.findMany({
+      where: {
+        isActive: true
+      },
+      select: {
+        id: true,
+        name: true,
+        description: true
+      }
+    });
+
+    if (!categories) {
+      throw new Error('No active categories found');
+    }
+
+    return categories;
+  }
 
   /**
    * Obtiene las categorías activas que tienen al menos un producto activo y disponible.
