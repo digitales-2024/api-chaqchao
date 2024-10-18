@@ -22,6 +22,12 @@ export class CatalogController {
     private readonly reportsService: ReportsService
   ) {}
 
+  @Get('categories')
+  async getCategories(@Res() res: Response) {
+    const categories = await this.catalogService.getAllCategories();
+    res.json(categories);
+  }
+
   @Get('category')
   async getCategory(@Query() filter: GetCategoryDto, @Res() res: Response) {
     const categories = await this.catalogService.getFilteredCategory(filter);
