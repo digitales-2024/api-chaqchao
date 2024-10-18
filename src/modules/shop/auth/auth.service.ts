@@ -66,7 +66,7 @@ export class AuthService {
    * @param client Datos del cliente de Google
    * @returns Cliente autenticado
    */
-  async validateUserGoogle(client: ClientGoogleData, res: Response): Promise<void> {
+  async validateUserGoogle(client: ClientGoogleData, res: Response): Promise<any> {
     try {
       // Buscar cliente en la base de datos por correo electrónico
       let clientDB = await this.prisma.client.findUnique({
@@ -139,14 +139,18 @@ export class AuthService {
         maxAge: this.configService.get('COOKIE_REFRESH_EXPIRES_IN'), // Asegúrate de que esta configuración exista
         expires: new Date(Date.now() + this.configService.get('COOKIE_REFRESH_EXPIRES_IN'))
       });
-
-      /*       // Retornar la respuesta con los datos del usuario
-      res.json({
-        id: clientDB.id,
-        name: clientDB.name,
-        email: clientDB.email
-      }); */
-      res.redirect(this.configService.get<string>('WEB_URL'));
+      const webUrlShop = this.configService.get<string>('WEB_URL_SHOP');
+      // Responder con un HTML que cierre la ventana y notifique al opener
+      res.send(`
+        <html>
+          <body>
+            <script>
+              window.opener.postMessage('authenticated', '${webUrlShop}');
+              window.close();
+            </script>
+          </body>
+        </html>
+      `);
     } catch (error) {
       this.logger.error('Error validating user', error.stack);
       if (error instanceof NotFoundException) {
@@ -450,6 +454,18 @@ export class AuthService {
     // Borra la cookie que contiene el token JWT
     res.cookie('client_access_token', '', {
       httpOnly: true,
+      expires: new Date(0) // Establece la fecha de expiración a una fecha pasada para eliminar la cookie
+    });
+
+    // Borra la cookie que contiene el refresh token
+    res.cookie('client_refresh_token', '', {
+      httpOnly: true,
+      expires: new Date(0) // Establece la fecha de expiración a una fecha pasada para eliminar la cookie
+    });
+
+    // Borra la cookie que indica que el usuario está logueado
+    res.cookie('client_logged_in', '', {
+      httpOnly: false,
       expires: new Date(0) // Establece la fecha de expiración a una fecha pasada para eliminar la cookie
     });
 
