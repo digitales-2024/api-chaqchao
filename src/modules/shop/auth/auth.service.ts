@@ -87,7 +87,8 @@ export class AuthService {
           }
         });
       }
-
+      // Genera el refresh token
+      const refreshToken = this.getJwtRefreshToken({ id: clientDB.id });
       // Si no existe, crear un nuevo cliente
       if (!clientDB) {
         this.logger.log(`Creando nuevo cliente: ${client.name} (${client.email})`);
@@ -96,13 +97,13 @@ export class AuthService {
             name: client.name,
             email: client.email,
             isGoogleAuth: true,
-            token: client.token
+            token: refreshToken
           }
         });
       } else {
         await this.clientService.updateLastLogin(clientDB.id);
         if (clientDB.token !== client.token) {
-          await this.clientService.updateToken(clientDB.id, client.token);
+          await this.clientService.updateToken(clientDB.id, refreshToken);
         }
       }
 
@@ -126,9 +127,6 @@ export class AuthService {
         maxAge: this.configService.get('COOKIE_EXPIRES_IN'),
         expires: new Date(Date.now() + this.configService.get('COOKIE_EXPIRES_IN'))
       });
-
-      // Genera el refresh token
-      const refreshToken = this.getJwtRefreshToken({ id: clientDB.id });
 
       // Configura la cookie HttpOnly para el refresh token
       res.cookie('client_refresh_token', refreshToken, {
@@ -487,7 +485,7 @@ export class AuthService {
   async refreshToken(req: Request, res: Response): Promise<void> {
     try {
       const message = 'Could not refresh access token';
-      const refresh_token = req.cookies.refresh_token as string;
+      const refresh_token = req.cookies.client_refresh_token as string;
       const payload = this.verifyRefreshToken(refresh_token);
 
       if (!payload) {
