@@ -1,7 +1,8 @@
 import { Injectable, Logger } from '@nestjs/common';
 import { PrismaService } from 'src/prisma/prisma.service';
 import { GetCategoryDto } from './dto/get-category.dto';
-import { CategoryData } from 'src/interfaces';
+import { CategoryData, ProductData } from 'src/interfaces';
+import { handleException } from 'src/utils';
 
 @Injectable()
 export class CatalogService {
@@ -136,5 +137,175 @@ export class CatalogService {
         isRestricted: product.isRestricted
       }))
     }));
+  }
+
+  /**
+   * Obtienes los productos recomendados para un usuario en base a sus preferencias o historial de compras anteriores.
+   * @param id - Id del cliente.
+   * @returns Lista de productos recomendados.
+   * @throws Error - Si no hay productos recomendados.
+   */
+  async getRecommendedProductsByClient(id: string): Promise<ProductData[]> {
+    try {
+      const purchasedCategories = await this.prisma.order.findMany({
+        where: {
+          cart: {
+            clientId: id
+          }
+        },
+        select: {
+          cart: {
+            select: {
+              cartItems: {
+                select: {
+                  product: {
+                    select: {
+                      categoryId: true
+                    }
+                  }
+                }
+              }
+            }
+          }
+        }
+      });
+      const categoryIds = purchasedCategories
+        .flatMap((order) => order.cart.cartItems.map((item) => item.product.categoryId))
+        .filter((value, index, self) => self.indexOf(value) === index);
+      // Obtener productos en esas categorías excluyendo los ya comprados
+      const recommendations = await this.prisma.product.findMany({
+        where: {
+          categoryId: {
+            in: categoryIds
+          }
+        },
+        select: {
+          id: true,
+          name: true,
+          description: true,
+          price: true,
+          image: true,
+          isActive: true,
+          isAvailable: true,
+          isRestricted: true,
+          category: {
+            select: {
+              id: true,
+              name: true
+            }
+          },
+          productVariations: {
+            select: {
+              id: true,
+              name: true,
+              description: true,
+              additionalPrice: true
+            }
+          }
+        },
+        take: 10 // Limitar el número de recomendaciones
+      });
+
+      return recommendations.map((product) => ({
+        id: product.id,
+        name: product.name,
+        description: product.description,
+        price: product.price,
+        image: product.image,
+        isActive: product.isActive,
+        isAvailable: product.isAvailable,
+        isRestricted: product.isRestricted,
+        category: {
+          id: product.category.id,
+          name: product.category.name
+        },
+        variations: product.productVariations.map((variation) => ({
+          id: variation.id,
+          name: variation.name,
+          description: variation.description,
+          additionalPrice: variation.additionalPrice
+        }))
+      }));
+    } catch (error) {
+      this.logger.error(`Error getting recommended products for client ${id}: ${error.message}`);
+      handleException(error, 'Error getting recommended products');
+    }
+  }
+
+  /**
+   * Obtiene los productos recomendados para todos los clientes.
+   * @returns Lista de productos recomendados.
+   * @throws Error - Si no hay productos recomendados.
+   */
+  async getRecommendedProducts(): Promise<ProductData[]> {
+    try {
+      // Obtener productos recomendados
+      const recommendations = await this.prisma.product.findMany({
+        where: {
+          isActive: true,
+          isAvailable: true
+        },
+        select: {
+          id: true,
+          name: true,
+          description: true,
+          price: true,
+          image: true,
+          isActive: true,
+          isAvailable: true,
+          isRestricted: true,
+          category: {
+            select: {
+              id: true,
+              name: true
+            }
+          },
+          productVariations: {
+            select: {
+              id: true,
+              name: true,
+              description: true,
+              additionalPrice: true
+            }
+          },
+          cartItems: {
+            include: {
+              cart: true
+            }
+          }
+        },
+        orderBy: {
+          cartItems: {
+            _count: 'desc'
+          }
+        },
+        take: 10 // Limitar el número de recomendaciones
+      });
+
+      return recommendations.map((product) => ({
+        id: product.id,
+        name: product.name,
+        description: product.description,
+        price: product.price,
+        image: product.image,
+        isActive: product.isActive,
+        isAvailable: product.isAvailable,
+        isRestricted: product.isRestricted,
+        categoryId: product.category.id,
+        category: {
+          id: product.category.id,
+          name: product.category.name
+        },
+        variations: product.productVariations.map((variation) => ({
+          id: variation.id,
+          name: variation.name,
+          description: variation.description,
+          additionalPrice: variation.additionalPrice
+        }))
+      }));
+    } catch (error) {
+      this.logger.error(`Error getting recommended products: ${error.message}`);
+      handleException(error, 'Error getting recommended products');
+    }
   }
 }

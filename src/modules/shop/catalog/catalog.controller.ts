@@ -40,6 +40,18 @@ export class CatalogController {
     res.json(products);
   }
 
+  @Get('/recommend/:id')
+  async getRecommendedProducts(@Param() id: string, @Res() res: Response) {
+    const products = await this.catalogService.getRecommendedProductsByClient(id);
+    res.json(products);
+  }
+
+  @Get('/recommend')
+  async getRecommendedProductsByCategory(@Res() res: Response) {
+    const products = await this.catalogService.getRecommendedProducts();
+    res.json(products);
+  }
+
   @Get('products/:id')
   async getProductsbyId(@Param('id') id: string): Promise<ProductData> {
     return this.productsService.findOne(id);
