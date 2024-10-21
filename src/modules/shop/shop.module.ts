@@ -10,6 +10,7 @@ import { NotificationModule } from './notification/notification.module';
 import { PaymentModule } from './payment/payment.module';
 import { ClassesModule } from './classes/classes.module';
 import { CatalogModule } from './catalog/catalog.module';
+import { BusinessHoursModule } from './business-hours/business-hours.module';
 
 @Module({
   imports: [
@@ -23,7 +24,8 @@ import { CatalogModule } from './catalog/catalog.module';
     NotificationModule,
     ClassesModule,
     CatalogModule,
-    PaymentModule
+    PaymentModule,
+    BusinessHoursModule
   ]
 })
 export class ShopModule {}
