@@ -40,6 +40,14 @@ export class ClassLanguageService {
           throw new NotFoundException('Business config not found');
         }
 
+        // Validar si el languageName ya existe
+        const existingLanguage = await prisma.classLanguage.findUnique({
+          where: { languageName }
+        });
+        if (existingLanguage) {
+          throw new BadRequestException(`Language name already exists`);
+        }
+
         // Crear el registro de class language
         const newClassLanguage = await prisma.classLanguage.create({
           data: {
@@ -177,6 +185,14 @@ export class ClassLanguageService {
           };
         }
 
+        // Validar si el languageName ya existe
+        const existingLanguage = await prisma.classLanguage.findUnique({
+          where: { languageName }
+        });
+        if (existingLanguage) {
+          throw new BadRequestException(`Language name already exists`);
+        }
+
         // Actualizar el class language
         const updatedClassLanguage = await prisma.classLanguage.update({
           where: {
@@ -264,5 +280,27 @@ export class ClassLanguageService {
 
       throw new BadRequestException('Error deleting class language');
     }
+  }
+
+  async findLanguageByName(languageName: string): Promise<ClassLanguageData> {
+    const classLanguage = await this.prisma.classLanguage.findUnique({
+      where: {
+        languageName
+      },
+      select: {
+        id: true,
+        languageName: true
+      }
+    });
+
+    // Validar si existe el class language
+    if (!classLanguage) {
+      throw new BadRequestException('Class language not found');
+    }
+
+    return {
+      id: classLanguage.id,
+      languageName: classLanguage.languageName
+    };
   }
 }

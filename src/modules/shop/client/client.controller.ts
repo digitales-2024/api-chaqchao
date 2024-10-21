@@ -22,7 +22,7 @@ import { UpdatePasswordClientDto } from './dto/update-password-client.dto';
 export class ClientController {
   constructor(private readonly clientService: ClientService) {}
 
-  @ApiOkResponse({ description: 'Client updated successfully' })
+  @ApiOkResponse({ description: 'Get Client successfully' })
   @Get(':id')
   findOne(@Param('id') id: string): Promise<ClientPayload> {
     return this.clientService.findOne(id);

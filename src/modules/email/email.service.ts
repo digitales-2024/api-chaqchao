@@ -19,7 +19,7 @@ export class EmailService {
 
   @OnEvent('user.welcome-admin-first')
   async welcomeEmail(data: EventPayloads['user.welcome-admin-first']): Promise<boolean> {
-    const { name, email, password } = data;
+    const { name, email, password, webAdmin } = data;
     const subject = `Bienvenido a ${infoBusiness.business}: ${getFirstWord(name)}`;
 
     try {
@@ -31,6 +31,7 @@ export class EmailService {
           name,
           email,
           password,
+          webAdmin,
           business: infoBusiness.business,
           url: infoBusiness.url,
           phone: infoBusiness.phone,
@@ -64,6 +65,87 @@ export class EmailService {
           name,
           email,
           link,
+          business: infoBusiness.business,
+          url: infoBusiness.url,
+          phone: infoBusiness.phone,
+          address: infoBusiness.address,
+          contact: infoBusiness.contact
+        }
+      });
+
+      if (sendingEmail) {
+        return true; // Retorna true indicando éxito
+      } else {
+        return false; // Retorna false indicando fallo
+      }
+    } catch (error) {
+      this.logger.error(error);
+      return false; // Retorna false indicando fallo
+    }
+  }
+
+  @OnEvent('user.new-password')
+  async newPassword(data: EventPayloads['user.new-password']): Promise<boolean> {
+    const { name, email, password, webAdmin } = data;
+    const subject = `Hola de nuevo: ${getFirstWord(name)}`;
+
+    try {
+      const sendingEmail = await this.mailerService.sendMail({
+        to: email,
+        subject,
+        template: 'new-password',
+        context: {
+          name,
+          email,
+          password,
+          webAdmin,
+          business: infoBusiness.business,
+          url: infoBusiness.url,
+          phone: infoBusiness.phone,
+          address: infoBusiness.address,
+          contact: infoBusiness.contact
+        }
+      });
+
+      if (sendingEmail) {
+        return true; // Retorna true indicando éxito
+      } else {
+        return false; // Retorna false indicando fallo
+      }
+    } catch (error) {
+      this.logger.error(error);
+      return false; // Retorna false indicando fallo
+    }
+  }
+
+  @OnEvent('class.new-class')
+  async newClass(data: EventPayloads['class.new-class']): Promise<boolean> {
+    const {
+      name,
+      email,
+      scheduleClass,
+      dateClass,
+      languageClass,
+      totalParticipants,
+      totalPrice,
+      typeCurrency
+    } = data;
+    const subject = `Clase programada: ${infoBusiness.business}`;
+
+    try {
+      const sendingEmail = await this.mailerService.sendMail({
+        to: email,
+        subject,
+        template: 'new-class',
+        context: {
+          name,
+          email,
+          scheduleClass,
+          dateClass,
+          languageClass: languageClass.charAt(0).toUpperCase() + languageClass.slice(1),
+          totalParticipants,
+          totalPrice,
+          typeCurrency,
           business: infoBusiness.business,
           url: infoBusiness.url,
           phone: infoBusiness.phone,

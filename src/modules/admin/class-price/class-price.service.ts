@@ -37,7 +37,7 @@ export class ClassPriceService {
    * Validar el tipo de moneda
    * @param typeCurrency Tipo de moneda
    */
-  private validateTypeCurrency(typeCurrency: string): void {
+  public validateTypeCurrency(typeCurrency: string): void {
     if (!Object.values(TypeCurrency).includes(typeCurrency as TypeCurrency)) {
       throw new BadRequestException(
         `Invalid typeCurrency value. Use one of: ${Object.values(TypeCurrency).join(', ')}`
@@ -64,6 +64,24 @@ export class ClassPriceService {
         const businessConfigDB = await this.businessConfigService.findOne(businessId);
         if (!businessConfigDB) {
           throw new NotFoundException('Business config not found');
+        }
+
+        // Validar que solo haya dos precios para adulto y dos para child
+        const existingPrices = await prisma.classPriceConfig.findMany({
+          where: {
+            businessId,
+            classTypeUser
+          }
+        });
+
+        const priceCount = existingPrices.filter(
+          (price) => price.typeCurrency === typeCurrency
+        ).length;
+
+        if (priceCount >= 1) {
+          throw new BadRequestException(
+            `Only one price in ${typeCurrency} is allowed for ${classTypeUser}`
+          );
         }
 
         const priceFloat = parseFloat(price.toString());
@@ -121,6 +139,9 @@ export class ClassPriceService {
           classTypeUser: true,
           price: true,
           typeCurrency: true
+        },
+        orderBy: {
+          typeCurrency: 'asc'
         }
       });
 
@@ -232,6 +253,23 @@ export class ClassPriceService {
           };
         }
 
+        // Validar que solo haya dos precios para adulto y dos para child
+        const existingPrices = await prisma.classPriceConfig.findMany({
+          where: {
+            classTypeUser: classTypeUser || classPriceDB.classTypeUser,
+            typeCurrency: typeCurrency || classPriceDB.typeCurrency,
+            NOT: { id } // Excluir el registro actual
+          }
+        });
+
+        const priceCount = existingPrices.length;
+
+        if (priceCount >= 1) {
+          throw new BadRequestException(
+            `Only one price in ${typeCurrency || classPriceDB.typeCurrency} is allowed for ${classTypeUser || classPriceDB.classTypeUser}`
+          );
+        }
+
         // Actualizar el registro de class price
         const updatedClassPrice = await prisma.classPriceConfig.update({
           where: {
@@ -319,6 +357,37 @@ export class ClassPriceService {
         throw error;
       }
       throw new BadRequestException('Error deleting class price');
+    }
+  }
+
+  /**
+   * Encontrar precio de las clases por el tipo de moneda
+   * @param typeCurrency Tipo de moneda
+   * @returns Precios de las clases
+   */
+  async findClassPriceByTypeCurrency(typeCurrency: TypeCurrency): Promise<ClassPriceConfigData[]> {
+    try {
+      const classPrices = await this.prisma.classPriceConfig.findMany({
+        where: {
+          typeCurrency
+        },
+        select: {
+          id: true,
+          classTypeUser: true,
+          price: true,
+          typeCurrency: true
+        }
+      });
+
+      return classPrices.map((classPrice) => ({
+        id: classPrice.id,
+        classTypeUser: classPrice.classTypeUser,
+        price: classPrice.price,
+        typeCurrency: classPrice.typeCurrency
+      })) as ClassPriceConfigData[];
+    } catch (error) {
+      this.logger.error(`Error fetching class prices: ${error.message}`, error.stack);
+      throw new BadRequestException('Error fetching class prices');
     }
   }
 }

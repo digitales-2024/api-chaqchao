@@ -7,7 +7,7 @@ import * as cookieParser from 'cookie-parser';
 async function bootstrap() {
   const app = await NestFactory.create(AppModule);
   app.enableCors({
-    origin: process.env.WEB_URL,
+    origin: [process.env.WEB_URL, process.env.WEB_URL_SHOP],
     credentials: true
   });
   app.use(cookieParser());
@@ -41,8 +41,10 @@ async function bootstrap() {
     { name: 'Permissions', description: 'Operations about permissions' },
     { name: 'Products', description: 'Operations about products' },
     { name: 'Category', description: 'Operations about categories' },
-    { name: 'Orders', description: 'Operations about orders' },
-    { name: 'Audit', description: 'Operations about audit' }
+    { name: 'Order', description: 'Operations about orders' },
+    { name: 'Audit', description: 'Operations about audit' },
+    { name: 'Cart', description: 'Operations about cart' },
+    { name: 'CartItem', description: 'Operations about cart items' }
   ];
 
   SwaggerModule.setup('api', app, document);

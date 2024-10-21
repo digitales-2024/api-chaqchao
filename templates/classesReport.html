@@ -1,0 +1,111 @@
+<!doctype html>
+<html lang="es">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Registro de Clases - CHAQCHAO</title>
+    <style>
+      @page {
+        size: A4;
+        margin: 10mm;
+      }
+      header {
+        display: flex;
+        justify-content: space-between;
+        align-items: center;
+        margin-bottom: 20px;
+      }
+
+      .company-info {
+        text-align: right;
+        font-size: 12px;
+      }
+      .company-info p {
+        margin: 0;
+      }
+
+      body {
+        font-family: Arial, sans-serif;
+        margin: 0;
+        padding: 0;
+        background-color: #f4f4f4;
+      }
+      .report-details {
+        text-align: right;
+      }
+      .report-title {
+        text-transform: uppercase;
+        letter-spacing: 5px;
+        color: #aaa;
+        margin: 0;
+      }
+      .report-info {
+        display: flex;
+        justify-content: space-between;
+        margin-bottom: 20px;
+      }
+      .report-info div {
+        font-size: 12px;
+      }
+      .report-info h2 {
+        font-size: 16px;
+        margin-bottom: 5px;
+      }
+      table {
+        width: 100%;
+        border-collapse: collapse;
+        margin-top: 20px;
+      }
+      table th,
+      table td {
+        padding: 8px 12px;
+        border-bottom: 1px solid #ddd;
+        text-align: left;
+      }
+      table th {
+        text-transform: uppercase;
+        font-weight: 600;
+        font-size: 12px;
+        color: #333;
+      }
+      table td {
+        font-size: 12px;
+      }
+      footer {
+        margin-top: 40px;
+        display: flex;
+        justify-content: space-between;
+        font-size: 12px;
+      }
+      footer .company-footer {
+        width: 100%;
+        text-align: right;
+      }
+    </style>
+  </head>
+  <body>
+    <!-- Encabezado -->
+    <header>
+      <div></div>
+      <div class="company-info">
+        <p>Reporte</p>
+      </div>
+    </header>
+    <!-- Título e Información de Reporte -->
+    <div class="report-info">
+      <div>{{bussiness}}</div>
+      <div class="report-details">
+        <h3 class="report-title">Clases</h3>
+        <p>Fecha: <strong>{{dateReport}}</strong></p>
+      </div>
+    </div>
+    <!-- Tabla de Detalles de Reporte -->
+    <div>{{classess}}</div>
+    <!-- Pie de Página -->
+    <footer>
+      <div class="company-footer">
+        <p>{{footerReport}}</p>
+      </div>
+    </footer>
+  </body>
+</html>

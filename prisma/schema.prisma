@@ -19,6 +19,7 @@ model User {
   email              String
   password           String
   phone              String?
+  isSuperAdmin       Boolean  @default(false)
   lastLogin          DateTime @default(now()) @db.Timestamptz(6)
   isActive           Boolean  @default(true)
   mustChangePassword Boolean  @default(true)
@@ -102,7 +103,7 @@ model ModulePermissions {
   module       Module     @relation("ModuleId", fields: [moduleId], references: [id], onDelete: Cascade)
   moduleId     String
   permission   Permission @relation("PermissionId", fields: [permissionId], references: [id], onDelete: Cascade)
-  permissionId String  
+  permissionId String
 
   createdAt DateTime @default(now()) @db.Timestamptz(6)
   updatedAt DateTime @updatedAt
@@ -113,15 +114,15 @@ model ModulePermissions {
   @@unique([moduleId, permissionId])
 }
 
-model RolModulePermissions{
-  id String @id @unique @default(uuid())
-  rol          Rol        @relation("RolId", fields: [rolId], references: [id], onDelete: Cascade)
-  rolId        String
-  modulePermissions ModulePermissions @relation("ModulePermissionsId", fields: [modulePermissionsId], references: [id], onDelete: Cascade)
+model RolModulePermissions {
+  id                  String            @id @unique @default(uuid())
+  rol                 Rol               @relation("RolId", fields: [rolId], references: [id], onDelete: Cascade)
+  rolId               String
+  modulePermissions   ModulePermissions @relation("ModulePermissionsId", fields: [modulePermissionsId], references: [id], onDelete: Cascade)
   modulePermissionsId String
 
   createdAt DateTime @default(now()) @db.Timestamptz(6)
-  updatedAt DateTime @updatedAt  
+  updatedAt DateTime @updatedAt
 
   @@unique([rolId, modulePermissionsId])
 }
@@ -153,10 +154,10 @@ model BusinessConfig {
   updatedAt DateTime @updatedAt
 
   // Relación uno a muchos con BusinessHours
-  businessHours    BusinessHours[]    @relation("businessId")
-  ClassPriceConfig ClassPriceConfig[] @relation("businessId") 
-  ClassSchedule    ClassSchedule[]    @relation("businessId")
-  ClassLanguage    ClassLanguage[]    @relation("businessId")
+  businessHours           BusinessHours[]           @relation("businessId")
+  ClassPriceConfig        ClassPriceConfig[]        @relation("businessId")
+  ClassSchedule           ClassSchedule[]           @relation("businessId")
+  ClassLanguage           ClassLanguage[]           @relation("businessId")
   ClassRegistrationConfig ClassRegistrationConfig[] @relation("businessId")
 
   @@unique([businessName, email])
@@ -213,51 +214,52 @@ enum TypeCurrency {
   DOLAR
 }
 
-model ClassSchedule{
+model ClassSchedule {
   id String @id @unique @default(uuid())
 
   // Clave foránea que referencia a BusinessConfig
   businessId String
   business   BusinessConfig @relation("businessId", fields: [businessId], references: [id])
 
-  startTime String
+  startTime String   @unique
   createdAt DateTime @default(now()) @db.Timestamptz(6)
   updatedAt DateTime @updatedAt
 }
 
-model ClassLanguage{
+model ClassLanguage {
   id String @id @unique @default(uuid())
 
   // Clave foránea que referencia a BusinessConfig
   businessId String
   business   BusinessConfig @relation("businessId", fields: [businessId], references: [id])
 
-  languageName String
-  createdAt DateTime @default(now()) @db.Timestamptz(6)
-  updatedAt DateTime @updatedAt
+  languageName String   @unique
+  createdAt    DateTime @default(now()) @db.Timestamptz(6)
+  updatedAt    DateTime @updatedAt
 }
 
-model ClassRegistrationConfig{
+model ClassRegistrationConfig {
   id String @id @unique @default(uuid())
 
   // Clave foránea que referencia a BusinessConfig
   businessId String
   business   BusinessConfig @relation("businessId", fields: [businessId], references: [id])
 
-  closeBeforeStartInterval Int
+  closeBeforeStartInterval       Int
   finalRegistrationCloseInterval Int
-  createdAt DateTime @default(now()) @db.Timestamptz(6)
-  updatedAt DateTime @updatedAt
+  createdAt                      DateTime @default(now()) @db.Timestamptz(6)
+  updatedAt                      DateTime @updatedAt
 }
 
 model Product {
-  id          String  @id @unique @default(uuid())
-  name        String
-  description String?
-  price       Float
-  image       String?
-  isAvailable Boolean @default(true)
-  isActive    Boolean @default(true)
+  id           String   @id @unique @default(uuid())
+  name         String
+  description  String?
+  price        Float
+  image        String?
+  isAvailable  Boolean  @default(true)
+  isActive     Boolean  @default(true)
+  isRestricted Boolean? @default(false)
 
   createdAt DateTime @default(now()) @db.Timestamptz(6)
   updatedAt DateTime @updatedAt
@@ -265,6 +267,8 @@ model Product {
   // Relación con Category
   category   Category @relation("categoryId", fields: [categoryId], references: [id])
   categoryId String
+
+  cartItems CartItem[] @relation("ProductToCartItem") // Relación con CartItem
 
   // Relación con ProductVariation
   productVariations ProductVariation[] @relation("productId")
@@ -300,16 +304,174 @@ model ProductVariation {
 }
 
 model Client {
-  id          String  @id @unique @default(uuid())
-  name        String
-  email       String @unique
-  phone       String?
-  password    String?
-  birthDate   DateTime?
+  id           String    @id @unique @default(uuid())
+  name         String
+  email        String    @unique
+  phone        String?
+  password     String?
+  birthDate    DateTime?
   isGoogleAuth Boolean?
-  token String?
-  lastLogin DateTime @default(now()) @db.Timestamptz(6)
-  isActive    Boolean @default(true)
+  token        String?
+  lastLogin    DateTime  @default(now()) @db.Timestamptz(6)
+  isActive     Boolean   @default(true)
+  terms         Boolean   @default(true)
+
+  carts Cart[] @relation("ClientToCart")
+
+  // Relación con Notification
+  notifications Notification[] @relation("ClientToNotificationRelation")
+
+  createdAt DateTime @default(now()) @db.Timestamptz(6)
+  updatedAt DateTime @updatedAt
+}
+
+model Cart {
+  id String @id @unique @default(uuid())
+
+  // Relación con Client
+  clientId String
+  client   Client @relation(fields: [clientId], references: [id], name: "ClientToCart", map: "FK_Cart_Client")
+
+  cartItems CartItem[] @relation("CartToCartItem")
+
+  // Relación opuesta con Order
+  order Order? @relation(name: "CartToOrder")
+
+  cartStatus CartStatus
+  createdAt  DateTime   @default(now()) @db.Timestamptz(6)
+  updatedAt  DateTime   @updatedAt
+}
+
+enum CartStatus {
+  ACTIVE
+  PENDING
+  COMPLETED
+}
+
+model CartItem {
+  id String @id @unique @default(uuid())
+
+  // Relación con Cart
+  cartId String
+  cart   Cart   @relation(fields: [cartId], references: [id], name: "CartToCartItem")
+
+  // Relación con Product
+  productId String
+  product   Product @relation(fields: [productId], references: [id], name: "ProductToCartItem")
+
+  quantity  Int
+  price     Float
+  createdAt DateTime @default(now()) @db.Timestamptz(6)
+  updatedAt DateTime @updatedAt
+}
+
+model Order {
+  id String @id @unique @default(uuid())
+
+  // Relación con Cart
+  cartId String @unique
+  cart   Cart   @relation(fields: [cartId], references: [id], name: "CartToOrder")
+
+  pickupCode    String?     @unique
+  totalAmount   Float?
+  pickupTime    DateTime
+  orderStatus   OrderStatus
+  pickupAddress String
+  someonePickup Boolean?    @default(false)
+
+  comments  String?
+  isActive  Boolean  @default(true)
+  createdAt DateTime @default(now()) @db.Timestamptz(6)
+  updatedAt DateTime @updatedAt
+
+  // Relación con Notification
+  notifications Notification[] @relation("OrderToNotificationRelation")
+
+  // Relación con BillingDocument
+  billingDocuments BillingDocument[] @relation("OrderToBilling")
+}
+
+enum OrderStatus {
+  PENDING
+  CONFIRMED
+  READY
+  COMPLETED
+  CANCELLED
+}
+
+model BillingDocument {
+  id String @id @unique @default(uuid())
+
+  // Relación con Order
+  orderId String
+  order   Order  @relation(fields: [orderId], references: [id], name: "OrderToBilling")
+
+  billingDocumentType BillingDocumentType
+  documentNumber      String
+  ruc                 String?
+  issuedAt            DateTime
+  totalAmount         Float
+  paymentStatus       PaymentStatus
+  isActive            Boolean             @default(true)
+  createdAt           DateTime            @default(now()) @db.Timestamptz(6)
+  updatedAt           DateTime            @updatedAt
+}
+
+enum BillingDocumentType {
+  INVOICE
+  RECEIPT
+}
+
+enum PaymentStatus {
+  PAID
+  PENDING
+  FAILED
+}
+
+model Notification {
+  id               String           @id @unique @default(uuid())
+  description      String?
+  notificationType NotificationType
+  isRead           Boolean          @default(false)
+
+  // Relación con Client
+  clientId String
+  client   Client @relation(fields: [clientId], references: [id], name: "ClientToNotificationRelation", map: "FK_Notification_Client")
+
+  // Relación con Order
+  orderId String
+  order   Order  @relation(fields: [orderId], references: [id], name: "OrderToNotificationRelation", map: "FK_Notification_Order")
+
+  createdAt DateTime @default(now()) @db.Timestamptz(6)
+  updatedAt DateTime @updatedAt
+}
+
+enum NotificationType {
+  ORDER_CONFIRMED
+  ORDER_PREPARING
+  ORDER_READY
+  ORDER_PICKED_UP
+  ORDER_CANCELLED
+  PROMOTIONAL
+  REMINDER
+}
+
+model Classes {
+  id                 String       @id @unique @default(uuid())
+  userName           String
+  userEmail          String
+  userPhone          String
+  scheduleClass      String
+  languageClass      String
+  dateClass          DateTime
+  totalParticipants  Int
+  totalAdults        Int
+  totalChildren      Int
+  totalPriceAdults   Float
+  totalPriceChildren Float
+  totalPrice         Float
+  typeCurrency       TypeCurrency
+  comments           String?
 
   createdAt DateTime @default(now()) @db.Timestamptz(6)
   updatedAt DateTime @updatedAt

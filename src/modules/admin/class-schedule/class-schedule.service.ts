@@ -45,13 +45,21 @@ export class ClassScheduleService {
     this.validateTimeFormat(startTime);
     try {
       return await this.prisma.$transaction(async (prisma) => {
-        // Validar si existe el businessId
+        // Validate if businessId exists
         const businessConfigDB = await this.businessConfigService.findOne(businessId);
         if (!businessConfigDB) {
           throw new NotFoundException('Business config not found');
         }
 
-        // Crear el registro de class schedule
+        // Validate if startTime already exists
+        const existingSchedule = await prisma.classSchedule.findUnique({
+          where: { startTime }
+        });
+        if (existingSchedule) {
+          throw new BadRequestException('Start time already exists');
+        }
+
+        // Create the class schedule record
         const newClassSchedule = await prisma.classSchedule.create({
           data: {
             startTime,
@@ -59,7 +67,7 @@ export class ClassScheduleService {
           }
         });
 
-        // Registrar la auditoría de la creación
+        // Log the creation audit
         await prisma.audit.create({
           data: {
             action: AuditActionType.CREATE,
@@ -188,6 +196,14 @@ export class ClassScheduleService {
           };
         }
 
+        // Validar si el startTime ya existe
+        const existingSchedule = await prisma.classSchedule.findUnique({
+          where: { startTime }
+        });
+        if (existingSchedule) {
+          throw new BadRequestException('Start time already exists');
+        }
+
         // Actualizar el class schedule
         const updatedClassSchedule = await prisma.classSchedule.update({
           where: { id },
@@ -266,5 +282,31 @@ export class ClassScheduleService {
       }
       throw new BadRequestException('Error deleting class schedule');
     }
+  }
+
+  /**
+   * Mostrar un class schedule por su hora de inicio
+   * @param startTime Inicio de la clase
+   * @returns Horario de la clase
+   */
+  async findStartTime(startTime: string): Promise<ClassScheduleData> {
+    const classScheduleDB = await this.prisma.classSchedule.findFirst({
+      where: { startTime },
+      select: {
+        id: true,
+        startTime: true
+      }
+    });
+
+    // Verificar si el class schedule existe y está activo
+    if (!classScheduleDB) {
+      throw new BadRequestException('This class schedule does not exist');
+    }
+
+    // Mapeo al tipo ClassScheduleData
+    return {
+      id: classScheduleDB.id,
+      startTime: classScheduleDB.startTime
+    };
   }
 }

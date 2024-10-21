@@ -19,6 +19,7 @@ export class AdminService {
       name: user.name,
       email: user.email,
       phone: user.phone,
+      isSuperAdmin: user.isSuperAdmin,
       roles: user.roles
     };
   }

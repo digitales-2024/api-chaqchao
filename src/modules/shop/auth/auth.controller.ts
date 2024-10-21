@@ -17,6 +17,7 @@ import { GetClient } from './decorators/get-client.decorator';
 import { ClientData, HttpResponse } from 'src/interfaces';
 import {
   ApiBadRequestResponse,
+  ApiCreatedResponse,
   ApiInternalServerErrorResponse,
   ApiNotFoundResponse,
   ApiOkResponse,
@@ -29,6 +30,7 @@ import { CreateClientDto } from './dto/create-client.dto';
 import { ForgotPasswordClientDto } from './dto/forgot-password-client.dto';
 import { ResetPasswordClientDto } from './dto/reset-password-client.dto';
 import { ClientAuth } from './decorators/client-auth.decorator';
+import { ClientRefreshAuth } from './decorators/client-refresh-auth.decorator';
 
 @ApiTags('Auth Client')
 @ApiInternalServerErrorResponse({ description: 'Internal server error' })
@@ -41,29 +43,29 @@ export class AuthController {
 
   @ApiOkResponse({ description: 'Google login redirect' })
   @Get('google/login')
-  handleLogin(@Res() res: Response) {
-    const clientId = this.configService.get<string>('GOOGLE_CLIENT_ID');
-    const redirectUri = this.configService.get<string>('GOOGLE_REDIRECT_URI');
-    const googleAuthUrl = `https://accounts.google.com/o/oauth2/v2/auth?response_type=code&client_id=${clientId}&redirect_uri=${redirectUri}&scope=email%20profile&access_type=offline&prompt=consent`;
-    return res.redirect(googleAuthUrl);
-  }
+  @UseGuards(GoogleAuthGuard)
+  handleLogin() {}
 
-  @ApiOkResponse({ description: 'Client authenticated successfully' })
   @Get('google/redirect')
   @UseGuards(GoogleAuthGuard)
   async handleRedirect(@Req() req: Request, @Res() res: Response) {
+    const webUrlShop = this.configService.get<string>('WEB_URL_SHOP');
     if (req.user) {
-      const { user } = req;
-      return res.status(HttpStatus.CREATED).json({
-        statusCode: HttpStatus.CREATED,
-        message: 'Client authenticated successfully',
-        data: user
-      });
+      // Redirigir al usuario a la URL especificada en WEB_URL_SHOP
+      return res.redirect(webUrlShop);
     } else {
-      return res.status(HttpStatus.UNAUTHORIZED).json({
-        statusCode: HttpStatus.UNAUTHORIZED,
-        message: 'Authentication failed'
-      });
+      // Manejar el caso en que la autenticación falla o el usuario cancela el proceso
+
+      return res.send(`
+        <html>
+          <body>
+            <script>
+              window.opener.postMessage('authentication_failed', '${webUrlShop}');
+              window.close();
+            </script>
+          </body>
+        </html>
+      `);
     }
   }
 
@@ -89,8 +91,9 @@ export class AuthController {
   @ApiBadRequestResponse({ description: 'Bad request' })
   @ApiOkResponse({ description: 'Client successfully registered' })
   @Post('register')
-  async register(@Body() createClientDto: CreateClientDto): Promise<HttpResponse<ClientData>> {
-    return this.authService.create(createClientDto);
+  async register(@Body() createClientDto: CreateClientDto, @Res() res: Response): Promise<void> {
+    const clientDataRegister = await this.authService.create(createClientDto, res);
+    res.status(HttpStatus.OK).json(clientDataRegister);
   }
 
   @ApiBadRequestResponse({ description: 'Bad request' })
@@ -120,5 +123,12 @@ export class AuthController {
   @Get('logout')
   async logout(@Res() res: Response): Promise<void> {
     return this.authService.logout(res);
+  }
+
+  @ApiCreatedResponse({ description: 'Refresh token' })
+  @ClientRefreshAuth()
+  @Post('refresh-token')
+  async refreshToken(@Req() req: Request, @Res() res: Response): Promise<void> {
+    return this.authService.refreshToken(req, res);
   }
 }

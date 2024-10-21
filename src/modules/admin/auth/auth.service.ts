@@ -12,7 +12,8 @@ import { handleException } from 'src/utils';
 import { JwtPayload } from './interfaces/jwt-payload.interface';
 import { JwtService } from '@nestjs/jwt';
 import { UpdatePasswordDto } from './dto/update-password.dto';
-import { Response } from 'express';
+import { Response, Request } from 'express';
+import { ConfigService } from '@nestjs/config';
 
 @Injectable()
 export class AuthService {
@@ -20,7 +21,8 @@ export class AuthService {
 
   constructor(
     private readonly userService: UsersService,
-    private readonly jwtService: JwtService
+    private readonly jwtService: JwtService,
+    private readonly configService: ConfigService
   ) {}
 
   /**
@@ -61,8 +63,29 @@ export class AuthService {
         secure: process.env.NODE_ENV === 'production',
         sameSite: 'strict',
         path: '/',
-        maxAge: 1000 * 60 * 60 * 24 * 30, // 30 días
-        expires: new Date(Date.now() + 1000 * 60 * 60 * 24 * 30) // 30 días
+        maxAge: this.configService.get('COOKIE_EXPIRES_IN'),
+        expires: new Date(Date.now() + this.configService.get('COOKIE_EXPIRES_IN'))
+      });
+
+      res.cookie('logged_in', true, {
+        httpOnly: false,
+        secure: process.env.NODE_ENV === 'production',
+        sameSite: 'strict',
+        maxAge: this.configService.get('COOKIE_EXPIRES_IN'),
+        expires: new Date(Date.now() + this.configService.get('COOKIE_EXPIRES_IN'))
+      });
+
+      // Genera el refresh token
+      const refreshToken = this.getJwtRefreshToken({ id: userDB.id });
+
+      // Configura la cookie HttpOnly para el refresh token
+      res.cookie('refresh_token', refreshToken, {
+        httpOnly: true,
+        secure: process.env.NODE_ENV === 'production',
+        sameSite: 'strict',
+        path: '/',
+        maxAge: this.configService.get('COOKIE_REFRESH_EXPIRES_IN'), // Asegúrate de que esta configuración exista
+        expires: new Date(Date.now() + this.configService.get('COOKIE_REFRESH_EXPIRES_IN'))
       });
 
       res.json({
@@ -70,19 +93,19 @@ export class AuthService {
         name: userDB.name,
         email: userDB.email,
         phone: userDB.phone,
+        isSuperAdmin: userDB.isSuperAdmin,
         roles: userDB.roles
       });
     } catch (error) {
       this.logger.error(`Error logging in for email: ${loginAuthDto.email}`, error.stack);
-      if (error instanceof UnauthorizedException) {
+      if (
+        error instanceof UnauthorizedException ||
+        error instanceof NotFoundException ||
+        error instanceof ForbiddenException
+      ) {
         throw error;
       }
-      if (error instanceof NotFoundException) {
-        throw error;
-      }
-      if (error instanceof ForbiddenException) {
-        throw error;
-      }
+
       handleException(error, 'Error logging in');
     }
   }
@@ -95,6 +118,18 @@ export class AuthService {
     // Borra la cookie que contiene el token JWT
     res.cookie('access_token', '', {
       httpOnly: true,
+      expires: new Date(0) // Establece la fecha de expiración a una fecha pasada para eliminar la cookie
+    });
+
+    // Borra la cookie que contiene el refresh token
+    res.cookie('refresh_token', '', {
+      httpOnly: true,
+      expires: new Date(0) // Establece la fecha de expiración a una fecha pasada para eliminar la cookie
+    });
+
+    // Borra la cookie que indica que el usuario está logueado
+    res.cookie('logged_in', '', {
+      httpOnly: false,
       expires: new Date(0) // Establece la fecha de expiración a una fecha pasada para eliminar la cookie
     });
 
@@ -142,8 +177,21 @@ export class AuthService {
         secure: process.env.NODE_ENV === 'production',
         sameSite: 'strict',
         path: '/',
-        maxAge: 1000 * 60 * 60 * 24 * 30, // 30 días
-        expires: new Date(Date.now() + 1000 * 60 * 60 * 24 * 30) // 30 días
+        maxAge: this.configService.get('COOKIE_EXPIRES_IN'),
+        expires: new Date(Date.now() + this.configService.get('COOKIE_EXPIRES_IN'))
+      });
+
+      // Genera el refresh_token
+      const refreshToken = this.getJwtRefreshToken({ id: userDB.id });
+
+      // Configura la cookie HttpOnly
+      res.cookie('refresh_token', refreshToken, {
+        httpOnly: true,
+        secure: process.env.NODE_ENV === 'production',
+        sameSite: 'strict',
+        path: '/',
+        maxAge: this.configService.get('COOKIE_REFRESH_EXPIRES_IN'),
+        expires: new Date(Date.now() + this.configService.get('COOKIE_REFRESH_EXPIRES_IN'))
       });
 
       res.json({
@@ -151,6 +199,7 @@ export class AuthService {
         name: userDB.name,
         email: userDB.email,
         phone: userDB.phone,
+        isSuperAdmin: userDB.isSuperAdmin,
         roles: userDB.roles
       });
     } catch (error) {
@@ -160,12 +209,114 @@ export class AuthService {
   }
 
   /**
-   * Genera un token JWT
+   * Genera un access_token JWT
    * @param payload Payload para generar el token
    * @returns  Token generado
    */
   private getJwtToken(payload: JwtPayload) {
-    const token = this.jwtService.sign(payload);
+    const token = this.jwtService.sign(payload, {
+      secret: this.configService.get('JWT_SECRET'),
+      expiresIn: this.configService.get('JWT_EXPIRES_IN')
+    });
     return token;
+  }
+
+  /**
+   * Genera un refresh_token JWT
+   * @param payload Payload para generar el token
+   * @returns  Token generado
+   */
+  private getJwtRefreshToken(payload: any): string {
+    return this.jwtService.sign(payload, {
+      secret: this.configService.get('JWT_REFRESH_SECRET'),
+      expiresIn: this.configService.get('JWT_REFRESH_EXPIRES_IN')
+    });
+  }
+
+  /**
+   * Verifica si el token es válido
+   * @param token Token a verificar
+   * @returns  Datos del token
+   */
+  verifyToken(token: string): JwtPayload {
+    return this.jwtService.verify(token);
+  }
+
+  /**
+   * Verifica si el refresh_token es válido
+   * @param token Token a verificar
+   * @returns  Datos del token
+   */
+  verifyRefreshToken(token: string): JwtPayload {
+    return this.jwtService.verify(token, {
+      secret: this.configService.get('JWT_REFRESH_SECRET')
+    });
+  }
+
+  /**
+   * Actualizar un token JWT
+   * @param res Respuesta HTTP
+   * @param req Petición HTTP
+   * @returns Datos del usuario logueado
+   */
+  async refreshToken(req: Request, res: Response): Promise<void> {
+    try {
+      const message = 'Could not refresh access token';
+      const refresh_token = req.cookies.refresh_token as string;
+      const payload = this.verifyRefreshToken(refresh_token);
+
+      if (!payload) {
+        throw new UnauthorizedException(message);
+      }
+
+      // Verifica si el usuario existe en la base de datos y si está activo
+      const userDB = await this.userService.findById(payload.id);
+
+      if (!userDB) {
+        throw new UnauthorizedException(message);
+      }
+
+      if (!userDB.isActive) {
+        throw new UnauthorizedException(message);
+      }
+
+      const newAccessToken = this.getJwtToken({ id: payload.id });
+
+      res.cookie('access_token', newAccessToken, {
+        httpOnly: true,
+        secure: process.env.NODE_ENV === 'production',
+        sameSite: 'strict',
+        path: '/',
+        maxAge: this.configService.get<number>('COOKIE_EXPIRES_IN'), // tiempo corto para el access_token
+        expires: new Date(Date.now() + this.configService.get('COOKIE_EXPIRES_IN'))
+      });
+
+      const newRefreshToken = this.getJwtRefreshToken({ id: payload.id });
+
+      res.cookie('refresh_token', newRefreshToken, {
+        httpOnly: true,
+        secure: process.env.NODE_ENV === 'production',
+        sameSite: 'strict',
+        path: '/',
+        maxAge: this.configService.get<number>('COOKIE_REFRESH_EXPIRES_IN'), // tiempo largo para el refresh_token
+        expires: new Date(Date.now() + this.configService.get('COOKIE_REFRESH_EXPIRES_IN'))
+      });
+
+      res.cookie('logged_in', true, {
+        httpOnly: false,
+        secure: process.env.NODE_ENV === 'production',
+        sameSite: 'strict',
+        maxAge: this.configService.get('COOKIE_EXPIRES_IN'),
+        expires: new Date(Date.now() + this.configService.get('COOKIE_EXPIRES_IN'))
+      });
+
+      res.status(200).json({
+        status: 'success',
+        access_token: newAccessToken
+      });
+    } catch (error) {
+      console.error('Error refreshing token:', error);
+      throw new UnauthorizedException('Invalid refresh token');
+    }
   }
 }

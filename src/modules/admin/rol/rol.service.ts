@@ -11,12 +11,18 @@ import { PrismaService } from 'src/prisma/prisma.service';
 import { handleException } from 'src/utils';
 import { ValidRols } from '../auth/interfaces';
 import { UpdateRolDto } from './dto/update-rol.dto';
-import { HttpResponse, RolPermissions, RolModulesPermissions, Rol } from 'src/interfaces';
+import { HttpResponse, RolPermissions, RolModulesPermissions, Rol, UserData } from 'src/interfaces';
+import { DeleteRolesDto } from './dto/delete-roles.dto';
+import { AuditActionType } from '@prisma/client';
+import { AuditService } from '../audit/audit.service';
 
 @Injectable()
 export class RolService {
   private readonly logger = new Logger(RolService.name);
-  constructor(private readonly prisma: PrismaService) {}
+  constructor(
+    private readonly prisma: PrismaService,
+    private readonly auditService: AuditService
+  ) {}
 
   /**
    * Crear un nuevo rol
@@ -26,7 +32,7 @@ export class RolService {
    */
   async create(createRolDto: CreateRolDto): Promise<HttpResponse<Rol>> {
     try {
-      const { name, description, modulePermissions } = createRolDto;
+      const { name, description, rolPermissions } = createRolDto;
 
       // Verificar si el rol ya existe y está activo
       const rolExist = await this.prisma.rol.findUnique({
@@ -54,8 +60,8 @@ export class RolService {
         });
 
         // Verificar existencia de permisos y construir las entradas para RolModulePermissions
-        const rolModulePermissionEntries = [];
-        for (const modulePermissionId of modulePermissions) {
+        const rolPermissionEntries = [];
+        for (const modulePermissionId of rolPermissions) {
           const modulePermission = await prisma.modulePermissions.findUnique({
             where: {
               id: modulePermissionId
@@ -68,7 +74,7 @@ export class RolService {
             );
           }
 
-          rolModulePermissionEntries.push({
+          rolPermissionEntries.push({
             rolId: createdRol.id,
             modulePermissionsId: modulePermissionId
           });
@@ -76,7 +82,7 @@ export class RolService {
 
         // Crear las relaciones entre rol y permisos en una transacción
         await prisma.rolModulePermissions.createMany({
-          data: rolModulePermissionEntries,
+          data: rolPermissionEntries,
           skipDuplicates: true
         });
 
@@ -107,7 +113,7 @@ export class RolService {
    */
   async update(id: string, updateRolDto: UpdateRolDto): Promise<HttpResponse<RolPermissions>> {
     try {
-      const { name, description, modulePermissions } = updateRolDto;
+      const { name, description, rolPermissions } = updateRolDto;
 
       // Validar que el rol no sea SUPER_ADMIN
       const rolIsSuperAdmin = await this.isRolSuperAdmin(id);
@@ -164,8 +170,8 @@ export class RolService {
 
         // Validar existencia de permisos y construir nuevas entradas
         const rolModulePermissionEntries = [];
-        if (modulePermissions && modulePermissions.length > 0) {
-          for (const modulePermissionId of modulePermissions) {
+        if (rolPermissions && rolPermissions.length > 0) {
+          for (const modulePermissionId of rolPermissions) {
             const modulePermission = await prisma.modulePermissions.findUnique({
               where: {
                 id: modulePermissionId
@@ -210,7 +216,7 @@ export class RolService {
         }
 
         // Devolver datos actualizados del rol
-        const rolPermissions = await prisma.rolModulePermissions.findMany({
+        const rolPermissionsDB = await prisma.rolModulePermissions.findMany({
           where: { rolId: id },
           select: {
             modulePermissions: {
@@ -237,7 +243,7 @@ export class RolService {
         });
 
         // Agrupar permisos por módulo
-        const groupedByModule = rolPermissions.reduce((acc, rolModulePermission) => {
+        const groupedByModule = rolPermissionsDB.reduce((acc, rolModulePermission) => {
           const moduleId = rolModulePermission.modulePermissions.module.id;
           const module = rolModulePermission.modulePermissions.module;
           const permission = rolModulePermission.modulePermissions.permission;
@@ -283,7 +289,7 @@ export class RolService {
    * @param id Id del rol a eliminar
    * @returns  Datos del rol eliminado
    */
-  async remove(id: string): Promise<HttpResponse<RolPermissions>> {
+  async remove(id: string): Promise<HttpResponse<Rol>> {
     try {
       // Validar fuera de la transacción
       const rolIsSuperAdmin = await this.isRolSuperAdmin(id);
@@ -298,57 +304,29 @@ export class RolService {
         throw new BadRequestException('It is not possible to delete the rol because it is in use');
       }
 
+      const rolIsUsedByInactiveUsers = await this.rolIsUsedByInactiveUsers(id);
+
       // Inicia la transacción
       const removedRol = await this.prisma.$transaction(async (prisma) => {
-        // Eliminar el rol, y las relaciones en RolModulePermissions se eliminarán automáticamente por la cascada
-        const rolDelete = await prisma.rol.delete({
-          where: { id },
-          select: {
-            id: true,
-            name: true,
-            description: true,
-            rolModulePermissions: {
-              select: {
-                id: true,
-                modulePermissions: {
-                  select: {
-                    id: true,
-                    module: {
-                      select: {
-                        id: true,
-                        cod: true,
-                        name: true,
-                        description: true
-                      }
-                    },
-                    permission: {
-                      select: {
-                        id: true,
-                        cod: true,
-                        name: true,
-                        description: true
-                      }
-                    }
-                  }
-                }
-              }
+        //Eliminar el rol, y las relaciones en RolModulePermissions se eliminarán automáticamente por la cascada
+        let rolDelete: Rol;
+        if (rolIsUsedByInactiveUsers) {
+          rolDelete = await prisma.rol.update({
+            where: { id },
+            data: {
+              isActive: false
             }
-          }
-        });
+          });
+        } else {
+          rolDelete = await prisma.rol.delete({
+            where: { id }
+          });
+        }
 
         return {
           id: rolDelete.id,
           name: rolDelete.name,
-          description: rolDelete.description,
-          rolPermissions: rolDelete.rolModulePermissions.map((rolModulePermission) => ({
-            module: {
-              id: rolModulePermission.modulePermissions.module.id,
-              cod: rolModulePermission.modulePermissions.module.cod,
-              name: rolModulePermission.modulePermissions.module.name,
-              description: rolModulePermission.modulePermissions.module.description
-            },
-            permissions: [rolModulePermission.modulePermissions.permission]
-          }))
+          description: rolDelete.description
         };
       });
 
@@ -367,15 +345,173 @@ export class RolService {
   }
 
   /**
+   * Eliminar todos los roles de un arreglo
+   * @param roles Arreglo de roles a desactivar
+   * @param user Usuario que desactiva los roles
+   * @returns Retorna un mensaje de la eliminacion correcta
+   */
+  async removeAll(roles: DeleteRolesDto, user: UserData): Promise<Omit<HttpResponse, 'data'>> {
+    try {
+      await this.prisma.$transaction(async (prisma) => {
+        // Buscar los roles en la base de datos
+        const rolesDB = await prisma.rol.findMany({
+          where: {
+            id: { in: roles.ids }
+          },
+          select: {
+            id: true,
+            name: true,
+            description: true,
+            isActive: true
+          }
+        });
+
+        // Validar que se encontraron roles
+        if (rolesDB.length === 0) {
+          throw new NotFoundException('Users not found or inactive');
+        }
+
+        // Validar algunos de id es el de usuario superadmin
+        const superAdminRoles = rolesDB.filter((r) => r.name === ValidRols.SUPER_ADMIN);
+        if (superAdminRoles.length > 0) {
+          throw new BadRequestException('You cannot deactivate a superadmin role');
+        }
+
+        // Validar si alguno de los roles esta en uso
+        const rolesInUse = await Promise.all(rolesDB.map((role) => this.rolIsUsed(role.id)));
+        if (rolesInUse.some((inUse) => inUse)) {
+          throw new BadRequestException('You cannot deactivate a role in use');
+        }
+
+        // Desactivar roles y eliminar roles
+        const deactivatePromises = rolesDB.map(async (rolDelete) => {
+          const rolIsUsedByInactiveUsers = await this.rolIsUsedByInactiveUsers(rolDelete.id);
+          if (rolIsUsedByInactiveUsers) {
+            // Desactivar usuario
+            await prisma.rol.update({
+              where: { id: rolDelete.id },
+              data: { isActive: false }
+            });
+          } else {
+            // Eliminar roles
+            await prisma.rol.delete({
+              where: { id: rolDelete.id }
+            });
+          }
+
+          // Auditoría
+          await this.auditService.create({
+            entityId: rolDelete.id,
+            entityType: 'rol',
+            action: AuditActionType.DELETE,
+            performedById: user.id,
+            createdAt: new Date()
+          });
+
+          return {
+            id: rolDelete.id,
+            name: rolDelete.name,
+            description: rolDelete.description
+          };
+        });
+
+        return Promise.all(deactivatePromises);
+      });
+
+      return {
+        statusCode: HttpStatus.OK,
+        message: 'Users deactivated successfully'
+      };
+    } catch (error) {
+      this.logger.error('Error deactivating users', error.stack);
+      if (error instanceof NotFoundException || error instanceof BadRequestException) {
+        throw error;
+      }
+      handleException(error, 'Error deactivating users');
+    }
+  }
+
+  /**
+   * Reactivar todos los roles de un arreglo
+   * @param roles Arreglo de roles a reactivar
+   * @param user Usuario que reactiva los roles
+   */
+  async reactivateAll(roles: DeleteRolesDto, user: UserData): Promise<Omit<HttpResponse, 'data'>> {
+    try {
+      await this.prisma.$transaction(async (prisma) => {
+        // Buscar los roles en la base de datos
+        const rolesDB = await prisma.rol.findMany({
+          where: {
+            id: { in: roles.ids }
+          },
+          select: {
+            id: true,
+            name: true,
+            description: true,
+            isActive: true
+          }
+        });
+
+        // Validar que se encontraron roles
+        if (rolesDB.length === 0) {
+          throw new NotFoundException('Users not found or inactive');
+        }
+
+        // Validar algunos de id es el de usuario superadmin
+        const superAdminRoles = rolesDB.filter((r) => r.name === ValidRols.SUPER_ADMIN);
+        if (superAdminRoles.length > 0) {
+          throw new BadRequestException('You cannot reactivate a superadmin role');
+        }
+
+        // Reactivar roles
+        const reactivatePromises = rolesDB.map(async (rolReactivate) => {
+          await prisma.rol.update({
+            where: { id: rolReactivate.id },
+            data: { isActive: true }
+          });
+
+          // Auditoría
+          await this.auditService.create({
+            entityId: rolReactivate.id,
+            entityType: 'rol',
+            action: AuditActionType.UPDATE,
+            performedById: user.id,
+            createdAt: new Date()
+          });
+
+          return {
+            id: rolReactivate.id,
+            name: rolReactivate.name,
+            description: rolReactivate.description
+          };
+        });
+
+        return Promise.all(reactivatePromises);
+      });
+
+      return {
+        statusCode: HttpStatus.OK,
+        message: 'Users reactivated successfully'
+      };
+    } catch (error) {
+      this.logger.error('Error reactivating users', error.stack);
+      if (error instanceof NotFoundException || error instanceof BadRequestException) {
+        throw error;
+      }
+      handleException(error, 'Error reactivating users');
+    }
+  }
+
+  /**
    * Obtener todos los roles con sus módulos y permisos
    * @returns Lista de roles con módulos y permisos
    */
-  async findAll(): Promise<any[]> {
+  async findAll(user: UserData): Promise<RolPermissions[]> {
     try {
       // Recupera todos los roles activos con sus permisos asociados
       const roles = await this.prisma.rol.findMany({
         where: {
-          isActive: true,
+          ...(user.isSuperAdmin ? {} : { isActive: true }),
           NOT: {
             name: ValidRols.SUPER_ADMIN
           }
@@ -391,6 +527,9 @@ export class RolService {
               }
             }
           }
+        },
+        orderBy: {
+          createdAt: 'asc'
         }
       });
 
@@ -413,15 +552,17 @@ export class RolService {
             });
           }
 
-          modulesMap
-            .get(moduleId)
-            ?.permissions.push(rolModulePermission.modulePermissions.permission);
+          modulesMap.get(moduleId)?.permissions.push({
+            ...rolModulePermission.modulePermissions.permission,
+            idModulePermission: rolModulePermission.modulePermissions.id
+          });
         });
 
         return {
           id: role.id,
           name: role.name,
           description: role.description,
+          isActive: role.isActive,
           rolPermissions: Array.from(modulesMap.values())
         };
       });
@@ -508,13 +649,50 @@ export class RolService {
   }
 
   /**
+   * Mostrar todos los módulos con sus permisos
+   * @returns Lista de módulos con sus permisos
+   */
+  async findAllModulesPermissions(): Promise<RolModulesPermissions[]> {
+    try {
+      // Obtener todos los módulos con sus permisos
+      const modulesPermissions = await this.prisma.modulePermissions.findMany({
+        include: {
+          module: {
+            select: {
+              id: true,
+              cod: true,
+              name: true,
+              description: true
+            }
+          },
+          permission: {
+            select: {
+              id: true,
+              cod: true,
+              name: true,
+              description: true
+            }
+          }
+        },
+        orderBy: {
+          moduleId: 'asc'
+        }
+      });
+      return this.groupPermissionsByModule(modulesPermissions);
+    } catch (error) {
+      this.logger.error('Error getting modules with permissions', error.stack);
+      throw new Error('Error getting modules with permissions');
+    }
+  }
+
+  /**
    * Verificar si no hay datos para actualizar
    * @param updateRolDto Datos del rol a actualizar
    * @returns  True si no hay datos para actualizar, false en caso contrario
    */
   private isNoDataUpdate(updateRolDto: UpdateRolDto): boolean {
     // Implementa la lógica para verificar si no hay datos para actualizar
-    return !updateRolDto.name && !updateRolDto.description && !updateRolDto.modulePermissions;
+    return !updateRolDto.name && !updateRolDto.description && !updateRolDto.rolPermissions;
   }
 
   /**
@@ -565,10 +743,69 @@ export class RolService {
     const rolIsUsed = await this.prisma.userRol.findFirst({
       where: {
         rolId: id,
-        isActive: true
+        isActive: true,
+        user: {
+          isActive: true
+        }
       }
     });
 
     return !!rolIsUsed;
+  }
+
+  /**
+   * Verificar si el rol esta en uso, pero por usuarios inactivos
+   * @param id Id del rol a verificar si esta en uso
+   * @returns True si el rol esta en uso por usuarios inactivos, false en caso contrario
+   */
+  async rolIsUsedByInactiveUsers(id: string): Promise<boolean> {
+    const rolIsUsed = await this.prisma.user.findMany({
+      where: {
+        isActive: false,
+        userRols: {
+          some: {
+            rolId: id
+          }
+        }
+      }
+    });
+    // Devuelve true si el rol está en uso por usuarios inactivos
+    return rolIsUsed.length > 0;
+  }
+
+  /**
+   * Agrupar permisos por modulos
+   * @param rolModulePermissions Permisos de un rol
+   * @returns Permisos agrupados por módulos
+   */
+  private groupPermissionsByModule(rolModulePermissions: any[]): RolModulesPermissions[] {
+    return rolModulePermissions.reduce((acc, entry) => {
+      const { moduleId, module, permission, id } = entry;
+      const modulePermission = {
+        idModulePermission: id,
+        ...permission
+      };
+
+      // Verificar si ya existe el módulo en el resultado
+      const existingModule = acc.find((item) => item.module.id === moduleId);
+
+      if (existingModule) {
+        // Si ya existe, añadir el permiso al array de permisos
+        existingModule.permissions.push(modulePermission);
+      } else {
+        // Si no existe, crear un nuevo módulo con el array de permisos
+        acc.push({
+          module: {
+            id: module.id,
+            cod: module.cod,
+            name: module.name,
+            description: module.description
+          },
+          permissions: [modulePermission]
+        });
+      }
+
+      return acc;
+    }, []);
   }
 }
