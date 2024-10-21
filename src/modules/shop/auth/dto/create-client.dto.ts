@@ -1,6 +1,7 @@
 import { ApiProperty } from '@nestjs/swagger';
 import { Transform } from 'class-transformer';
 import {
+  IsBoolean,
   IsDate,
   IsEmail,
   IsNotEmpty,
@@ -63,4 +64,12 @@ export class CreateClientDto {
   @IsDate()
   @Transform(({ value }) => new Date(value))
   birthDate?: Date;
+
+  @ApiProperty({
+    name: 'term',
+    description: 'Client term and conditions'
+  })
+  @IsBoolean()
+  @IsNotEmpty()
+  terms: boolean;
 }
