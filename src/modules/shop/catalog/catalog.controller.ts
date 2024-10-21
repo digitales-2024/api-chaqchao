@@ -22,6 +22,12 @@ export class CatalogController {
     private readonly reportsService: ReportsService
   ) {}
 
+  @Get('categories')
+  async getCategories(@Res() res: Response) {
+    const categories = await this.catalogService.getAllCategories();
+    res.json(categories);
+  }
+
   @Get('category')
   async getCategory(@Query() filter: GetCategoryDto, @Res() res: Response) {
     const categories = await this.catalogService.getFilteredCategory(filter);
@@ -31,6 +37,18 @@ export class CatalogController {
   @Get('products')
   async getProducts(@Query() filter: GetProductDto, @Res() res: Response) {
     const products = await this.reportsService.getFilteredProducts(filter);
+    res.json(products);
+  }
+
+  @Get('/recommend/:id')
+  async getRecommendedProducts(@Param() id: string, @Res() res: Response) {
+    const products = await this.catalogService.getRecommendedProductsByClient(id);
+    res.json(products);
+  }
+
+  @Get('/recommend')
+  async getRecommendedProductsByCategory(@Res() res: Response) {
+    const products = await this.catalogService.getRecommendedProducts();
     res.json(products);
   }
 
