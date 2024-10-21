@@ -360,7 +360,7 @@ export class AuthService {
         expiresIn: this.configService.get<string>('JWT_RESET_PASSWORD_EXPIRES_IN')
       });
 
-      const link = `http://localhost:3000/api/v1/auth/client/reset-password?token=${token}`;
+      const link = `${this.configService.get<string>('WEB_URL_SHOP')}/reset-password?token=${token}`;
 
       const emailResponse = await this.eventEmitter.emitAsync('client.forgot-password', {
         name: clientDB.name.toUpperCase(),
@@ -482,6 +482,11 @@ export class AuthService {
     });
   }
 
+  /**
+   * Refresca el token de acceso
+   * @param req Request de la petición
+   * @param res Response de la petición
+   */
   async refreshToken(req: Request, res: Response): Promise<void> {
     try {
       const message = 'Could not refresh access token';
