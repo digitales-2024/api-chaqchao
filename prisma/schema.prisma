@@ -314,6 +314,7 @@ model Client {
   token        String?
   lastLogin    DateTime  @default(now()) @db.Timestamptz(6)
   isActive     Boolean   @default(true)
+  terms         Boolean   @default(true)
 
   carts Cart[] @relation("ClientToCart")
 
@@ -378,10 +379,10 @@ model Order {
   pickupAddress String
   someonePickup Boolean?    @default(false)
 
-  comments      String?
-  isActive      Boolean     @default(true)
-  createdAt     DateTime    @default(now()) @db.Timestamptz(6)
-  updatedAt     DateTime    @updatedAt
+  comments  String?
+  isActive  Boolean  @default(true)
+  createdAt DateTime @default(now()) @db.Timestamptz(6)
+  updatedAt DateTime @updatedAt
 
   // Relación con Notification
   notifications Notification[] @relation("OrderToNotificationRelation")
