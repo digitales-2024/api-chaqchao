@@ -8,7 +8,10 @@ import {
 import { Socket, Server } from 'socket.io';
 import { OrderInfo } from 'src/interfaces';
 
-@WebSocketGateway(Number(process.env.WEBSOCKET_PORT) || 5000, { cors: true })
+@WebSocketGateway(Number(process.env.WEBSOCKET_PORT) || 5000, {
+  cors: true,
+  origin: '*'
+})
 export class AdminGateway implements OnGatewayConnection, OnGatewayDisconnect {
   @WebSocketServer()
   server: Server;
@@ -38,7 +41,6 @@ export class AdminGateway implements OnGatewayConnection, OnGatewayDisconnect {
     this.server.emit('new-class-register', { classId });
   }
 
-  // Emitir el estado del negocio actualizado
   sendBusinessStatusUpdated(businessId: string, isOpen: boolean) {
     this.server.emit('business-schedule-updated', { businessId, isOpen });
   }
