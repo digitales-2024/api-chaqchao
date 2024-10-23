@@ -37,4 +37,9 @@ export class AdminGateway implements OnGatewayConnection, OnGatewayDisconnect {
   sendNewClassRegister(classId: string) {
     this.server.emit('new-class-register', { classId });
   }
+
+  // Emitir el estado del negocio actualizado
+  sendBusinessStatusUpdated(businessId: string, isOpen: boolean) {
+    this.server.emit('business-schedule-updated', { businessId, isOpen });
+  }
 }
