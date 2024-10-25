@@ -7,9 +7,16 @@ import {
   ApiInternalServerErrorResponse,
   ApiTags
 } from '@nestjs/swagger';
-import { ClassesData, ClassLanguageData, ClassScheduleData, HttpResponse } from 'src/interfaces';
+import {
+  ClassesData,
+  ClassLanguageData,
+  ClassPriceConfigData,
+  ClassScheduleData,
+  HttpResponse
+} from 'src/interfaces';
 import { ClassScheduleService } from 'src/modules/admin/class-schedule/class-schedule.service';
 import { ClassLanguageService } from 'src/modules/admin/class-language/class-language.service';
+import { ClassPriceService } from 'src/modules/admin/class-price/class-price.service';
 
 @ApiTags('Classes')
 @ApiInternalServerErrorResponse({ description: 'Internal server error' })
@@ -22,7 +29,8 @@ export class ClassesController {
   constructor(
     private readonly classesService: ClassesService,
     private readonly classScheduleService: ClassScheduleService,
-    private readonly classLanguageService: ClassLanguageService
+    private readonly classLanguageService: ClassLanguageService,
+    private readonly classPriceService: ClassPriceService
   ) {}
 
   @ApiCreatedResponse({ description: 'Class created' })
@@ -41,5 +49,11 @@ export class ClassesController {
   @Get('/languages')
   findAllLanguages(): Promise<ClassLanguageData[]> {
     return this.classLanguageService.findAll();
+  }
+
+  @ApiBadRequestResponse({ description: 'Not prices class' })
+  @Get('/prices/dolar')
+  findAllPricesDolar(): Promise<ClassPriceConfigData[]> {
+    return this.classPriceService.findClassPriceByTypeCurrency('DOLAR');
   }
 }
