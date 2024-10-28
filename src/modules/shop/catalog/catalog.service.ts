@@ -3,6 +3,7 @@ import { PrismaService } from 'src/prisma/prisma.service';
 import { GetCategoryDto } from './dto/get-category.dto';
 import { CategoryData, ProductData } from 'src/interfaces';
 import { handleException } from 'src/utils';
+import { GetProductDto } from './dto/get-products.dto';
 
 @Injectable()
 export class CatalogService {
@@ -76,6 +77,91 @@ export class CatalogService {
       id: category.id,
       name: category.name,
       quantityProduct: category.products.length
+    }));
+  }
+
+  /**
+   * Obtiene los productos activos y disponibles en base a un filtro.
+   * @param filter - Filtro opcional para buscar por nombre, precio máximo, precio mínimo y nombre de categoría.
+   * @returns Lista de productos activos y disponibles.
+   */
+  async getFilteredProducts(filter: GetProductDto): Promise<ProductData[]> {
+    const whereConditions: any = {
+      isActive: true, // Productos activos
+      isAvailable: true // Productos disponibles
+    };
+
+    if (filter.name) {
+      whereConditions.name = {
+        contains: filter.name,
+        mode: 'insensitive'
+      };
+    }
+
+    if (filter.priceMax !== undefined && filter.priceMin !== undefined) {
+      whereConditions.price = {
+        gte: filter.priceMin,
+        lte: filter.priceMax
+      };
+    }
+
+    if (filter.categoryName) {
+      whereConditions.category = {
+        name: {
+          contains: filter.categoryName,
+          mode: 'insensitive'
+        }
+      };
+    }
+
+    // Consulta para obtener productos activos y disponibles
+    const products = await this.prisma.product.findMany({
+      where: whereConditions,
+      select: {
+        id: true,
+        name: true,
+        description: true,
+        price: true,
+        image: true,
+        isActive: true,
+        isAvailable: true,
+        isRestricted: true,
+        category: {
+          select: {
+            id: true,
+            name: true
+          }
+        },
+        productVariations: {
+          select: {
+            id: true,
+            name: true,
+            description: true,
+            additionalPrice: true
+          }
+        }
+      }
+    });
+
+    return products.map((product) => ({
+      id: product.id,
+      name: product.name,
+      description: product.description,
+      price: product.price,
+      image: product.image,
+      isActive: product.isActive,
+      isAvailable: product.isAvailable,
+      isRestricted: product.isRestricted,
+      category: {
+        id: product.category.id,
+        name: product.category.name
+      },
+      variations: product.productVariations.map((variation) => ({
+        id: variation.id,
+        name: variation.name,
+        description: variation.description,
+        additionalPrice: variation.additionalPrice
+      }))
     }));
   }
 
