@@ -308,4 +308,49 @@ export class CatalogService {
       handleException(error, 'Error getting recommended products');
     }
   }
+
+  /**
+   * Obtiene los productos de una categoría específica por su id.
+   * @param id - Id de la categoría.
+   * @returns Lista de productos de la categoría.
+   */
+  async getProductCategoryById(id: string): Promise<ProductData[]> {
+    const category = await this.prisma.category.findUnique({
+      where: {
+        id
+      },
+      select: {
+        id: true,
+        name: true,
+        products: {
+          select: {
+            id: true,
+            name: true,
+            description: true,
+            price: true,
+            image: true,
+            isActive: true,
+            isAvailable: true,
+            isRestricted: true
+          }
+        }
+      }
+    });
+
+    return category.products.map((product) => ({
+      id: product.id,
+      name: product.name,
+      description: product.description,
+      price: product.price,
+      image: product.image,
+      isActive: product.isActive,
+      isAvailable: product.isAvailable,
+      isRestricted: product.isRestricted,
+      category: {
+        id: category.id,
+        name: category.name
+      },
+      variations: []
+    }));
+  }
 }
