@@ -36,7 +36,7 @@ export class CatalogController {
 
   @Get('products')
   async getProducts(@Query() filter: GetProductDto, @Res() res: Response) {
-    const products = await this.reportsService.getFilteredProducts(filter);
+    const products = await this.catalogService.getFilteredProducts(filter);
     res.json(products);
   }
 
