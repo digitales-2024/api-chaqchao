@@ -61,4 +61,9 @@ export class CatalogController {
     const productCategories = await this.catalogService.getFilteredProductCategory(filter);
     res.json(productCategories);
   }
+  @Get('products-category/:id')
+  async getProductCategoryById(@Param('id') id: string, @Res() res: Response) {
+    const productCategories = await this.catalogService.getProductCategoryById(id);
+    res.json(productCategories);
+  }
 }
