@@ -314,7 +314,7 @@ model Client {
   token        String?
   lastLogin    DateTime  @default(now()) @db.Timestamptz(6)
   isActive     Boolean   @default(true)
-  terms         Boolean   @default(true)
+  terms        Boolean   @default(true)
 
   carts Cart[] @relation("ClientToCart")
 
@@ -472,6 +472,13 @@ model Classes {
   totalPrice         Float
   typeCurrency       TypeCurrency
   comments           String?
+
+  // Campos de Paypal
+  paypalOrderId     String?
+  paypalOrderStatus String?
+  paypalAmount      String?
+  paypalCurrency    String?
+  paypalDate        String?
 
   createdAt DateTime @default(now()) @db.Timestamptz(6)
   updatedAt DateTime @updatedAt
