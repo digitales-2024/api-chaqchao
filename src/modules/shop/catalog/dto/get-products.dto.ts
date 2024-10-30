@@ -3,24 +3,32 @@ import { Transform } from 'class-transformer';
 import { IsNumber, IsOptional, IsString } from 'class-validator';
 
 export class GetProductDto {
-  @ApiProperty()
+  @ApiProperty({
+    required: false
+  })
   @IsOptional()
   @IsString()
   name?: string;
 
-  @ApiProperty()
+  @ApiProperty({
+    required: false
+  })
   @IsOptional()
   @IsNumber()
   @Transform(({ value }) => parseFloat(value))
   priceMax?: number;
 
-  @ApiProperty()
+  @ApiProperty({
+    required: false
+  })
   @IsOptional()
   @IsNumber()
   @Transform(({ value }) => parseFloat(value))
   priceMin?: number;
 
-  @ApiProperty()
+  @ApiProperty({
+    required: false
+  })
   @IsOptional()
   @IsString()
   categoryName?: string;
