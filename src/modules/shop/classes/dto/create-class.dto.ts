@@ -81,4 +81,50 @@ export class CreateClassDto {
   @IsString()
   @Transform(({ value }) => value.trim())
   comments?: string;
+
+  // Campos de PayPal
+  @ApiProperty({
+    name: 'paypalOrderId',
+    description: 'PayPal Order ID',
+    required: false
+  })
+  @IsString()
+  @Transform(({ value }) => value.trim())
+  paypalOrderId?: string;
+
+  @ApiProperty({
+    name: 'paypalOrderStatus',
+    description: 'PayPal Order Status',
+    required: false
+  })
+  @IsString()
+  @Transform(({ value }) => value.trim())
+  paypalOrderStatus?: string;
+
+  @ApiProperty({
+    name: 'paypalAmount',
+    description: 'PayPal Amount',
+    required: false
+  })
+  @IsString()
+  @Transform(({ value }) => value.trim())
+  paypalAmount?: string;
+
+  @ApiProperty({
+    name: 'paypalCurrency',
+    description: 'PayPal Currency',
+    required: false
+  })
+  @IsString()
+  @Transform(({ value }) => value.trim())
+  paypalCurrency?: string;
+
+  @ApiProperty({
+    name: 'paypalDate',
+    description: 'PayPal Date',
+    required: false
+  })
+  @IsString()
+  @Transform(({ value }) => value.trim())
+  paypalDate?: string;
 }

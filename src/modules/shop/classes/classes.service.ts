@@ -233,7 +233,7 @@ export class ClassesService {
 
       const totalParticipants = totalAdults + totalChildren;
 
-      await this.validateClassCreation(
+      this.validateClassCreation(
         currentTime,
         closeBeforeDate,
         finalRegistrationDate,
