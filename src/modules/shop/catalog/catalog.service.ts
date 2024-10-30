@@ -87,8 +87,7 @@ export class CatalogService {
    */
   async getFilteredProducts(filter: GetProductDto): Promise<ProductData[]> {
     const whereConditions: any = {
-      isActive: true, // Productos activos
-      isAvailable: true // Productos disponibles
+      isActive: true // Productos activos
     };
 
     if (filter.name) {
