@@ -5,6 +5,7 @@ import {
   IsDate,
   IsEmail,
   IsNotEmpty,
+  IsOptional,
   IsPhoneNumber,
   IsString,
   Matches,
@@ -62,7 +63,7 @@ export class CreateClientDto {
     required: false
   })
   @IsDate()
-  @Transform(({ value }) => new Date(value))
+  @IsOptional()
   birthDate?: Date;
 
   @ApiProperty({
