@@ -1,20 +1,18 @@
 import {
   BadRequestException,
-  forwardRef,
   HttpStatus,
-  Inject,
   Injectable,
   Logger,
   NotFoundException
 } from '@nestjs/common';
 import { PrismaService } from 'src/prisma/prisma.service';
-import { CartService } from '../cart/cart.service';
 import { handleException } from 'src/utils';
 import { CreateOrderDto } from './dto/create-order.dto';
 import { HttpResponse, OrderInfo } from 'src/interfaces';
 import * as moment from 'moment-timezone';
 import { DayOfWeek } from '@prisma/client';
 import { AdminGateway } from 'src/modules/admin/admin.gateway';
+import { OrdersService } from 'src/modules/admin/orders/orders.service';
 
 @Injectable()
 export class OrderService {
@@ -22,10 +20,8 @@ export class OrderService {
 
   constructor(
     private readonly prisma: PrismaService,
-    @Inject(forwardRef(() => CartService))
-    private readonly cartService: CartService,
-    @Inject(forwardRef(() => AdminGateway))
-    private readonly orderGateway: AdminGateway
+    private readonly orderGateway: AdminGateway,
+    private readonly ordersService: OrdersService
   ) {}
 
   /**
@@ -208,5 +204,21 @@ export class OrderService {
       },
       businessAddress: businessConfig?.address
     };
+  }
+
+  /**
+   * Obtener los pedidos de un cliente
+   * @param id Id del cliente
+   * @returns Pedidos del cliente
+   */
+  async getOrders(id: string): Promise<any> {
+    try {
+      const orders = await this.ordersService.findByClient(id);
+
+      return orders;
+    } catch (error) {
+      this.logger.error(`Error getting orders for client id: ${id}`, error.stack);
+      handleException(error, 'Error getting orders');
+    }
   }
 }
