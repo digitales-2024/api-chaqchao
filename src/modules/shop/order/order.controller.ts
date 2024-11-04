@@ -10,7 +10,8 @@ import { OrderService } from './order.service';
 import { OrderInfo } from 'src/interfaces/order.interface';
 import { CreateOrderDto } from './dto/create-order.dto';
 import { ClientAuth } from '../auth/decorators/client-auth.decorator';
-import { HttpResponse } from 'src/interfaces';
+import { ClientPayload, HttpResponse } from 'src/interfaces';
+import { GetClient } from '../auth/decorators/get-client.decorator';
 
 @ApiTags('Order')
 @ApiUnauthorizedResponse({ description: 'Unauthorized' })
@@ -36,12 +37,9 @@ export class OrderController {
     return this.orderService.getOrderDetails(id);
   }
 
-  //EP el detail del que se loguea
-  /*
-  @ApiOkResponse({ description: 'Get all orders information by client' })
-  @Get('orders/)
-  async getOrderDetails(@GetClient() clientId: ClientData) {
-    return this.orderService.getOrderDetails(clientId);
+  @ApiOkResponse({ description: 'Orders client' })
+  @Get('/orders')
+  async getOrders(@GetClient() client: ClientPayload) {
+    return await this.orderService.getOrders(client.id);
   }
-    */
 }
