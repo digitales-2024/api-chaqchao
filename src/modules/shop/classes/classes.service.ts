@@ -12,7 +12,7 @@ import { ClassScheduleService } from 'src/modules/admin/class-schedule/class-sch
 import { ClassRegistrationService } from 'src/modules/admin/class-registration/class-registration.service';
 import { ClassLanguageService } from 'src/modules/admin/class-language/class-language.service';
 import * as moment from 'moment-timezone';
-import { ClassesData, HttpResponse } from 'src/interfaces';
+import { ClassesData, ClientData, HttpResponse } from 'src/interfaces';
 import { ClassPriceService } from 'src/modules/admin/class-price/class-price.service';
 import { TypedEventEmitter } from 'src/event-emitter/typed-event-emitter.class';
 import { AdminGateway } from 'src/modules/admin/admin.gateway';
@@ -300,6 +300,41 @@ export class ClassesService {
       }
 
       handleException(error, 'Error creating a class');
+    }
+  }
+
+  /**
+   * Mostrar todas las clases del cliente
+   * @param client Data del cliente
+   * @returns Clases encontradas
+   */
+  async findByClient(client: ClientData): Promise<ClassesData[]> {
+    try {
+      const classesDB = await this.prisma.classes.findMany({
+        where: { userEmail: client.email },
+        select: {
+          id: true,
+          userName: true,
+          userEmail: true,
+          userPhone: true,
+          totalParticipants: true,
+          totalAdults: true,
+          totalChildren: true,
+          totalPrice: true,
+          totalPriceAdults: true,
+          totalPriceChildren: true,
+          languageClass: true,
+          typeCurrency: true,
+          dateClass: true,
+          scheduleClass: true,
+          comments: true
+        }
+      });
+
+      return classesDB;
+    } catch (error) {
+      this.logger.error(`Error finding classes by client: ${error.message}`, error.stack);
+      handleException(error, 'Error finding classes by client');
     }
   }
 

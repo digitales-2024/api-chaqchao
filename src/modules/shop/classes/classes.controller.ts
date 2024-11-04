@@ -12,11 +12,14 @@ import {
   ClassLanguageData,
   ClassPriceConfigData,
   ClassScheduleData,
+  ClientData,
   HttpResponse
 } from 'src/interfaces';
 import { ClassScheduleService } from 'src/modules/admin/class-schedule/class-schedule.service';
 import { ClassLanguageService } from 'src/modules/admin/class-language/class-language.service';
 import { ClassPriceService } from 'src/modules/admin/class-price/class-price.service';
+import { GetClient } from '../auth/decorators/get-client.decorator';
+import { ClientAuth } from '../auth/decorators/client-auth.decorator';
 
 @ApiTags('Classes')
 @ApiInternalServerErrorResponse({ description: 'Internal server error' })
@@ -37,6 +40,13 @@ export class ClassesController {
   @Post()
   create(@Body() createClassDto: CreateClassDto): Promise<HttpResponse<ClassesData>> {
     return this.classesService.create(createClassDto);
+  }
+
+  @ApiBadRequestResponse({ description: 'Not found class' })
+  @ClientAuth()
+  @Get('/client')
+  findByClient(@GetClient() client: ClientData): Promise<ClassesData[]> {
+    return this.classesService.findByClient(client);
   }
 
   @ApiBadRequestResponse({ description: 'Not found class' })
