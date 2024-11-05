@@ -11,6 +11,7 @@ import { PaymentModule } from './payment/payment.module';
 import { ClassesModule } from './classes/classes.module';
 import { CatalogModule } from './catalog/catalog.module';
 import { BusinessHoursModule } from './business-hours/business-hours.module';
+import { BusinessModule } from './business/business.module';
 
 @Module({
   imports: [
@@ -25,7 +26,8 @@ import { BusinessHoursModule } from './business-hours/business-hours.module';
     ClassesModule,
     CatalogModule,
     PaymentModule,
-    BusinessHoursModule
+    BusinessHoursModule,
+    BusinessModule
   ]
 })
 export class ShopModule {}
