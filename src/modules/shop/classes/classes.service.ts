@@ -16,7 +16,8 @@ import { ClassesData, ClientData, HttpResponse } from 'src/interfaces';
 import { ClassPriceService } from 'src/modules/admin/class-price/class-price.service';
 import { TypedEventEmitter } from 'src/event-emitter/typed-event-emitter.class';
 import { AdminGateway } from 'src/modules/admin/admin.gateway';
-import { TypeCurrency } from '@prisma/client';
+import { ClassStatus, TypeCurrency } from '@prisma/client';
+import { Cron } from '@nestjs/schedule';
 
 @Injectable()
 export class ClassesService {
@@ -213,16 +214,19 @@ export class ClassesService {
       totalChildren
     );
     const currentTime = moment().tz('America/Lima-5').format('HH:mm');
-
     try {
       const classesScheduleCreated = await this.findClassesByscheduleClass(
         scheduleClass,
         dateClass
       );
-      const totalParticipantsInSchedule = classesScheduleCreated.reduce(
-        (sum, classItem) => sum + classItem.totalParticipants,
-        0
-      );
+      const totalParticipantsInSchedule = classesScheduleCreated.reduce((sum, classItem) => {
+        if (
+          classItem.status === ClassStatus.PENDING ||
+          classItem.status === ClassStatus.CONFIRMED
+        ) {
+          return sum + classItem.totalParticipants;
+        }
+      }, 0);
       const noClassesYet = classesScheduleCreated.length === 0;
 
       this.validateFirstRegistrationLanguageClass(
@@ -248,7 +252,9 @@ export class ClassesService {
           totalPrice,
           totalPriceAdults,
           totalPriceChildren,
-          totalParticipants
+          totalParticipants,
+          status: ClassStatus.PENDING,
+          expiresAt: new Date(Date.now() + 5 * 60 * 1000) // 5 minutes
         },
         select: {
           id: true,
@@ -265,7 +271,8 @@ export class ClassesService {
           typeCurrency: true,
           scheduleClass: true,
           dateClass: true,
-          comments: true
+          comments: true,
+          status: true
         }
       });
 
@@ -327,7 +334,9 @@ export class ClassesService {
           typeCurrency: true,
           dateClass: true,
           scheduleClass: true,
-          comments: true
+          comments: true,
+          status: true,
+          expiresAt: true
         }
       });
 
@@ -362,7 +371,8 @@ export class ClassesService {
           typeCurrency: true,
           dateClass: true,
           scheduleClass: true,
-          comments: true
+          comments: true,
+          status: true
         }
       });
 
@@ -371,5 +381,43 @@ export class ClassesService {
       this.logger.error(`Error finding classes by start time: ${error.message}`, error.stack);
       handleException(error, 'Error finding classes by start time');
     }
+  }
+
+  /**
+   * Tarea programada para cambiar el estado de las clases
+   */
+  @Cron('*/1 * * * *')
+  async cancelExpiredRegistrations() {
+    const now = new Date();
+    const expiredRegistrations = await this.prisma.classes.findMany({
+      where: {
+        expiresAt: { lte: now },
+        status: ClassStatus.PENDING
+      }
+    });
+
+    for (const registration of expiredRegistrations) {
+      await this.prisma.classes.update({
+        where: { id: registration.id },
+        data: { status: ClassStatus.CANCELLED }
+      });
+    }
+  }
+
+  /**
+   * Confirmar la inscripción de una clase despues de realizado el pago
+   * @param classId ID de la clase
+   * @returns Clase confirmada
+   */
+  async confirmClass(classId: string): Promise<HttpResponse<ClassesData>> {
+    const classConfirm = await this.prisma.classes.update({
+      where: { id: classId },
+      data: { status: ClassStatus.CONFIRMED }
+    });
+    return {
+      statusCode: HttpStatus.OK,
+      message: 'Class confirmed successfully',
+      data: classConfirm
+    };
   }
 }

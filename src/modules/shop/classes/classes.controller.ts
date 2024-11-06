@@ -1,10 +1,11 @@
-import { Controller, Post, Body, Get } from '@nestjs/common';
+import { Controller, Post, Body, Get, Patch, Param } from '@nestjs/common';
 import { ClassesService } from './classes.service';
 import { CreateClassDto } from './dto/create-class.dto';
 import {
   ApiBadRequestResponse,
   ApiCreatedResponse,
   ApiInternalServerErrorResponse,
+  ApiOkResponse,
   ApiTags
 } from '@nestjs/swagger';
 import {
@@ -65,5 +66,12 @@ export class ClassesController {
   @Get('/prices/dolar')
   findAllPricesDolar(): Promise<ClassPriceConfigData[]> {
     return this.classPriceService.findClassPriceByTypeCurrency('DOLAR');
+  }
+
+  @ApiBadRequestResponse({ description: 'Not confirm class' })
+  @ApiOkResponse({ description: 'Class confirmed' })
+  @Patch(':id')
+  confirmClass(@Param('id') id: string): Promise<HttpResponse<ClassesData>> {
+    return this.classesService.confirmClass(id);
   }
 }
