@@ -18,6 +18,7 @@ import { TypedEventEmitter } from 'src/event-emitter/typed-event-emitter.class';
 import { AdminGateway } from 'src/modules/admin/admin.gateway';
 import { ClassStatus, TypeCurrency } from '@prisma/client';
 import { Cron } from '@nestjs/schedule';
+import { UpdateClassDto } from './dto/update-class.dto';
 
 @Injectable()
 export class ClassesService {
@@ -412,8 +413,23 @@ export class ClassesService {
    */
   async confirmClass(
     classId: string,
-    classData: CreateClassDto
+    classData: UpdateClassDto
   ): Promise<HttpResponse<ClassesData>> {
+    const existingClass = await this.prisma.classes.findUnique({
+      where: { id: classId }
+    });
+
+    if (!existingClass) {
+      throw new NotFoundException('Class not found');
+    }
+
+    if (existingClass.status === ClassStatus.CONFIRMED) {
+      throw new BadRequestException('Class is already confirmed');
+    }
+    if (existingClass.status === ClassStatus.CANCELLED) {
+      throw new BadRequestException('Class is already cancelled');
+    }
+
     const classConfirm = await this.prisma.classes.update({
       where: { id: classId },
       data: {
@@ -421,6 +437,7 @@ export class ClassesService {
         ...classData
       }
     });
+
     return {
       statusCode: HttpStatus.OK,
       message: 'Class confirmed successfully',
