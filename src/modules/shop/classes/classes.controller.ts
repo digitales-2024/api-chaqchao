@@ -71,7 +71,10 @@ export class ClassesController {
   @ApiBadRequestResponse({ description: 'Not confirm class' })
   @ApiOkResponse({ description: 'Class confirmed' })
   @Patch(':id')
-  confirmClass(@Param('id') id: string): Promise<HttpResponse<ClassesData>> {
-    return this.classesService.confirmClass(id);
+  confirmClass(
+    @Param('id') id: string,
+    @Body() classDto: CreateClassDto
+  ): Promise<HttpResponse<ClassesData>> {
+    return this.classesService.confirmClass(id, classDto);
   }
 }

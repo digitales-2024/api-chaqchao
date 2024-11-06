@@ -407,12 +407,19 @@ export class ClassesService {
   /**
    * Confirmar la inscripción de una clase despues de realizado el pago
    * @param classId ID de la clase
+   * @param class Data de la clase
    * @returns Clase confirmada
    */
-  async confirmClass(classId: string): Promise<HttpResponse<ClassesData>> {
+  async confirmClass(
+    classId: string,
+    classData: CreateClassDto
+  ): Promise<HttpResponse<ClassesData>> {
     const classConfirm = await this.prisma.classes.update({
       where: { id: classId },
-      data: { status: ClassStatus.CONFIRMED }
+      data: {
+        status: ClassStatus.CONFIRMED,
+        ...classData
+      }
     });
     return {
       statusCode: HttpStatus.OK,
