@@ -69,7 +69,8 @@ export class ClassesAdminService {
         typeCurrency: classItem.typeCurrency,
         dateClass: classItem.dateClass,
         scheduleClass: classItem.scheduleClass,
-        comments: classItem.comments
+        comments: classItem.comments,
+        status: classItem.status
       }))
     }));
   }
@@ -100,7 +101,8 @@ export class ClassesAdminService {
           typeCurrency: true,
           dateClass: true,
           scheduleClass: true,
-          comments: true
+          comments: true,
+          status: true
         },
         orderBy: {
           createdAt: 'asc'

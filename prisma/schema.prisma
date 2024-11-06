@@ -472,6 +472,7 @@ model Classes {
   totalPrice         Float
   typeCurrency       TypeCurrency
   comments           String?
+  status             ClassStatus  @default(PENDING)
 
   // Campos de Paypal
   paypalOrderId     String?
@@ -480,6 +481,13 @@ model Classes {
   paypalCurrency    String?
   paypalDate        String?
 
-  createdAt DateTime @default(now()) @db.Timestamptz(6)
-  updatedAt DateTime @updatedAt
+  createdAt DateTime  @default(now()) @db.Timestamptz(6)
+  updatedAt DateTime  @updatedAt
+  expiresAt DateTime?
+}
+
+enum ClassStatus {
+  PENDING
+  CONFIRMED
+  CANCELLED
 }
