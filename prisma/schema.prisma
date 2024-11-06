@@ -278,7 +278,7 @@ model Category {
   id String @id @unique @default(uuid())
 
   name        String  @unique
-  family      Family
+  family      Family  @default(CHOCOLAT)
   description String?
   isActive    Boolean @default(true)
 
