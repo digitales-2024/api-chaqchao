@@ -21,6 +21,7 @@ import { ClassLanguageService } from 'src/modules/admin/class-language/class-lan
 import { ClassPriceService } from 'src/modules/admin/class-price/class-price.service';
 import { GetClient } from '../auth/decorators/get-client.decorator';
 import { ClientAuth } from '../auth/decorators/client-auth.decorator';
+import { UpdateClassDto } from './dto/update-class.dto';
 
 @ApiTags('Classes')
 @ApiInternalServerErrorResponse({ description: 'Internal server error' })
@@ -73,7 +74,7 @@ export class ClassesController {
   @Patch(':id')
   confirmClass(
     @Param('id') id: string,
-    @Body() classDto: CreateClassDto
+    @Body() classDto: UpdateClassDto
   ): Promise<HttpResponse<ClassesData>> {
     return this.classesService.confirmClass(id, classDto);
   }
