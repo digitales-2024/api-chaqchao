@@ -1,10 +1,11 @@
-import { Controller, Post, Body, Get } from '@nestjs/common';
+import { Controller, Post, Body, Get, Patch, Param } from '@nestjs/common';
 import { ClassesService } from './classes.service';
 import { CreateClassDto } from './dto/create-class.dto';
 import {
   ApiBadRequestResponse,
   ApiCreatedResponse,
   ApiInternalServerErrorResponse,
+  ApiOkResponse,
   ApiTags
 } from '@nestjs/swagger';
 import {
@@ -12,11 +13,14 @@ import {
   ClassLanguageData,
   ClassPriceConfigData,
   ClassScheduleData,
+  ClientData,
   HttpResponse
 } from 'src/interfaces';
 import { ClassScheduleService } from 'src/modules/admin/class-schedule/class-schedule.service';
 import { ClassLanguageService } from 'src/modules/admin/class-language/class-language.service';
 import { ClassPriceService } from 'src/modules/admin/class-price/class-price.service';
+import { GetClient } from '../auth/decorators/get-client.decorator';
+import { ClientAuth } from '../auth/decorators/client-auth.decorator';
 
 @ApiTags('Classes')
 @ApiInternalServerErrorResponse({ description: 'Internal server error' })
@@ -40,6 +44,13 @@ export class ClassesController {
   }
 
   @ApiBadRequestResponse({ description: 'Not found class' })
+  @ClientAuth()
+  @Get('/client')
+  findByClient(@GetClient() client: ClientData): Promise<ClassesData[]> {
+    return this.classesService.findByClient(client);
+  }
+
+  @ApiBadRequestResponse({ description: 'Not found class' })
   @Get()
   findAll(): Promise<ClassScheduleData[]> {
     return this.classScheduleService.findAll();
@@ -55,5 +66,15 @@ export class ClassesController {
   @Get('/prices/dolar')
   findAllPricesDolar(): Promise<ClassPriceConfigData[]> {
     return this.classPriceService.findClassPriceByTypeCurrency('DOLAR');
+  }
+
+  @ApiBadRequestResponse({ description: 'Not confirm class' })
+  @ApiOkResponse({ description: 'Class confirmed' })
+  @Patch(':id')
+  confirmClass(
+    @Param('id') id: string,
+    @Body() classDto: CreateClassDto
+  ): Promise<HttpResponse<ClassesData>> {
+    return this.classesService.confirmClass(id, classDto);
   }
 }
