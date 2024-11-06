@@ -17,7 +17,10 @@ export type ClassesData = Pick<
   | 'dateClass'
   | 'scheduleClass'
   | 'comments'
+  | 'status'
 >;
+
+export type ClassesDataWithExpires = ClassesData & { expiresAt: Date };
 
 export type ClassesDataAdmin = {
   dateClass: string;
