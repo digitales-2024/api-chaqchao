@@ -118,12 +118,14 @@ export class CategoryService {
       // Obtener la categoría actual desde la base de datos
       const categoryDB = await this.findById(id);
 
-      const { name, description } = updateCategoryDto;
+      const { name, description, family } = updateCategoryDto;
+      console.log('🚀 ~ CategoryService ~ family:', family);
 
       // Verificar si hay cambios en los datos
       const hasChanges =
         (name && name !== categoryDB.name) ||
-        (description && description !== categoryDB.description);
+        (description && description !== categoryDB.description) ||
+        (family && family !== categoryDB.family);
 
       if (hasChanges) {
         const updatedCategory = await this.prisma.$transaction(async (prisma) => {

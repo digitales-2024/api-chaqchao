@@ -17,5 +17,6 @@ export class UpdateCategoryDto extends PartialType(CreateCategoryDto) {
   description?: string;
 
   @ApiProperty()
+  @IsString()
   family?: Family;
 }

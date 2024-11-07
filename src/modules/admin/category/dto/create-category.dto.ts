@@ -16,5 +16,6 @@ export class CreateCategoryDto {
   description?: string;
 
   @ApiProperty()
+  @IsString()
   family: Family;
 }
