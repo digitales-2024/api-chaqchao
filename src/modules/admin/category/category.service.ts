@@ -77,7 +77,7 @@ export class CategoryService {
       return await this.prisma.category.findMany({
         where: { ...(user.isSuperAdmin ? {} : { isActive: true }) },
         select: { id: true, name: true, description: true, isActive: true, family: true },
-        orderBy: { createdAt: 'asc' }
+        orderBy: { createdAt: 'desc' }
       });
     } catch (error) {
       this.logger.error('Error get all categories');
