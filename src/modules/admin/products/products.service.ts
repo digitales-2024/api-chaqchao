@@ -196,7 +196,7 @@ export class ProductsService {
           }
         },
         orderBy: {
-          createdAt: 'asc'
+          createdAt: 'desc'
         }
       });
 
