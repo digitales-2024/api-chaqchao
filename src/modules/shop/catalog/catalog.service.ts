@@ -23,7 +23,8 @@ export class CatalogService {
       select: {
         id: true,
         name: true,
-        description: true
+        description: true,
+        family: true
       }
     });
 
