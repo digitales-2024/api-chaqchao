@@ -182,7 +182,8 @@ export class ProductsService {
           category: {
             select: {
               id: true,
-              name: true
+              name: true,
+              family: true
             }
           },
           productVariations: {
