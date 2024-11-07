@@ -4,6 +4,7 @@ import { GetCategoryDto } from './dto/get-category.dto';
 import { CategoryData, ProductData } from 'src/interfaces';
 import { handleException } from 'src/utils';
 import { GetProductDto } from './dto/get-products.dto';
+import { Family } from '@prisma/client';
 
 @Injectable()
 export class CatalogService {
@@ -166,6 +167,65 @@ export class CatalogService {
   }
 
   /**
+   * Obtiene los productos de la categoría Merch.
+   * @returns Lista de productos de la categoría Merch.
+   */
+  async getMerch(): Promise<ProductData[]> {
+    const merchProducts = await this.prisma.product.findMany({
+      where: {
+        category: {
+          family: Family.MERCH
+        }
+      },
+      select: {
+        id: true,
+        name: true,
+        description: true,
+        price: true,
+        image: true,
+        isActive: true,
+        isAvailable: true,
+        isRestricted: true,
+        category: {
+          select: {
+            id: true,
+            name: true
+          }
+        },
+        productVariations: {
+          select: {
+            id: true,
+            name: true,
+            description: true,
+            additionalPrice: true
+          }
+        }
+      }
+    });
+
+    return merchProducts.map((product) => ({
+      id: product.id,
+      name: product.name,
+      description: product.description,
+      price: product.price,
+      image: product.image,
+      isActive: product.isActive,
+      isAvailable: product.isAvailable,
+      isRestricted: product.isRestricted,
+      category: {
+        id: product.category.id,
+        name: product.category.name
+      },
+      variations: product.productVariations.map((variation) => ({
+        id: variation.id,
+        name: variation.name,
+        description: variation.description,
+        additionalPrice: variation.additionalPrice
+      }))
+    }));
+  }
+
+  /**
    * Obtiene las categorías activas junto con los nombres de los productos activos y disponibles.
    *
    * @param filter - Filtro opcional para buscar por nombre de categoría.
@@ -263,6 +323,11 @@ export class CatalogService {
         where: {
           categoryId: {
             in: categoryIds
+          },
+          category: {
+            family: {
+              not: Family.MERCH
+            }
           }
         },
         select: {
@@ -289,7 +354,7 @@ export class CatalogService {
             }
           }
         },
-        take: 10 // Limitar el número de recomendaciones
+        take: 4 // Limitar el número de recomendaciones
       });
 
       return recommendations.map((product) => ({
@@ -329,7 +394,11 @@ export class CatalogService {
       const recommendations = await this.prisma.product.findMany({
         where: {
           isActive: true,
-          isAvailable: true
+          category: {
+            family: {
+              not: Family.MERCH
+            }
+          }
         },
         select: {
           id: true,
@@ -365,7 +434,7 @@ export class CatalogService {
             _count: 'desc'
           }
         },
-        take: 10 // Limitar el número de recomendaciones
+        take: 8 // Limitar el número de recomendaciones
       });
 
       return recommendations.map((product) => ({

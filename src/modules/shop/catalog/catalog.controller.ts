@@ -40,6 +40,12 @@ export class CatalogController {
     res.json(products);
   }
 
+  @Get('merch')
+  async getMerch(@Res() res: Response) {
+    const merch = await this.catalogService.getMerch();
+    res.json(merch);
+  }
+
   @Get('/recommend/:id')
   async getRecommendedProducts(@Param() id: string, @Res() res: Response) {
     const products = await this.catalogService.getRecommendedProductsByClient(id);
