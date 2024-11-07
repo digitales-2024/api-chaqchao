@@ -42,7 +42,7 @@ export class CategoryService {
 
       const newCategory = await this.prisma.category.create({
         data: createCategoryDto,
-        select: { id: true, name: true, description: true }
+        select: { id: true, name: true, description: true, family: true }
       });
 
       await this.prisma.audit.create({
@@ -76,7 +76,7 @@ export class CategoryService {
     try {
       return await this.prisma.category.findMany({
         where: { ...(user.isSuperAdmin ? {} : { isActive: true }) },
-        select: { id: true, name: true, description: true, isActive: true },
+        select: { id: true, name: true, description: true, isActive: true, family: true },
         orderBy: { createdAt: 'asc' }
       });
     } catch (error) {
@@ -139,7 +139,8 @@ export class CategoryService {
             select: {
               id: true,
               name: true,
-              description: true
+              description: true,
+              family: true
             }
           });
 
@@ -162,7 +163,8 @@ export class CategoryService {
           data: {
             id: updatedCategory.id,
             name: updatedCategory.name,
-            description: updatedCategory.description
+            description: updatedCategory.description,
+            family: updatedCategory.family
           }
         };
       }
@@ -203,7 +205,7 @@ export class CategoryService {
         // Eliminar la categoría si no tiene productos asignados
         const categoryDelete = await this.prisma.category.delete({
           where: { id },
-          select: { id: true, name: true, description: true }
+          select: { id: true, name: true, description: true, family: true }
         });
 
         // Registrar la auditoría de la eliminación
@@ -238,7 +240,7 @@ export class CategoryService {
         categoryUpdate = await this.prisma.category.update({
           where: { id },
           data: { isActive: false },
-          select: { id: true, name: true, description: true }
+          select: { id: true, name: true, description: true, family: true }
         });
       }
 
@@ -274,7 +276,7 @@ export class CategoryService {
   async findByName(name: string): Promise<CategoryData> {
     const categoryDB = await this.prisma.category.findFirst({
       where: { name },
-      select: { id: true, name: true, description: true, isActive: true }
+      select: { id: true, name: true, description: true, isActive: true, family: true }
     });
 
     if (!!categoryDB && !categoryDB.isActive) {
@@ -297,7 +299,7 @@ export class CategoryService {
   async findById(id: string): Promise<CategoryData> {
     const categoryDB = await this.prisma.category.findFirst({
       where: { id },
-      select: { id: true, name: true, description: true, isActive: true }
+      select: { id: true, name: true, description: true, isActive: true, family: true }
     });
     if (!categoryDB) {
       throw new BadRequestException('This category doesnt exist');
@@ -324,7 +326,8 @@ export class CategoryService {
             id: true,
             name: true,
             description: true,
-            isActive: true
+            isActive: true,
+            family: true
           }
         });
 
@@ -356,7 +359,8 @@ export class CategoryService {
         return {
           id: categoryDB.id,
           name: categoryDB.name,
-          description: categoryDB.description
+          description: categoryDB.description,
+          family: categoryDB.family
         };
       });
 
@@ -386,7 +390,8 @@ export class CategoryService {
             id: true,
             name: true,
             description: true,
-            isActive: true
+            isActive: true,
+            family: true
           }
         });
 
@@ -418,7 +423,9 @@ export class CategoryService {
         return {
           id: categoryDB.id,
           name: categoryDB.name,
-          description: categoryDB.description
+          description: categoryDB.description,
+          isActive: categoryDB.isActive,
+          family: categoryDB.family
         };
       });
 
