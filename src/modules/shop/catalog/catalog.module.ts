@@ -7,6 +7,7 @@ import { CategoryService } from 'src/modules/admin/category/category.service';
 import { ProductVariationService } from 'src/modules/admin/product-variation/product-variation.service';
 import { CloudflareService } from 'src/modules/cloudflare/cloudflare.service';
 import { ReportsService } from 'src/modules/admin/reports/report.service';
+import { AdminGateway } from 'src/modules/admin/admin.gateway';
 
 @Module({
   controllers: [CatalogController],
@@ -16,7 +17,8 @@ import { ReportsService } from 'src/modules/admin/reports/report.service';
     ProductsService,
     CategoryService,
     ProductVariationService,
-    CloudflareService
+    CloudflareService,
+    AdminGateway
   ],
   imports: [PrismaModule]
 })

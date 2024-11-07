@@ -44,4 +44,9 @@ export class AdminGateway implements OnGatewayConnection, OnGatewayDisconnect {
   sendBusinessStatusUpdated(businessId: string, isOpen: boolean) {
     this.server.emit('business-schedule-updated', { businessId, isOpen });
   }
+
+  // Activar o desactivar la disponibilidad de un producto
+  sendProductAvailabilityUpdated(productId: string, isAvailable: boolean) {
+    this.server.emit('product-availability-updated', { productId, isAvailable });
+  }
 }
