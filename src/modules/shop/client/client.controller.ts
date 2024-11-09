@@ -1,4 +1,4 @@
-import { Controller, Get, Body, Patch, Param, Res, Delete } from '@nestjs/common';
+import { Controller, Get, Body, Patch, Param, Res, Delete, Post } from '@nestjs/common';
 import { ClientService } from './client.service';
 import { UpdateClientDto } from './dto/update-client.dto';
 import { ClientData, ClientDataUpdate, ClientPayload, HttpResponse } from 'src/interfaces';
@@ -13,9 +13,7 @@ import { ClientAuth } from '../auth/decorators/client-auth.decorator';
 import { Response } from 'express';
 import { UpdatePasswordClientDto } from './dto/update-password-client.dto';
 
-@ClientAuth()
 @ApiTags('Client Shop')
-@ApiUnauthorizedResponse({ description: 'Unauthorized' })
 @ApiInternalServerErrorResponse({ description: 'Internal server error' })
 @ApiBadRequestResponse({ description: 'Bad request' })
 @Controller({ path: 'shop/client', version: '1' })
@@ -23,12 +21,16 @@ export class ClientController {
   constructor(private readonly clientService: ClientService) {}
 
   @ApiOkResponse({ description: 'Get Client successfully' })
+  @ApiUnauthorizedResponse({ description: 'Unauthorized' })
+  @ClientAuth()
   @Get(':id')
   findOne(@Param('id') id: string): Promise<ClientPayload> {
     return this.clientService.findOne(id);
   }
 
   @ApiOkResponse({ description: 'Client updated successfully' })
+  @ApiUnauthorizedResponse({ description: 'Unauthorized' })
+  @ClientAuth()
   @Patch(':id')
   update(
     @Param('id') id: string,
@@ -37,13 +39,17 @@ export class ClientController {
     return this.clientService.update(id, updateClientDto);
   }
 
+  @ApiOkResponse({ description: 'Client deleted successfully' })
+  @ApiUnauthorizedResponse({ description: 'Unauthorized' })
   @Delete(':id')
+  @ClientAuth()
   async remove(@Param('id') id: string, @Res() res: Response) {
     const result = await this.clientService.remove(id, res);
     return res.status(result.statusCode).json(result);
   }
 
   @ApiOkResponse({ description: 'Client password updated sucessfully' })
+  @ClientAuth()
   @Patch('password/:id')
   async updatePassword(
     @Param('id') id: string,
@@ -53,8 +59,16 @@ export class ClientController {
   }
 
   @ApiOkResponse({ description: 'Client activated successfully' })
+  @ApiUnauthorizedResponse({ description: 'Unauthorized' })
+  @ClientAuth()
   @Patch('activate/:id')
   async activate(@Param('id') id: string): Promise<HttpResponse<ClientData>> {
     return this.clientService.activate(id);
+  }
+
+  @ApiOkResponse({ description: 'Client successfully' })
+  @Post()
+  findByEmail(@Body() body: { email: string }): Promise<ClientData> {
+    return this.clientService.findByEmailInformation(body.email);
   }
 }
