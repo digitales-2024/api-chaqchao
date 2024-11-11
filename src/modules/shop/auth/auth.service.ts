@@ -258,7 +258,7 @@ export class AuthService {
 
         const existEmail = await this.clientService.checkEmailExist(email);
         if (existEmail) {
-          throw new BadRequestException('Email already exists');
+          throw new BadRequestException('email');
         }
 
         const inactiveEmail = await this.clientService.checkEmailInactive(email);
