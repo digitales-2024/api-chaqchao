@@ -1,8 +1,7 @@
 import { Controller, Post, Body, Get, Param } from '@nestjs/common';
 import { CartService } from './cart.service';
 import { CreateCartDto } from './dto/create-cart.dto';
-import { Auth } from 'src/modules/admin/auth/decorators';
-import { CartData, HttpResponse } from 'src/interfaces';
+import { CartData, HttpResponse, ProductData } from 'src/interfaces';
 import {
   ApiBadRequestResponse,
   ApiCreatedResponse,
@@ -11,11 +10,11 @@ import {
   ApiOkResponse,
   ApiNotFoundResponse
 } from '@nestjs/swagger';
+import { CartDto } from './dto/cart.dto';
 
 @ApiTags('Cart')
 @ApiBadRequestResponse({ description: 'Bad Request' })
 @ApiUnauthorizedResponse({ description: 'UnAuthorized' })
-@Auth()
 @Controller({
   path: 'cart',
   version: '1'
@@ -54,5 +53,12 @@ export class CartController {
   @ApiNotFoundResponse({ description: 'Cart not found' })
   async generateAndSendInvoice(@Param('id') id: string): Promise<HttpResponse<CartData>> {
     return this.cartService.generateAndSendInvoice(id);
+  }
+
+  @ApiOkResponse({ description: 'Checkout successfully' })
+  @ApiBadRequestResponse({ description: 'Cart items is not available' })
+  @Post('/validate')
+  async checkout(@Body() cart: CartDto): Promise<HttpResponse<ProductData[]>> {
+    return this.cartService.validateCartItems(cart);
   }
 }

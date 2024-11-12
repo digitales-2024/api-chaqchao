@@ -9,11 +9,12 @@ import {
 } from '@nestjs/common';
 import { PrismaService } from 'src/prisma/prisma.service';
 import { CreateCartDto } from './dto/create-cart.dto';
-import { CartData, HttpResponse } from 'src/interfaces';
+import { CartData, HttpResponse, ProductData } from 'src/interfaces';
 import { ClientService } from '../client/client.service';
 import { handleException } from 'src/utils';
 import * as PDFDocument from 'pdfkit';
 import { writeFileSync } from 'fs';
+import { CartDto } from './dto/cart.dto';
 
 @Injectable()
 export class CartService {
@@ -479,5 +480,40 @@ export class CartService {
       this.logger.error(`Error generating invoice: ${error.message}`, error.stack);
       handleException(error, 'Error generating invoice');
     }
+  }
+
+  /**
+   * Validar que todos los productos del carrito estén disponibles
+   * @param cart Carrito de compras
+   * @returns Si todos los productos están disponibles
+   * @throws Error si no todos los productos están disponibles
+   */
+  async validateCartItems(cart: CartDto): Promise<HttpResponse<ProductData[]>> {
+    // Validar que todos los productos estén disponibles
+    const unavailableProducts = await this.prisma.product.findMany({
+      where: {
+        id: {
+          in: cart.cartItems.map((item) => item)
+        },
+        isAvailable: false
+      },
+      select: {
+        id: true
+      }
+    });
+
+    if (unavailableProducts.length > 0) {
+      throw new BadRequestException({
+        statusCode: HttpStatus.BAD_REQUEST,
+        message: 'available',
+        data: unavailableProducts
+      });
+    }
+
+    return {
+      statusCode: HttpStatus.OK,
+      message: 'Checkout successfully',
+      data: []
+    };
   }
 }
