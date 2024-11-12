@@ -326,7 +326,7 @@ model Client {
   isActive     Boolean   @default(true)
   terms        Boolean   @default(true)
 
-  carts Cart[] @relation("ClientToCart")
+  orders Order[] @relation("ClientToOrder")
 
   // Relación con Notification
   notifications Notification[] @relation("ClientToNotificationRelation")
@@ -337,10 +337,6 @@ model Client {
 
 model Cart {
   id String @id @unique @default(uuid())
-
-  // Relación con Client
-  clientId String
-  client   Client @relation(fields: [clientId], references: [id], name: "ClientToCart", map: "FK_Cart_Client")
 
   cartItems CartItem[] @relation("CartToCartItem")
 
@@ -353,7 +349,6 @@ model Cart {
 }
 
 enum CartStatus {
-  ACTIVE
   PENDING
   COMPLETED
 }
@@ -377,6 +372,10 @@ model CartItem {
 
 model Order {
   id String @id @unique @default(uuid())
+
+  // Relación con Client
+  clientId String
+  client   Client @relation(fields: [clientId], references: [id], name: "ClientToOrder", map: "FK_Cart_Client")
 
   // Relación con Cart
   cartId String @unique
@@ -403,7 +402,6 @@ model Order {
 
 enum OrderStatus {
   PENDING
-  CONFIRMED
   READY
   COMPLETED
   CANCELLED
