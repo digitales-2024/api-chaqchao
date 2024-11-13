@@ -442,6 +442,11 @@ enum PaymentStatus {
   FAILED
 }
 
+model PickupCodeSequence {
+  id         Int @id @default(1)
+  currentSeq Int @default(0)
+}
+
 model Notification {
   id               String           @id @unique @default(uuid())
   description      String?
