@@ -357,7 +357,6 @@ model Cart {
 enum CartStatus {
   PENDING
   COMPLETED
-  CANCELLED
 }
 
 model CartItem {
