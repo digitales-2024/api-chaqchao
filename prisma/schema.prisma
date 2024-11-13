@@ -344,9 +344,14 @@ model Cart {
 
   order Order? @relation(name: "CartToOrder")
 
-  cartStatus CartStatus
-  createdAt  DateTime   @default(now()) @db.Timestamptz(6)
-  updatedAt  DateTime   @updatedAt
+  cartStatus   CartStatus @default(PENDING)
+  createdAt    DateTime   @default(now()) @db.Timestamptz(6)
+  updatedAt    DateTime   @updatedAt
+  lastAccessed DateTime   @default(now())
+
+  @@index([clientId])
+  @@index([cartStatus])
+  @@index([lastAccessed])
 }
 
 enum CartStatus {
@@ -359,8 +364,8 @@ model CartItem {
   id String @id @unique @default(uuid())
 
   // Relación con Cart
-  cartId String
   cart   Cart   @relation(fields: [cartId], references: [id], name: "CartToCartItem")
+  cartId String
 
   // Relación con Product
   productId String
@@ -370,13 +375,16 @@ model CartItem {
   price     Float
   createdAt DateTime @default(now()) @db.Timestamptz(6)
   updatedAt DateTime @updatedAt
+
+  @@index([cartId])
+  @@index([productId])
 }
 
 model Order {
   id     String @id @unique @default(uuid())
   // Relación con Cart
-  cartId String @unique
   cart   Cart   @relation(fields: [cartId], references: [id], name: "CartToOrder")
+  cartId String @unique
 
   customerName  String
   customerEmail String
@@ -399,6 +407,8 @@ model Order {
 
   // Relación con BillingDocument
   billingDocuments BillingDocument[] @relation("OrderToBilling")
+
+  @@index([cartId])
 }
 
 enum OrderStatus {
