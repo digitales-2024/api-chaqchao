@@ -1,28 +1,39 @@
-import { IsString, IsEmail, IsOptional } from 'class-validator';
+import { IsString, IsEmail, IsOptional, IsBoolean, IsDate } from 'class-validator';
 import { ApiProperty } from '@nestjs/swagger';
 
 export class CreateOrderDto {
-  @ApiProperty({ description: 'Customer name', type: String })
+  @ApiProperty({ description: 'Nombre del cliente', type: String })
   @IsString()
   customerName: string;
 
-  @ApiProperty({ description: 'Customer email', type: String })
+  @ApiProperty({ description: 'Correo electrónico del cliente', type: String })
   @IsEmail()
   customerEmail: string;
 
-  @ApiProperty({ description: 'Customer phone', type: String, required: false })
+  @ApiProperty({ description: 'Teléfono del cliente', type: String, required: false })
   @IsOptional()
   @IsString()
   customerPhone?: string;
 
-  @ApiProperty({ description: 'Picktime of order', type: String })
-  pickupTime: Date;
+  @ApiProperty({
+    description: 'Indica si alguien recogerá la orden',
+    type: Boolean,
+    required: false
+  })
+  @IsOptional()
+  @IsBoolean()
+  someonePickup?: boolean;
 
-  @ApiProperty({ description: 'Someone Pickup ', type: String, default: false })
-  someonePickup: boolean;
-
-  @ApiProperty({ description: 'Comments', type: String, required: false })
+  @ApiProperty({ description: 'Comentarios adicionales', type: String, required: false })
   @IsOptional()
   @IsString()
   comments?: string;
+
+  @ApiProperty({
+    description: 'Hora programada para la recogida',
+    type: String,
+    format: 'date-time'
+  })
+  @IsDate()
+  pickupTime: Date;
 }
