@@ -6,7 +6,6 @@ import {
   OnGatewayDisconnect
 } from '@nestjs/websockets';
 import { Socket, Server } from 'socket.io';
-import { OrderInfo } from 'src/interfaces';
 
 @WebSocketGateway(Number(process.env.WEBSOCKET_PORT) || 5000, {
   cors: true,
@@ -28,7 +27,7 @@ export class AdminGateway implements OnGatewayConnection, OnGatewayDisconnect {
 
   // Pedidos
   // Emitir la creación de un nuevo pedido a los clientes
-  sendOrderCreated(order: OrderInfo) {
+  sendOrderCreated(order: string) {
     this.server.emit('new-order', order);
   }
   // Actualizar el estado de un pedido
