@@ -335,22 +335,18 @@ model Client {
 }
 
 model Cart {
-  id String @id @unique @default(uuid())
-
-  clientId String?
-  client   Client? @relation(fields: [clientId], references: [id], name: "ClientToCart")
-
-  cartItems CartItem[] @relation("CartToCartItem")
-
-  order Order? @relation(name: "CartToOrder")
-
+  id           String     @id @unique @default(uuid())
+  clientId     String? // Asociado a un usuario autenticado
+  client       Client?    @relation("ClientToCart", fields: [clientId], references: [id], onDelete: Cascade)
+  cartItems    CartItem[] @relation("CartToCartItem")
+  order        Order?     @relation("CartToOrder")
+  orderId      String? // FK a Order
   cartStatus   CartStatus @default(PENDING)
-  createdAt    DateTime   @default(now()) @db.Timestamptz(6)
+  createdAt    DateTime   @default(now())
   updatedAt    DateTime   @updatedAt
   lastAccessed DateTime   @default(now())
 
   @@index([clientId])
-  @@index([cartStatus])
   @@index([lastAccessed])
 }
 
