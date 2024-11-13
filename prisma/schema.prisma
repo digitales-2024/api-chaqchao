@@ -336,6 +336,7 @@ model Client {
 
 model Cart {
   id           String     @id @unique @default(uuid())
+  tempId       String?    @unique
   clientId     String? // Asociado a un usuario autenticado
   client       Client?    @relation("ClientToCart", fields: [clientId], references: [id], onDelete: Cascade)
   cartItems    CartItem[] @relation("CartToCartItem")
