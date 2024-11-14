@@ -69,8 +69,8 @@ export class CartService {
    * @param createCartDto Datos para crear el carrito.
    * @param clientId ID del cliente autenticado (opcional).
    */
-  async createCart(createCartDto: CreateCartDto, clientId?: string) {
-    const { cartStatus = CartStatus.PENDING } = createCartDto;
+  async createCart(createCartDto: CreateCartDto, clientId?: string): Promise<{ id: string }> {
+    const { cartStatus = CartStatus.PENDING, tempId } = createCartDto;
 
     // Verificar si el cliente autenticado ya tiene un carrito activo
     if (clientId) {
@@ -84,14 +84,27 @@ export class CartService {
       if (existingCart) {
         throw new BadRequestException('The client already has an active cart.');
       }
+    } else if (tempId) {
+      const existingCart = await this.prisma.cart.findFirst({
+        where: {
+          tempId: tempId,
+          cartStatus: CartStatus.PENDING
+        }
+      });
+
+      if (existingCart) {
+        throw new BadRequestException('A cart with this tempId already exists.');
+      }
     }
 
-    return this.prisma.cart.create({
+    const cart = await this.prisma.cart.create({
       data: {
         clientId: clientId || null,
+        tempId: tempId || null,
         cartStatus
       }
     });
+    return { id: cart.id };
   }
 
   /**
@@ -126,7 +139,7 @@ export class CartService {
     const { productId, quantity = 1 } = addCartItemDto;
 
     const cart = await this.prisma.cart.findUnique({
-      where: { id: cartId },
+      where: { tempId: cartId },
       include: { cartItems: true }
     });
 
@@ -140,13 +153,18 @@ export class CartService {
 
     // Actualizar lastAccessed
     await this.prisma.cart.update({
-      where: { id: cartId },
+      where: { tempId: cartId },
       data: { lastAccessed: new Date() }
     });
 
     const existingItem = cart.cartItems.find((item) => item.productId === productId);
     if (existingItem) {
       // Actualizar la cantidad del ítem existente
+      const newQuantity = existingItem.quantity + quantity;
+      if (MAX_QUANTITY < newQuantity) {
+        throw new BadRequestException('Not enough stock for the product.');
+      }
+
       return this.prisma.cartItem.update({
         where: { id: existingItem.id },
         data: { quantity: existingItem.quantity + quantity }
@@ -168,7 +186,7 @@ export class CartService {
       // Crear un nuevo ítem en el carrito
       return this.prisma.cartItem.create({
         data: {
-          cartId,
+          cartId: cart.id,
           productId,
           quantity,
           price: product.price
@@ -193,7 +211,7 @@ export class CartService {
     const { quantity } = updateCartItemDto;
 
     const cart = await this.prisma.cart.findUnique({
-      where: { id: cartId },
+      where: { tempId: cartId },
       include: { cartItems: true }
     });
 
@@ -201,7 +219,7 @@ export class CartService {
       throw new BadRequestException('Invalid or inactive cart.');
     }
 
-    const cartItem = cart.cartItems.find((item) => item.id === cartItemId);
+    const cartItem = cart.cartItems.find((item) => item.productId === cartItemId);
     if (!cartItem) {
       throw new BadRequestException('Cart item not found.');
     }
@@ -212,14 +230,14 @@ export class CartService {
 
     // Actualizar lastAccessed
     await this.prisma.cart.update({
-      where: { id: cartId },
+      where: { tempId: cartId },
       data: { lastAccessed: new Date() }
     });
 
     if (quantity < 1) {
       // Eliminar el ítem si la cantidad es menor que 1
       return this.prisma.cartItem.delete({
-        where: { id: cartItemId }
+        where: { id: cartItem.id }
       });
     }
 
@@ -238,7 +256,7 @@ export class CartService {
 
     // Actualizar la cantidad del ítem
     return this.prisma.cartItem.update({
-      where: { id: cartItemId },
+      where: { id: cartItem.id },
       data: { quantity }
     });
   }
@@ -251,7 +269,7 @@ export class CartService {
    */
   async removeCartItem(cartId: string, cartItemId: string, clientId?: string) {
     const cart = await this.prisma.cart.findUnique({
-      where: { id: cartId },
+      where: { tempId: cartId },
       include: { cartItems: true }
     });
 
@@ -259,7 +277,7 @@ export class CartService {
       throw new BadRequestException('Invalid or inactive cart.');
     }
 
-    const cartItem = cart.cartItems.find((item) => item.id === cartItemId);
+    const cartItem = cart.cartItems.find((item) => item.productId === cartItemId);
     if (!cartItem) {
       throw new BadRequestException('Cart item not found.');
     }
@@ -270,12 +288,12 @@ export class CartService {
 
     // Actualizar lastAccessed
     await this.prisma.cart.update({
-      where: { id: cartId },
+      where: { tempId: cartId },
       data: { lastAccessed: new Date() }
     });
 
     return this.prisma.cartItem.delete({
-      where: { id: cartItemId }
+      where: { id: cartItem.id }
     });
   }
 

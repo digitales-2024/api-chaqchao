@@ -1,4 +1,4 @@
-import { Controller, Post, Body, Get, Param, Req, Patch, Delete } from '@nestjs/common';
+import { Controller, Post, Body, Get, Param, Patch, Delete } from '@nestjs/common';
 import { CartService } from './cart.service';
 import { CreateCartDto } from './dto/create-cart.dto';
 import { ClientData, HttpResponse, ProductData } from 'src/interfaces';
@@ -25,8 +25,8 @@ export class CartController {
   @Post()
   @ApiOperation({ summary: 'Crear un nuevo carrito' })
   @ApiResponse({ status: 201, description: 'Carrito creado exitosamente.' })
-  async createCart(@Body() createCartDto: CreateCartDto, @Req() req) {
-    const clientId = req.user ? req.user.id : null;
+  async createCart(@Body() createCartDto: CreateCartDto, @GetClient() client: ClientData) {
+    const clientId = client ? client.id : null;
     return this.cartsService.createCart(createCartDto, clientId);
   }
 
@@ -86,6 +86,16 @@ export class CartController {
   ) {
     const clientId = client ? client.id : null;
     return this.cartsService.removeCartItem(cartId, itemId, clientId);
+  }
+  /**
+   * Fusionar dos carritos
+   */
+  @Post(':id/merge')
+  @ApiOperation({ summary: 'Fusionar dos carritos' })
+  @ApiResponse({ status: 200, description: 'Carritos fusionados correctamente.' })
+  async mergeCarts(@Body() anonCartId: string, @GetClient() client: ClientData) {
+    const clientId = client ? client.id : null;
+    return this.cartsService.mergeCarts(anonCartId, clientId);
   }
 
   /**
