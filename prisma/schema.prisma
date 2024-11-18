@@ -316,6 +316,7 @@ model ProductVariation {
 model Client {
   id           String    @id @unique @default(uuid())
   name         String
+  lastName     String?
   email        String    @unique
   phone        String?
   password     String?
@@ -382,9 +383,10 @@ model Order {
   cart   Cart   @relation(fields: [cartId], references: [id], name: "CartToOrder")
   cartId String @unique
 
-  customerName  String
-  customerEmail String
-  customerPhone String
+  customerName     String
+  customerLastName String
+  customerEmail    String
+  customerPhone    String
 
   pickupCode    String?     @unique
   totalAmount   Float?
@@ -422,14 +424,20 @@ model BillingDocument {
   order   Order  @relation(fields: [orderId], references: [id], name: "OrderToBilling")
 
   billingDocumentType BillingDocumentType
+  typeDocument        String
   documentNumber      String
-  ruc                 String?
-  issuedAt            DateTime
-  totalAmount         Float
-  paymentStatus       PaymentStatus
-  isActive            Boolean             @default(true)
-  createdAt           DateTime            @default(now()) @db.Timestamptz(6)
-  updatedAt           DateTime            @updatedAt
+  address             String
+  city                String
+  state               String
+  country             String
+  postalCode          String
+
+  issuedAt      DateTime
+  totalAmount   Float
+  paymentStatus PaymentStatus
+  isActive      Boolean       @default(true)
+  createdAt     DateTime      @default(now()) @db.Timestamptz(6)
+  updatedAt     DateTime      @updatedAt
 }
 
 enum BillingDocumentType {
