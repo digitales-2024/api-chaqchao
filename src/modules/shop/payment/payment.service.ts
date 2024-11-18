@@ -10,10 +10,8 @@ export class PaymentService {
   private readonly apiUrl: string;
 
   constructor(private configService: ConfigService) {
-    // this.apiUrl =
-    //   this.configService.get<string>('IZIPAY_API_URL') ||
-    //   'https://sandbox-checkout.izipay.pe/apidemo/v1';
-    this.apiUrl = 'https://sandbox-checkout.izipay.pe';
+    this.apiUrl =
+      this.configService.get<string>('IZIPAY_API_URL') || 'https://sandbox-api-pw.izipay.pe';
   }
 
   /**
@@ -25,7 +23,7 @@ export class PaymentService {
   async generateToken(transactionId: string, body: GenerateTokenDto): Promise<any> {
     try {
       return new Promise((resolve, reject) => {
-        const url = new URL('/apidemo/v1/Token/Generate', this.apiUrl);
+        const url = new URL('/security/v1/Token/Generate', this.apiUrl);
 
         const options: https.RequestOptions = {
           hostname: url.hostname,

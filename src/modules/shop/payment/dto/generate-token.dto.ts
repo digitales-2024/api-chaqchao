@@ -10,7 +10,7 @@ export class GenerateTokenDto {
    * Fuente de la solicitud.
    * @example "web"
    */
-  @ApiProperty({ example: 'web', description: 'Fuente de la solicitud.' })
+  @ApiProperty({ example: 'ECOMMERCE', description: 'Fuente de la solicitud.' })
   @IsNotEmpty()
   @IsString()
   requestSource: string;
@@ -38,7 +38,7 @@ export class GenerateTokenDto {
    * @example "MIIBIjANBgkqhkiG9w0BAQEFAAOCAQ8AMIIBCgKCAQEA..."
    */
   @ApiProperty({
-    example: 'MIIBIjANBgkqhkiG9w0BAQEFAAOCAQ8AMIIBCgKCAQEA...',
+    example: 'MIIBIjANBgkqhkiG9w0BAQEFAAOCAQ8AMIIBCgKCAQEA',
     description: 'Clave pública.'
   })
   @IsNotEmpty()
@@ -49,7 +49,7 @@ export class GenerateTokenDto {
    * Monto de la transacción.
    * @example 100.50
    */
-  @ApiProperty({ example: '100.5', description: 'Monto de la transacción.' })
+  @ApiProperty({ example: '10.50', description: 'Monto de la transacción.' })
   @IsNotEmpty()
   @IsString()
   amount: string;
