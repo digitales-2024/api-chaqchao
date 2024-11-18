@@ -3,8 +3,8 @@ import { OrderController } from './order.controller';
 import { OrderService } from './order.service';
 import { PrismaModule } from 'src/prisma/prisma.module';
 import { CartModule } from '../cart/cart.module';
-import { AdminGateway } from 'src/modules/admin/admin.gateway';
 import { OrdersService } from 'src/modules/admin/orders/orders.service';
+import { AdminGateway } from 'src/modules/admin/admin.gateway';
 
 @Module({
   controllers: [OrderController],

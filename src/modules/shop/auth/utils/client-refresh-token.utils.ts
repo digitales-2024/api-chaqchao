@@ -30,8 +30,6 @@ export class ClientRefreshTokenStrategy extends PassportStrategy(Strategy, 'clie
       throw new UnauthorizedException('Client Refresh token is missing');
     }
 
-    console.log('payload', payload);
-
     // 2. Verificar que el usuario existe
     await this.clientService.findById(payload.id);
 

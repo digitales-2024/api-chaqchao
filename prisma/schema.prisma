@@ -326,34 +326,32 @@ model Client {
   isActive     Boolean   @default(true)
   terms        Boolean   @default(true)
 
-  carts Cart[] @relation("ClientToCart")
-
   // Relación con Notification
   notifications Notification[] @relation("ClientToNotificationRelation")
 
   createdAt DateTime @default(now()) @db.Timestamptz(6)
   updatedAt DateTime @updatedAt
+  carts     Cart[]   @relation("ClientToCart")
 }
 
 model Cart {
-  id String @id @unique @default(uuid())
+  id           String     @id @unique @default(uuid())
+  tempId       String?    @unique
+  clientId     String? // Asociado a un usuario autenticado
+  client       Client?    @relation("ClientToCart", fields: [clientId], references: [id], onDelete: Cascade)
+  cartItems    CartItem[] @relation("CartToCartItem")
+  order        Order?     @relation("CartToOrder")
+  orderId      String? // FK a Order
+  cartStatus   CartStatus @default(PENDING)
+  createdAt    DateTime   @default(now())
+  updatedAt    DateTime   @updatedAt
+  lastAccessed DateTime   @default(now())
 
-  // Relación con Client
-  clientId String
-  client   Client @relation(fields: [clientId], references: [id], name: "ClientToCart", map: "FK_Cart_Client")
-
-  cartItems CartItem[] @relation("CartToCartItem")
-
-  // Relación opuesta con Order
-  order Order? @relation(name: "CartToOrder")
-
-  cartStatus CartStatus
-  createdAt  DateTime   @default(now()) @db.Timestamptz(6)
-  updatedAt  DateTime   @updatedAt
+  @@index([clientId])
+  @@index([lastAccessed])
 }
 
 enum CartStatus {
-  ACTIVE
   PENDING
   COMPLETED
 }
@@ -362,8 +360,8 @@ model CartItem {
   id String @id @unique @default(uuid())
 
   // Relación con Cart
-  cartId String
   cart   Cart   @relation(fields: [cartId], references: [id], name: "CartToCartItem")
+  cartId String
 
   // Relación con Product
   productId String
@@ -373,14 +371,20 @@ model CartItem {
   price     Float
   createdAt DateTime @default(now()) @db.Timestamptz(6)
   updatedAt DateTime @updatedAt
+
+  @@index([cartId])
+  @@index([productId])
 }
 
 model Order {
-  id String @id @unique @default(uuid())
-
+  id     String @id @unique @default(uuid())
   // Relación con Cart
-  cartId String @unique
   cart   Cart   @relation(fields: [cartId], references: [id], name: "CartToOrder")
+  cartId String @unique
+
+  customerName  String
+  customerEmail String
+  customerPhone String
 
   pickupCode    String?     @unique
   totalAmount   Float?
@@ -399,11 +403,12 @@ model Order {
 
   // Relación con BillingDocument
   billingDocuments BillingDocument[] @relation("OrderToBilling")
+
+  @@index([cartId])
 }
 
 enum OrderStatus {
   PENDING
-  CONFIRMED
   READY
   COMPLETED
   CANCELLED
@@ -436,6 +441,11 @@ enum PaymentStatus {
   PAID
   PENDING
   FAILED
+}
+
+model PickupCodeSequence {
+  id         Int @id @default(1)
+  currentSeq Int @default(0)
 }
 
 model Notification {

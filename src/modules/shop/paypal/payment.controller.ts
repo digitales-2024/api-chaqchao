@@ -21,7 +21,6 @@ export class PaymentController {
       await this.paymentService.savePaymentDetails(orderId, captureData);
       return captureData;
     } catch (error) {
-      console.log('Error capturing PayPal order:', error);
       throw error;
     }
   }

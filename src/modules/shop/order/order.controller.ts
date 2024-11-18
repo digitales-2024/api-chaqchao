@@ -5,12 +5,10 @@ import {
   ApiTags,
   ApiUnauthorizedResponse
 } from '@nestjs/swagger';
-import { Body, Controller, Get, Param, Post } from '@nestjs/common';
+import { Controller, Get, Param } from '@nestjs/common';
 import { OrderService } from './order.service';
-import { OrderInfo } from 'src/interfaces/order.interface';
-import { CreateOrderDto } from './dto/create-order.dto';
 import { ClientAuth } from '../auth/decorators/client-auth.decorator';
-import { ClientPayload, HttpResponse } from 'src/interfaces';
+import { ClientPayload } from 'src/interfaces';
 import { GetClient } from '../auth/decorators/get-client.decorator';
 
 @ApiTags('Order')
@@ -24,12 +22,6 @@ import { GetClient } from '../auth/decorators/get-client.decorator';
 })
 export class OrderController {
   constructor(private readonly orderService: OrderService) {}
-
-  @ApiOkResponse({ description: 'Order Created' })
-  @Post()
-  create(@Body() createOrderDto: CreateOrderDto): Promise<HttpResponse<OrderInfo>> {
-    return this.orderService.create(createOrderDto);
-  }
 
   @ApiOkResponse({ description: 'Get paid order information' })
   @Get('details/:id')

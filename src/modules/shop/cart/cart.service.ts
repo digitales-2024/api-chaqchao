@@ -4,17 +4,23 @@ import {
   HttpStatus,
   BadRequestException,
   NotFoundException,
-  Inject,
-  forwardRef
+  ForbiddenException
 } from '@nestjs/common';
 import { PrismaService } from 'src/prisma/prisma.service';
 import { CreateCartDto } from './dto/create-cart.dto';
 import { CartData, HttpResponse, ProductData } from 'src/interfaces';
-import { ClientService } from '../client/client.service';
 import { handleException } from 'src/utils';
 import * as PDFDocument from 'pdfkit';
 import { writeFileSync } from 'fs';
 import { CartDto } from './dto/cart.dto';
+import { CartStatus, DayOfWeek, OrderStatus } from '@prisma/client';
+import { AddCartItemDto } from './dto/add-cart-item.dto';
+import { MAX_QUANTITY } from 'src/constants/cart';
+import { UpdateCartItemDto } from './dto/update-cart-item.dto';
+import { CreateOrderDto } from './dto/create-order.dto';
+import { PickupCodeService } from './pickup-code/pickup-code.service';
+import moment from 'moment';
+import { AdminGateway } from 'src/modules/admin/admin.gateway';
 
 @Injectable()
 export class CartService {
@@ -22,8 +28,8 @@ export class CartService {
 
   constructor(
     private readonly prisma: PrismaService,
-    @Inject(forwardRef(() => ClientService))
-    private readonly clientService: ClientService
+    private readonly pickupCodeService: PickupCodeService,
+    private readonly orderGateway: AdminGateway
   ) {}
 
   /**
@@ -59,73 +65,420 @@ export class CartService {
   }
 
   /**
-   * Creacion de un nuevo carrito de compras
-   * @param createCartDto Data del carrito de compras
-   * @param user Usuario que crea el carrito de compras
-   * @returns Carrito de compras creado
+   * Crear un nuevo carrito.
+   * @param createCartDto Datos para crear el carrito.
+   * @param clientId ID del cliente autenticado (opcional).
    */
-  async create(createCartDto: CreateCartDto): Promise<HttpResponse<CartData>> {
-    const { clientId, cartStatus = 'PENDING' } = createCartDto;
-    let newCart;
+  async createCart(createCartDto: CreateCartDto, clientId?: string): Promise<{ id: string }> {
+    const { cartStatus = CartStatus.PENDING, tempId } = createCartDto;
 
-    try {
-      // Validar el cliente si se proporciona un clientId
-      if (clientId) {
-        const cartDB = await this.clientService.findById(clientId);
-        if (!cartDB) {
-          throw new BadRequestException('Invalid clientId provided');
+    // Verificar si el cliente autenticado ya tiene un carrito activo
+    if (clientId) {
+      const existingCart = await this.prisma.cart.findFirst({
+        where: {
+          clientId: clientId,
+          cartStatus: CartStatus.PENDING
         }
-      }
-
-      // Crear el carro de compras
-      newCart = await this.prisma.$transaction(async () => {
-        // Crear el nuevo carro de compras
-        const cart = await this.prisma.cart.create({
-          data: {
-            clientId,
-            cartStatus: cartStatus || 'PENDING' // Pone PENDING si el status no es proveido
-          },
-          select: {
-            id: true,
-            cartStatus: true,
-            client: {
-              select: {
-                id: true,
-                name: true
-              }
-            }
-          }
-        });
-
-        return cart;
       });
 
-      return {
-        statusCode: HttpStatus.CREATED,
-        message: 'Cart created successfully',
-        data: {
-          id: newCart.id,
-          clientId: newCart.clientId,
-          cartStatus: newCart.cartStatus,
-          client: {
-            id: newCart.client.id,
-            name: newCart.client.name
-          }
+      if (existingCart) {
+        throw new BadRequestException('The client already has an active cart.');
+      }
+    } else if (tempId) {
+      const existingCart = await this.prisma.cart.findFirst({
+        where: {
+          tempId: tempId,
+          cartStatus: CartStatus.PENDING
         }
-      };
-    } catch (error) {
-      this.logger.error(`Error creating Cart: ${error.message}`, error.stack);
+      });
 
-      if (newCart) {
-        await this.prisma.cart.delete({ where: { id: newCart.id } });
-        this.logger.error('Cart with ID ${newCart.id} has been deleted due to error in creation.');
+      if (existingCart) {
+        throw new BadRequestException('A cart with this tempId already exists.');
+      }
+    }
+
+    const cart = await this.prisma.cart.create({
+      data: {
+        clientId: clientId || null,
+        tempId: tempId || null,
+        cartStatus
+      }
+    });
+    return { id: cart.id };
+  }
+
+  /**
+   * Obtener un carrito por su ID.
+   * @param id ID del carrito.
+   * @param requesterClientId ID del cliente que realiza la solicitud (opcional).
+   */
+  async getCartById(id: string, requesterClientId?: string) {
+    const cart = await this.prisma.cart.findUnique({
+      where: { id },
+      include: { cartItems: true }
+    });
+
+    if (!cart) {
+      throw new NotFoundException('Cart not found.');
+    }
+
+    if (cart.clientId && requesterClientId !== cart.clientId) {
+      throw new ForbiddenException('You do not have access to this cart.');
+    }
+
+    return cart;
+  }
+
+  /**
+   * Agregar un ítem al carrito.
+   * @param cartId ID del carrito.
+   * @param addCartItemDto Datos del ítem a agregar.
+   * @param clientId ID del cliente autenticado (opcional).
+   */
+  async addItemToCart(cartId: string, addCartItemDto: AddCartItemDto, clientId?: string) {
+    const { productId, quantity = 1 } = addCartItemDto;
+
+    const cart = await this.prisma.cart.findUnique({
+      where: { tempId: cartId },
+      include: { cartItems: true }
+    });
+
+    if (!cart || cart.cartStatus !== CartStatus.PENDING) {
+      throw new BadRequestException('Invalid or inactive cart.');
+    }
+
+    if (cart.clientId && clientId !== cart.clientId) {
+      throw new ForbiddenException('You do not have permission to modify this cart.');
+    }
+
+    // Actualizar lastAccessed
+    await this.prisma.cart.update({
+      where: { tempId: cartId },
+      data: { lastAccessed: new Date() }
+    });
+
+    const existingItem = cart.cartItems.find((item) => item.productId === productId);
+    if (existingItem) {
+      // Actualizar la cantidad del ítem existente
+      const newQuantity = existingItem.quantity + quantity;
+      if (MAX_QUANTITY < newQuantity) {
+        throw new BadRequestException('Not enough stock for the product.');
       }
 
-      if (error instanceof BadRequestException || error instanceof NotFoundException) {
-        throw error;
+      return this.prisma.cartItem.update({
+        where: { id: existingItem.id },
+        data: { quantity: existingItem.quantity + quantity }
+      });
+    } else {
+      // Verificar si el producto existe y tiene stock
+      const product = await this.prisma.product.findUnique({
+        where: { id: productId }
+      });
+
+      if (!product) {
+        throw new BadRequestException('Product not found.');
       }
 
-      handleException(error, 'Error creating a Cart');
+      if (MAX_QUANTITY < quantity) {
+        throw new BadRequestException('Not enough stock for the product.');
+      }
+
+      // Crear un nuevo ítem en el carrito
+      return this.prisma.cartItem.create({
+        data: {
+          cartId: cart.id,
+          productId,
+          quantity,
+          price: product.price
+        }
+      });
+    }
+  }
+
+  /**
+   * Actualizar la cantidad de un ítem en el carrito.
+   * @param cartId ID del carrito.
+   * @param cartItemId ID del ítem en el carrito.
+   * @param updateCartItemDto Datos para actualizar el ítem.
+   * @param clientId ID del cliente autenticado (opcional).
+   */
+  async updateCartItem(
+    cartId: string,
+    cartItemId: string,
+    updateCartItemDto: UpdateCartItemDto,
+    clientId?: string
+  ) {
+    const { quantity } = updateCartItemDto;
+
+    const cart = await this.prisma.cart.findUnique({
+      where: { tempId: cartId },
+      include: { cartItems: true }
+    });
+
+    if (!cart || cart.cartStatus !== CartStatus.PENDING) {
+      throw new BadRequestException('Invalid or inactive cart.');
+    }
+
+    const cartItem = cart.cartItems.find((item) => item.productId === cartItemId);
+    if (!cartItem) {
+      throw new BadRequestException('Cart item not found.');
+    }
+
+    if (cart.clientId && clientId !== cart.clientId) {
+      throw new ForbiddenException('You do not have permission to modify this cart.');
+    }
+
+    // Actualizar lastAccessed
+    await this.prisma.cart.update({
+      where: { tempId: cartId },
+      data: { lastAccessed: new Date() }
+    });
+
+    if (quantity < 1) {
+      // Eliminar el ítem si la cantidad es menor que 1
+      return this.prisma.cartItem.delete({
+        where: { id: cartItem.id }
+      });
+    }
+
+    // Verificar stock disponible
+    const product = await this.prisma.product.findUnique({
+      where: { id: cartItem.productId }
+    });
+
+    if (!product) {
+      throw new BadRequestException('Product not found.');
+    }
+
+    if (MAX_QUANTITY < quantity) {
+      throw new BadRequestException('Not enough stock for the product.');
+    }
+
+    // Actualizar la cantidad del ítem
+    return this.prisma.cartItem.update({
+      where: { id: cartItem.id },
+      data: { quantity }
+    });
+  }
+
+  /**
+   * Eliminar un ítem del carrito.
+   * @param cartId ID del carrito.
+   * @param cartItemId ID del ítem en el carrito.
+   * @param clientId ID del cliente autenticado (opcional).
+   */
+  async removeCartItem(cartId: string, cartItemId: string, clientId?: string) {
+    const cart = await this.prisma.cart.findUnique({
+      where: { tempId: cartId },
+      include: { cartItems: true }
+    });
+
+    if (!cart || cart.cartStatus !== CartStatus.PENDING) {
+      throw new BadRequestException('Invalid or inactive cart.');
+    }
+
+    const cartItem = cart.cartItems.find((item) => item.productId === cartItemId);
+    if (!cartItem) {
+      throw new BadRequestException('Cart item not found.');
+    }
+
+    if (cart.clientId && clientId !== cart.clientId) {
+      throw new ForbiddenException('You do not have permission to modify this cart.');
+    }
+
+    // Actualizar lastAccessed
+    await this.prisma.cart.update({
+      where: { tempId: cartId },
+      data: { lastAccessed: new Date() }
+    });
+
+    return this.prisma.cartItem.delete({
+      where: { id: cartItem.id }
+    });
+  }
+
+  /**
+   * Completar la compra del carrito y crear una orden.
+   * @param cartId ID del carrito.
+   * @param createOrderDto Datos para crear la orden.
+   * @param clientId ID del cliente autenticado (opcional).
+   */
+  async completeCart(cartId: string, createOrderDto: CreateOrderDto, clientId?: string) {
+    const cart = await this.prisma.cart.findUnique({
+      where: { id: cartId },
+      include: { cartItems: true }
+    });
+
+    if (!cart || cart.cartStatus !== CartStatus.PENDING) {
+      throw new BadRequestException('Invalid or inactive cart.');
+    }
+
+    if (cart.clientId && clientId !== cart.clientId) {
+      throw new ForbiddenException('You do not have permission to complete this cart.');
+    }
+
+    if (cart.cartItems.length === 0) {
+      throw new BadRequestException('The cart is empty.');
+    }
+
+    // Verificar stock y actualizar inventario
+    for (const item of cart.cartItems) {
+      const product = await this.prisma.product.findUnique({
+        where: { id: item.productId }
+      });
+
+      if (!product) {
+        throw new BadRequestException(`Product with ID ${item.productId} not found.`);
+      }
+
+      if (MAX_QUANTITY < item.quantity) {
+        throw new BadRequestException(`Not enough stock for the product ${product.name}.`);
+      }
+    }
+
+    // Calcular el monto total
+    const totalAmount = cart.cartItems.reduce(
+      (total, item) => total + item.price * item.quantity,
+      0
+    );
+
+    // Obtener la dirección de la empresa
+    const bussinessAddress = await this.prisma.businessConfig.findFirst({
+      select: {
+        address: true
+      }
+    });
+
+    // Generar el pickupCode
+    const pickupCode = await this.pickupCodeService.generatePickupCode();
+
+    // Obtener el día actual de la semana
+    const today = moment().format('dddd').toUpperCase() as DayOfWeek;
+
+    const businessHours = await this.prisma.businessHours.findFirst({
+      where: { dayOfWeek: today, isOpen: true }
+    });
+
+    if (!businessHours) {
+      throw new BadRequestException('The business is closed today.');
+    }
+
+    // Validar si la hora actual está dentro del rango de horarios permitidos
+    const currentTime = moment.utc(createOrderDto.pickupTime).tz('America/Lima').format('HH:mm');
+    if (currentTime < businessHours.openingTime || currentTime > businessHours.closingTime) {
+      throw new BadRequestException('Orders cannot be placed outside business hours.');
+    }
+
+    // Crear la orden
+    const order = await this.prisma.order.create({
+      data: {
+        cartId: cart.id,
+        customerName: createOrderDto.customerName,
+        customerEmail: createOrderDto.customerEmail,
+        customerPhone: createOrderDto.customerPhone || '',
+        someonePickup: createOrderDto.someonePickup,
+        comments: createOrderDto.comments || '',
+        pickupTime: createOrderDto.pickupTime,
+        pickupCode: pickupCode,
+        totalAmount: totalAmount,
+        orderStatus: OrderStatus.PENDING,
+        pickupAddress: bussinessAddress.address || ''
+      }
+    });
+
+    // Actualizar el estado del carrito a COMPLETED y vincular la orden
+    await this.prisma.cart.update({
+      where: { id: cart.id },
+      data: {
+        cartStatus: CartStatus.COMPLETED,
+        orderId: order.id
+      }
+    });
+
+    this.orderGateway.sendOrderCreated(order.id);
+
+    return order;
+  }
+
+  /**
+   * Eliminar un carrito.
+   * @param cartId ID del carrito.
+   * @param clientId ID del cliente autenticado (opcional).
+   */
+  async deleteCart(cartId: string, clientId?: string) {
+    const cart = await this.prisma.cart.findUnique({
+      where: { id: cartId }
+    });
+
+    if (!cart) {
+      throw new BadRequestException('Cart not found.');
+    }
+
+    if (cart.clientId && clientId !== cart.clientId) {
+      throw new ForbiddenException('You do not have permission to delete this cart.');
+    }
+
+    return this.prisma.cart.delete({
+      where: { id: cartId }
+    });
+  }
+
+  /**
+   * Fusión de carritos al autenticarse.
+   * @param anonCartId ID del carrito anónimo.
+   * @param authClientId ID del cliente autenticado.
+   */
+  async mergeCarts(anonCartId: string, authClientId: string) {
+    const anonCart = await this.prisma.cart.findUnique({
+      where: { id: anonCartId },
+      include: { cartItems: true }
+    });
+
+    if (!anonCart || anonCart.cartStatus !== CartStatus.PENDING) {
+      throw new BadRequestException('Invalid or inactive anonymous cart.');
+    }
+
+    const authCart = await this.prisma.cart.findFirst({
+      where: {
+        clientId: authClientId,
+        cartStatus: CartStatus.PENDING
+      },
+      include: { cartItems: true }
+    });
+
+    if (authCart) {
+      // Fusionar ítems
+      for (const anonItem of anonCart.cartItems) {
+        const existingItem = authCart.cartItems.find(
+          (item) => item.productId === anonItem.productId
+        );
+        if (existingItem) {
+          // Actualizar cantidad
+          await this.prisma.cartItem.update({
+            where: { id: existingItem.id },
+            data: { quantity: existingItem.quantity + anonItem.quantity }
+          });
+        } else {
+          // Transferir ítem al carrito autenticado
+          await this.prisma.cartItem.update({
+            where: { id: anonItem.id },
+            data: { cartId: authCart.id }
+          });
+        }
+      }
+
+      // Eliminar el carrito anónimo
+      await this.prisma.cart.delete({
+        where: { id: anonCartId }
+      });
+
+      return authCart;
+    } else {
+      // Asignar el carrito anónimo al cliente autenticado
+      return this.prisma.cart.update({
+        where: { id: anonCartId },
+        data: { clientId: authClientId }
+      });
     }
   }
 
@@ -261,7 +614,7 @@ export class CartService {
         throw new NotFoundException(`Cart with ID ${id} not found`);
       }
 
-      if (cart.cartStatus !== 'ACTIVE') {
+      if (cart.cartStatus !== CartStatus.PENDING) {
         throw new BadRequestException('Cart is not in a valid state for cancellation');
       }
 
