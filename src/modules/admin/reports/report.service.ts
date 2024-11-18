@@ -770,7 +770,6 @@ export class ReportsService {
 
       return productsWithDetails;
     } catch (error) {
-      console.log('Error getting top products', error);
       if (error instanceof BadRequestException || error instanceof NotFoundException) {
         throw error;
       }

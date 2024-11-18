@@ -138,8 +138,6 @@ export class CartItemService {
           age--;
         }
 
-        console.log(`La edad del cliente es: ${age}`);
-
         // Verificar si el producto está restringido por edad y el cliente es menor de edad
         if (product.isRestricted && age < 18) {
           throw new BadRequestException('El cliente es menor de edad para comprar este producto');

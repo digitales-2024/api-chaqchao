@@ -119,8 +119,6 @@ export class CategoryService {
       const categoryDB = await this.findById(id);
 
       const { name, description, family } = updateCategoryDto;
-      console.log('🚀 ~ CategoryService ~ family:', family);
-
       // Verificar si hay cambios en los datos
       const hasChanges =
         (name && name !== categoryDB.name) ||
@@ -200,8 +198,6 @@ export class CategoryService {
 
       // Obtener todos los productos asociados a la categoría
       const productsDB = await this.productsService.findProductsByIdCategory(id);
-      console.log('🚀 ~ CategoryService ~ remove ~ productsDB:', productsDB);
-
       // Verificar si no hay productos asignados
       if (productsDB.length === 0) {
         // Eliminar la categoría si no tiene productos asignados
