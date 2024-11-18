@@ -319,6 +319,7 @@ model Client {
   lastName     String?
   email        String    @unique
   phone        String?
+  image        String?
   password     String?
   birthDate    DateTime?
   isGoogleAuth Boolean?
