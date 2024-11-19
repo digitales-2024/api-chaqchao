@@ -8,7 +8,13 @@ export type BillingDocumentData = Pick<
   | 'paymentStatus'
   | 'totalAmount'
   | 'billingDocumentType'
-  | 'ruc'
+  | 'issuedAt'
+  | 'typeDocument'
+  | 'address'
+  | 'city'
+  | 'state'
+  | 'country'
+  | 'postalCode'
 > & {
   order: { id: string };
 };
