@@ -13,6 +13,7 @@ import {
 import { ClientAuth } from '../auth/decorators/client-auth.decorator';
 import { Response } from 'express';
 import { UpdatePasswordClientDto } from './dto/update-password-client.dto';
+import { FindClientByEmailDto } from './dto/find-client-by-email.dto';
 
 @ApiTags('Shop Client')
 @ApiInternalServerErrorResponse({ description: 'Internal server error' })
@@ -29,7 +30,7 @@ export class ClientController {
   @ApiOkResponse({ description: 'Obtenga el cliente con éxito' })
   @ApiUnauthorizedResponse({ description: 'No autorizado' })
   @ClientAuth()
-  findOne(@Param('id') id: string): Promise<ClientPayload> {
+  async findOne(@Param('id') id: string): Promise<ClientPayload> {
     return this.clientService.findOne(id);
   }
 
@@ -42,7 +43,7 @@ export class ClientController {
   @ApiOkResponse({ description: 'Cliente actualizada con éxito' })
   @ApiUnauthorizedResponse({ description: 'No autorizado' })
   @ClientAuth()
-  update(
+  async update(
     @Param('id') id: string,
     @Body() updateClientDto: UpdateClientDto
   ): Promise<HttpResponse<ClientDataUpdate>> {
@@ -92,11 +93,22 @@ export class ClientController {
   /**
    * Buscar un cliente por su email
    */
-  @Post()
+  @Get('email/:email')
   @ApiOperation({ summary: 'Buscar un cliente por su email' })
   @ApiOkResponse({ description: 'Cliente encontrador con éxito' })
   @ApiBadRequestResponse({ description: 'Solicitud incorrecta' })
-  async findByEmail(@Body() body: { email: string }): Promise<ClientData> {
-    return this.clientService.findByEmailInformation(body.email);
+  async findByEmail(@Param('email') email: string): Promise<ClientData> {
+    return this.clientService.findByEmailInformation(email);
+  }
+
+  /**
+   * Compruebe si la cliente existe por su email
+   */
+  @Post('email')
+  @ApiOperation({ summary: 'Compruebe si la cliente existe por su email' })
+  @ApiOkResponse({ description: 'Cliente encontrado con éxito' })
+  @ApiBadRequestResponse({ description: 'Solicitud incorrecta' })
+  async existByEmail(@Body() body: FindClientByEmailDto): Promise<boolean> {
+    return this.clientService.checkEmailExist(body.email);
   }
 }
