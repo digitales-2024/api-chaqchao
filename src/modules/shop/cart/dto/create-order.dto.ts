@@ -6,6 +6,10 @@ export class CreateOrderDto {
   @IsString()
   customerName: string;
 
+  @ApiProperty({ description: 'Apellido del cliente', type: String })
+  @IsString()
+  customerLastName: string;
+
   @ApiProperty({ description: 'Correo electrónico del cliente', type: String })
   @IsEmail()
   customerEmail: string;

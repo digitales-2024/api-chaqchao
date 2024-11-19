@@ -374,6 +374,7 @@ export class CartService {
       data: {
         cartId: cart.id,
         customerName: createOrderDto.customerName,
+        customerLastName: createOrderDto.customerLastName || '',
         customerEmail: createOrderDto.customerEmail,
         customerPhone: createOrderDto.customerPhone || '',
         someonePickup: createOrderDto.someonePickup,
