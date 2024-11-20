@@ -9,8 +9,9 @@ import { AddCartItemDto } from './dto/add-cart-item.dto';
 import { UpdateCartItemDto } from './dto/update-cart-item.dto';
 import { CreateOrderDto } from './dto/create-order.dto';
 import { GetClient } from '../auth/decorators/get-client.decorator';
+import { DeleteItemDto } from './dto/delete-item';
 
-@ApiTags('Cart')
+@ApiTags('Shop Cart')
 @Controller({
   path: 'cart',
   version: '1'
@@ -19,15 +20,27 @@ export class CartController {
   constructor(private readonly cartsService: CartService) {}
 
   /**
+   * Verificar que el cliente tenga un carrito activo.
+   * Si no lo tiene, se crea uno.
+   * Si el cliente es anónimo, se crea un carrito anónimo.
+   */
+  @Get('check')
+  @ApiOperation({ summary: 'Verificar carrito activo del cliente' })
+  @ApiResponse({ status: 200, description: 'Carrito verificado correctamente.' })
+  async checkCart(@GetClient() client: ClientData) {
+    const clientId = client ? client.id : null;
+    return this.cartsService.checkCart(clientId);
+  }
+
+  /**
    * Crear un nuevo carrito.
    * Puede ser para un usuario anónimo o autenticado.
    */
   @Post()
   @ApiOperation({ summary: 'Crear un nuevo carrito' })
   @ApiResponse({ status: 201, description: 'Carrito creado exitosamente.' })
-  async createCart(@Body() createCartDto: CreateCartDto, @GetClient() client: ClientData) {
-    const clientId = client ? client.id : null;
-    return this.cartsService.createCart(createCartDto, clientId);
+  async createCart(@Body() createCartDto: CreateCartDto) {
+    return this.cartsService.createCart(createCartDto);
   }
 
   /**
@@ -48,13 +61,8 @@ export class CartController {
   @Post(':id/items')
   @ApiOperation({ summary: 'Agregar un ítem al carrito' })
   @ApiResponse({ status: 201, description: 'Ítem agregado correctamente.' })
-  async addItemToCart(
-    @Param('id') cartId: string,
-    @Body() addCartItemDto: AddCartItemDto,
-    @GetClient() client: ClientData
-  ) {
-    const clientId = client ? client.id : null;
-    return this.cartsService.addItemToCart(cartId, addCartItemDto, clientId);
+  async addItemToCart(@Param('id') cartId: string, @Body() addCartItemDto: AddCartItemDto) {
+    return this.cartsService.addItemToCart(cartId, addCartItemDto);
   }
 
   /**
@@ -66,26 +74,23 @@ export class CartController {
   async updateCartItem(
     @Param('id') cartId: string,
     @Param('itemId') itemId: string,
-    @Body() updateCartItemDto: UpdateCartItemDto,
-    @GetClient() client: ClientData
+    @Body() updateCartItemDto: UpdateCartItemDto
   ) {
-    const clientId = client ? client.id : null;
-    return this.cartsService.updateCartItem(cartId, itemId, updateCartItemDto, clientId);
+    return this.cartsService.updateCartItem(cartId, itemId, updateCartItemDto);
   }
 
   /**
    * Eliminar un ítem del carrito.
    */
-  @Delete(':id/items/:itemId')
+  @Delete(':id/items/:itemId/delete')
   @ApiOperation({ summary: 'Eliminar un ítem del carrito' })
   @ApiResponse({ status: 200, description: 'Ítem eliminado correctamente.' })
   async removeCartItem(
     @Param('id') cartId: string,
     @Param('itemId') itemId: string,
-    @GetClient() client: ClientData
+    @Body() client: DeleteItemDto
   ) {
-    const clientId = client ? client.id : null;
-    return this.cartsService.removeCartItem(cartId, itemId, clientId);
+    return this.cartsService.removeCartItem(cartId, itemId, client);
   }
   /**
    * Fusionar dos carritos
@@ -93,7 +98,9 @@ export class CartController {
   @Post(':id/merge')
   @ApiOperation({ summary: 'Fusionar dos carritos' })
   @ApiResponse({ status: 200, description: 'Carritos fusionados correctamente.' })
-  async mergeCarts(@Body() anonCartId: string, @GetClient() client: ClientData) {
+  @ClientAuth()
+  async mergeCarts(@Param('id') anonCartId: string, @GetClient() client: ClientData) {
+    console.log('🚀 ~ CartController ~ mergeCarts ~ client:', client);
     const clientId = client ? client.id : null;
     return this.cartsService.mergeCarts(anonCartId, clientId);
   }

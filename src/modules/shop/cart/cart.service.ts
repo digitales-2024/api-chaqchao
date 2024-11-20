@@ -21,6 +21,8 @@ import { CreateOrderDto } from './dto/create-order.dto';
 import { PickupCodeService } from './pickup-code/pickup-code.service';
 import moment from 'moment';
 import { AdminGateway } from 'src/modules/admin/admin.gateway';
+import { DeleteItemDto } from './dto/delete-item';
+import { Cron } from '@nestjs/schedule';
 
 @Injectable()
 export class CartService {
@@ -67,10 +69,9 @@ export class CartService {
   /**
    * Crear un nuevo carrito.
    * @param createCartDto Datos para crear el carrito.
-   * @param clientId ID del cliente autenticado (opcional).
    */
-  async createCart(createCartDto: CreateCartDto, clientId?: string): Promise<{ id: string }> {
-    const { cartStatus = CartStatus.PENDING, tempId } = createCartDto;
+  async createCart(createCartDto: CreateCartDto): Promise<{ id: string }> {
+    const { cartStatus = CartStatus.PENDING, tempId, clientId } = createCartDto;
 
     // Verificar si el cliente autenticado ya tiene un carrito activo
     if (clientId) {
@@ -133,10 +134,9 @@ export class CartService {
    * Agregar un ítem al carrito.
    * @param cartId ID del carrito.
    * @param addCartItemDto Datos del ítem a agregar.
-   * @param clientId ID del cliente autenticado (opcional).
    */
-  async addItemToCart(cartId: string, addCartItemDto: AddCartItemDto, clientId?: string) {
-    const { productId, quantity = 1 } = addCartItemDto;
+  async addItemToCart(cartId: string, addCartItemDto: AddCartItemDto) {
+    const { productId, quantity = 1, clientId } = addCartItemDto;
 
     const cart = await this.prisma.cart.findUnique({
       where: { tempId: cartId },
@@ -202,13 +202,8 @@ export class CartService {
    * @param updateCartItemDto Datos para actualizar el ítem.
    * @param clientId ID del cliente autenticado (opcional).
    */
-  async updateCartItem(
-    cartId: string,
-    cartItemId: string,
-    updateCartItemDto: UpdateCartItemDto,
-    clientId?: string
-  ) {
-    const { quantity } = updateCartItemDto;
+  async updateCartItem(cartId: string, cartItemId: string, updateCartItemDto: UpdateCartItemDto) {
+    const { quantity, clientId } = updateCartItemDto;
 
     const cart = await this.prisma.cart.findUnique({
       where: { tempId: cartId },
@@ -265,9 +260,11 @@ export class CartService {
    * Eliminar un ítem del carrito.
    * @param cartId ID del carrito.
    * @param cartItemId ID del ítem en el carrito.
-   * @param clientId ID del cliente autenticado (opcional).
+   * @param deleteItem ID del cliente autenticado (opcional).
    */
-  async removeCartItem(cartId: string, cartItemId: string, clientId?: string) {
+  async removeCartItem(cartId: string, cartItemId: string, deleteItem: DeleteItemDto) {
+    const { clientId } = deleteItem;
+
     const cart = await this.prisma.cart.findUnique({
       where: { tempId: cartId },
       include: { cartItems: true }
@@ -520,6 +517,28 @@ export class CartService {
         name: cartDB.client.name
       }
     };
+  }
+
+  /**
+   * Validar si el cliente tiene un carrito activo
+   * @param clientId ID del cliente
+   * @returns Si el cliente tiene un carrito activo
+   */
+  async checkCart(clientId: string): Promise<boolean> {
+    try {
+      // Buscar un carrito activo para el cliente
+      const cart = await this.prisma.cart.findFirst({
+        where: {
+          clientId,
+          cartStatus: CartStatus.PENDING
+        }
+      });
+
+      return !!cart;
+    } catch (error) {
+      this.logger.error(`Error checking cart: ${error.message}`, error.stack);
+      handleException(error, 'Error checking cart');
+    }
   }
 
   /**
@@ -869,5 +888,44 @@ export class CartService {
       message: 'Checkout successfully',
       data: []
     };
+  }
+
+  /**
+   * Cron para poder eliminar aquellos carritos que no han sido utilizados en 24 horas y que estén en estado PENDING
+   */
+  @Cron('0 0 1 * *') // Se ejecuta cada minuto
+  async handleCron() {
+    try {
+      // Buscar carritos pendientes que no han sido utilizados en 24 horas
+      const carts = await this.prisma.cart.findMany({
+        where: {
+          cartStatus: CartStatus.PENDING,
+          lastAccessed: {
+            lt: new Date(new Date().getTime() - 15 * 24 * 60 * 60 * 1000) // Hace 15 dias
+          }
+        },
+        select: {
+          id: true
+        }
+      });
+      console.log('🚀 ~ CartService ~ handleCron ~ carts:', carts);
+
+      // Eliminamos los items de los carritos encontrados
+      for (const cart of carts) {
+        await this.prisma.cartItem.deleteMany({
+          where: { cartId: cart.id }
+        });
+      }
+
+      // Eliminar los carritos encontrados
+      for (const cart of carts) {
+        await this.prisma.cart.delete({
+          where: { id: cart.id }
+        });
+      }
+    } catch (error) {
+      this.logger.error(`Error during cron job: ${error.message}`, error.stack);
+      handleException(error, 'Error during cron job');
+    }
   }
 }
