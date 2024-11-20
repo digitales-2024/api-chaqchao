@@ -3,7 +3,7 @@ import { IsInt, IsOptional, IsUUID, Min } from 'class-validator';
 
 export class AddCartItemDto {
   @ApiProperty({
-    description: 'Id of product to add to cart',
+    description: 'ID del producto para agregar al carrito',
     type: String,
     format: 'uuid'
   })
@@ -11,7 +11,7 @@ export class AddCartItemDto {
   productId: string;
 
   @ApiProperty({
-    description: 'Quantity of product to add to cart',
+    description: 'Cantidad de producto para agregar al carrito',
     type: Number,
     default: 1,
     required: false
@@ -20,4 +20,13 @@ export class AddCartItemDto {
   @IsInt()
   @Min(1)
   quantity?: number;
+
+  @ApiProperty({
+    description: 'ID del cliente para agregar al carrito',
+    type: String,
+    required: false
+  })
+  @IsOptional()
+  @IsUUID()
+  clientId?: string;
 }
