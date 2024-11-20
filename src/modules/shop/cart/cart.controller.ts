@@ -99,10 +99,7 @@ export class CartController {
   @Post(':id/merge')
   @ApiOperation({ summary: 'Fusionar dos carritos' })
   @ApiResponse({ status: 200, description: 'Carritos fusionados correctamente.' })
-  @ClientAuth()
-  async mergeCarts(@Param('id') anonCartId: string, @GetClient() client: ClientData) {
-    console.log('🚀 ~ CartController ~ mergeCarts ~ client:', client);
-    const clientId = client ? client.id : null;
+  async mergeCarts(@Param('id') anonCartId: string, @Body() clientId?: string) {
     return this.cartsService.mergeCarts(anonCartId, clientId);
   }
 
