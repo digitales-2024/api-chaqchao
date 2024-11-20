@@ -23,6 +23,7 @@ import moment from 'moment';
 import { AdminGateway } from 'src/modules/admin/admin.gateway';
 import { DeleteItemDto } from './dto/delete-item';
 import { Cron } from '@nestjs/schedule';
+import { CartDataComplet } from 'src/interfaces/cart.interface';
 
 @Injectable()
 export class CartService {
@@ -143,6 +144,7 @@ export class CartService {
       include: { cartItems: true }
     });
 
+    // Verificar si el carrito es válido
     if (!cart || cart.cartStatus !== CartStatus.PENDING) {
       throw new BadRequestException('Invalid or inactive cart.');
     }
@@ -888,6 +890,63 @@ export class CartService {
       message: 'Checkout successfully',
       data: []
     };
+  }
+
+  /**
+   * Buscar carrito por tempId
+   * @param tempId Temporal ID del carrito
+   * @returns Carrito encontrado
+   */
+  async getCartByTempId(tempId: string): Promise<HttpResponse<CartDataComplet>> {
+    try {
+      // Buscar el carrito por tempId
+      const cart = await this.prisma.cart.findFirst({
+        where: {
+          tempId
+        },
+        select: {
+          id: true,
+          clientId: true,
+          cartStatus: true,
+          cartItems: {
+            select: {
+              id: true,
+              quantity: true,
+              price: true,
+              product: {
+                select: {
+                  id: true,
+                  name: true,
+                  price: true
+                }
+              }
+            }
+          }
+        }
+      });
+
+      if (!cart) {
+        throw new NotFoundException('Cart not found');
+      }
+
+      return {
+        statusCode: HttpStatus.OK,
+        message: 'Cart found',
+        data: {
+          id: cart.id,
+          clientId: cart.clientId,
+          cartStatus: cart.cartStatus,
+          items: cart.cartItems.map((item) => ({
+            id: item.id,
+            quantity: item.quantity,
+            productId: item.product.id
+          }))
+        }
+      };
+    } catch (error) {
+      this.logger.error(`Error getting cart by tempId: ${error.message}`, error.stack);
+      handleException(error, 'Error getting cart by tempId');
+    }
   }
 
   /**

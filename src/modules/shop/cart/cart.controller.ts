@@ -10,6 +10,7 @@ import { UpdateCartItemDto } from './dto/update-cart-item.dto';
 import { CreateOrderDto } from './dto/create-order.dto';
 import { GetClient } from '../auth/decorators/get-client.decorator';
 import { DeleteItemDto } from './dto/delete-item';
+import { CartDataComplet } from 'src/interfaces/cart.interface';
 
 @ApiTags('Shop Cart')
 @Controller({
@@ -140,5 +141,15 @@ export class CartController {
   @ApiResponse({ status: 200, description: 'Productos disponibles' })
   async checkout(@Body() cart: CartDto): Promise<HttpResponse<ProductData[]>> {
     return this.cartsService.validateCartItems(cart);
+  }
+
+  /**
+   * Buscar el carrito por tempId
+   */
+  @Post('temp/:tempId')
+  @ApiOperation({ summary: 'Buscar carrito por tempId' })
+  @ApiResponse({ status: 200, description: 'Carrito encontrado' })
+  async getCartByTempId(@Param('tempId') tempId: string): Promise<HttpResponse<CartDataComplet>> {
+    return this.cartsService.getCartByTempId(tempId);
   }
 }
