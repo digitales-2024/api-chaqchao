@@ -1,7 +1,15 @@
-// src/payment/payment.controller.ts
-import { Controller, Post, Body, Param } from '@nestjs/common';
+import {
+  Controller,
+  Post,
+  Body,
+  HttpStatus,
+  Res,
+  BadRequestException,
+  InternalServerErrorException
+} from '@nestjs/common';
 import { PaymentService } from './payment.service';
-import { GenerateTokenDto } from './dto/generate-token.dto';
+import { CreatePaymentDto } from './dto/create-payment.dto';
+import { Response } from 'express';
 
 @Controller({
   path: 'payment',
@@ -11,22 +19,24 @@ export class PaymentController {
   constructor(private readonly paymentService: PaymentService) {}
 
   /**
-   * Endpoint para generar un token de Izipay
-   * POST /token
+   * Ruta para crear un pago
+   * POST /cart
+   * @param createPaymentDto Datos del pago
+   * @param res Objeto de respuesta de Express
    */
-  @Post(':transactionId')
-  async generateToken(
-    @Param('transactionId') transactionId: string,
-    @Body() generateTokenDto: GenerateTokenDto
-  ) {
+  @Post()
+  async createPayment(@Body() createPaymentDto: CreatePaymentDto, @Res() res: Response) {
     try {
-      const tokenResponse = await this.paymentService.generateToken(
-        transactionId,
-        generateTokenDto
-      );
-      return tokenResponse;
+      const formToken = await this.paymentService.createPayment(createPaymentDto);
+      res.status(HttpStatus.OK).send(formToken);
     } catch (error) {
-      throw error; // El servicio ya maneja las excepciones
+      // Si el error ya es una excepción de NestJS, simplemente re-lanzarla
+      if (error instanceof BadRequestException || error instanceof InternalServerErrorException) {
+        res.status(error.getStatus()).send(error.message);
+      } else {
+        // Para otros errores, enviar un error genérico
+        res.status(HttpStatus.INTERNAL_SERVER_ERROR).send('Internal server error');
+      }
     }
   }
 }
