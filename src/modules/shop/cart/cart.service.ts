@@ -897,7 +897,7 @@ export class CartService {
    * @param tempId Temporal ID del carrito
    * @returns Carrito encontrado
    */
-  async getCartByTempId(tempId: string): Promise<HttpResponse<CartDataComplet>> {
+  async getCartByTempId(tempId: string): Promise<CartDataComplet | boolean> {
     try {
       // Buscar el carrito por tempId
       const cart = await this.prisma.cart.findFirst({
@@ -926,22 +926,18 @@ export class CartService {
       });
 
       if (!cart) {
-        throw new NotFoundException('Cart not found');
+        return false;
       }
 
       return {
-        statusCode: HttpStatus.OK,
-        message: 'Cart found',
-        data: {
-          id: cart.id,
-          clientId: cart.clientId,
-          cartStatus: cart.cartStatus,
-          items: cart.cartItems.map((item) => ({
-            id: item.id,
-            quantity: item.quantity,
-            productId: item.product.id
-          }))
-        }
+        id: cart.id,
+        clientId: cart.clientId,
+        cartStatus: cart.cartStatus,
+        items: cart.cartItems.map((item) => ({
+          id: item.id,
+          quantity: item.quantity,
+          productId: item.product.id
+        }))
       };
     } catch (error) {
       this.logger.error(`Error getting cart by tempId: ${error.message}`, error.stack);
