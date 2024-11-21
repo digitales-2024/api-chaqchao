@@ -9,10 +9,12 @@ import {
   ApiTags
 } from '@nestjs/swagger';
 import { HttpResponse, ClaimsData } from 'src/interfaces';
+import { Auth } from '../auth/decorators';
 
 @ApiTags('Claims')
 @ApiInternalServerErrorResponse({ description: 'Internal server error' })
 @ApiBadRequestResponse({ description: 'Bad request' })
+@Auth()
 @Controller({
   path: 'claims',
   version: '1'
