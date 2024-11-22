@@ -277,25 +277,6 @@ export class ClassesService {
         }
       });
 
-      if (classCreated) {
-        const normalizedDateClass = moment
-          .utc(classCreated.dateClass)
-          .tz('America/Lima-5')
-          .format('Do [of] MMMM, dddd');
-        await this.eventEmitter.emitAsync('class.new-class', {
-          name: classCreated.userName.toUpperCase(),
-          email: classCreated.userEmail,
-          dateClass: normalizedDateClass,
-          scheduleClass: classCreated.scheduleClass,
-          languageClass: classCreated.languageClass,
-          totalParticipants: classCreated.totalParticipants,
-          totalPrice: classCreated.totalPrice,
-          typeCurrency: classCreated.typeCurrency
-        });
-      }
-
-      this.adminGateway.sendNewClassRegister(classCreated.id);
-
       return {
         statusCode: HttpStatus.CREATED,
         message: 'Class created successfully',
@@ -437,6 +418,25 @@ export class ClassesService {
         ...classData
       }
     });
+
+    if (classConfirm) {
+      const normalizedDateClass = moment
+        .utc(classConfirm.dateClass)
+        .tz('America/Lima-5')
+        .format('Do [of] MMMM, dddd');
+      await this.eventEmitter.emitAsync('class.new-class', {
+        name: classConfirm.userName.toUpperCase(),
+        email: classConfirm.userEmail,
+        dateClass: normalizedDateClass,
+        scheduleClass: classConfirm.scheduleClass,
+        languageClass: classConfirm.languageClass,
+        totalParticipants: classConfirm.totalParticipants,
+        totalPrice: classConfirm.totalPrice,
+        typeCurrency: classConfirm.typeCurrency
+      });
+    }
+
+    this.adminGateway.sendNewClassRegister(classConfirm.id);
 
     return {
       statusCode: HttpStatus.OK,

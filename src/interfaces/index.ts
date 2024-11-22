@@ -26,3 +26,4 @@ export { CartData, CartCreateData } from './cart.interface';
 export { CartItemData } from './cart-item.interface';
 export { OrderDetails, OrderInfo, OrderData } from './order.interface';
 export { ClassesData, ClassesDataAdmin } from './classes.interface';
+export { ClaimsData } from './claims.interface';
