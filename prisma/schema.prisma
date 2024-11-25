@@ -411,10 +411,11 @@ model Order {
 }
 
 enum OrderStatus {
-  PENDING
-  READY
-  COMPLETED
-  CANCELLED
+  PENDING // Pendiente
+  CONFIRMED // Confirmado
+  PROCESSING // Procesando
+  COMPLETED // Completado
+  CANCELLED // Cancelado
 }
 
 model BillingDocument {
