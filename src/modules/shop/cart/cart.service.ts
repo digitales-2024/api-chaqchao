@@ -320,7 +320,6 @@ export class CartService {
       throw new BadRequestException('The cart is empty.');
     }
 
-    // Verificar stock y actualizar inventario
     for (const item of cart.cartItems) {
       const product = await this.prisma.product.findUnique({
         where: { id: item.productId }
