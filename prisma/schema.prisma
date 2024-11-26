@@ -434,6 +434,9 @@ model BillingDocument {
   country             String
   postalCode          String
 
+  // Datos de la empresa
+  businessName String?
+
   issuedAt      DateTime
   totalAmount   Float
   paymentStatus PaymentStatus
@@ -449,8 +452,9 @@ enum BillingDocumentType {
 
 enum PaymentStatus {
   PAID
-  PENDING
-  FAILED
+  RUNNING
+  UNPAID
+  ABANDONED
 }
 
 model PickupCodeSequence {
