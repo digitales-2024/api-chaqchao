@@ -5,6 +5,7 @@ import {
   OnGatewayConnection,
   OnGatewayDisconnect
 } from '@nestjs/websockets';
+import { Order } from '@prisma/client';
 import { Socket, Server } from 'socket.io';
 
 @WebSocketGateway(Number(process.env.WEBSOCKET_PORT) || 5000, {
@@ -27,7 +28,7 @@ export class AdminGateway implements OnGatewayConnection, OnGatewayDisconnect {
 
   // Pedidos
   // Emitir la creación de un nuevo pedido a los clientes
-  sendOrderCreated(order: string) {
+  sendOrderCreated(order: Order) {
     this.server.emit('new-order', order);
   }
   // Actualizar el estado de un pedido

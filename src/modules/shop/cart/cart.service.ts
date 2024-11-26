@@ -353,7 +353,7 @@ export class CartService {
     const pickupCode = await this.pickupCodeService.generatePickupCode();
 
     // Obtener el día actual de la semana
-    const today = format(new Date(), 'EEEE').toUpperCase() as DayOfWeek;
+    const today = format(new Date(createOrderDto.pickupTime), 'EEEE').toUpperCase() as DayOfWeek;
     const businessHours = await this.prisma.businessHours.findFirst({
       where: { dayOfWeek: today, isOpen: true }
     });
@@ -363,7 +363,9 @@ export class CartService {
     }
 
     // Validar si la hora actual está dentro del rango de horarios permitidos
+
     const currentTime = format(new Date(createOrderDto.pickupTime), 'HH:mm');
+
     if (currentTime < businessHours.openingTime || currentTime > businessHours.closingTime) {
       throw new BadRequestException('Orders cannot be placed outside business hours.');
     }
@@ -419,7 +421,7 @@ export class CartService {
       }
 
       // Actualizar el estado de la order a confirmado / osea pagado
-      await this.prisma.order.update({
+      const order = await this.prisma.order.update({
         where: { id: cart.order.id },
         data: { orderStatus: OrderStatus.CONFIRMED }
       });
@@ -432,6 +434,9 @@ export class CartService {
           orderId: cart.orderId
         }
       });
+
+      // Emitir evento para notificar al administrador
+      this.orderGateway.sendOrderCreated(order);
     } catch (error) {
       this.logger.error(`Error during checkout: ${error.message}`, error.stack);
       handleException(error, 'Error during checkout');

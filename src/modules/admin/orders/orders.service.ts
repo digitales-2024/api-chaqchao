@@ -44,12 +44,19 @@ export class OrdersService {
               },
               cartItems: {
                 select: {
-                  id: true,
                   quantity: true,
                   product: {
                     select: {
                       id: true,
-                      price: true
+                      price: true,
+                      name: true,
+                      image: true,
+                      category: {
+                        select: {
+                          id: true,
+                          name: true
+                        }
+                      }
                     }
                   }
                 }
@@ -63,7 +70,11 @@ export class OrdersService {
             lt: new Date(formattedDate.getTime() + 24 * 60 * 60 * 1000)
           },
           orderStatus: {
-            ...(status === ('ALL' as unknown as OrderStatus) ? {} : { equals: status })
+            ...(status === ('ALL' as unknown as OrderStatus)
+              ? {
+                  not: 'PENDING'
+                }
+              : { equals: status })
           }
         },
         orderBy: {
@@ -80,12 +91,19 @@ export class OrdersService {
         someonePickup: order.someonePickup,
         pickupCode: order.pickupCode,
         totalAmount: order.totalAmount,
-        client: {
-          id: order.cart.client.id,
-          name: order.cart.client.name,
-          phone: order.cart.client.phone,
-          email: order.cart.client.email
-        }
+        client: order.cart.client
+          ? {
+              id: order.cart.client.id,
+              name: order.cart.client.name,
+              phone: order.cart.client.phone,
+              email: order.cart.client.email
+            }
+          : {
+              id: null,
+              name: order.customerName,
+              phone: order.customerPhone,
+              email: order.customerEmail
+            }
       }));
     } catch (error) {
       this.logger.error('Error get orders', error.message);
@@ -159,12 +177,19 @@ export class OrdersService {
             quantity: order.cart.cartItems.find((item) => item.product.id === product.id).quantity
           }))
         },
-        client: {
-          id: order.cart.client.id,
-          name: order.cart.client.name,
-          phone: order.cart.client.phone,
-          email: order.cart.client.email
-        }
+        client: order.cart.client
+          ? {
+              id: order.cart.client.id,
+              name: order.cart.client.name,
+              phone: order.cart.client.phone,
+              email: order.cart.client.email
+            }
+          : {
+              id: null,
+              name: order.customerName,
+              phone: order.customerPhone,
+              email: order.customerEmail
+            }
       };
     } catch (error) {
       this.logger.error('Error get order', error.message);
