@@ -74,7 +74,7 @@ export class CreateBillingDocumentDto {
     title: 'Estado de pago',
     description: 'Estado de pago',
     enum: PaymentStatus,
-    example: PaymentStatus.PENDING
+    example: PaymentStatus.RUNNING
   })
   @IsEmpty()
   @Transform(({ value }) => value.trim().toUpperCase())
