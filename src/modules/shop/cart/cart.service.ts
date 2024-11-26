@@ -24,6 +24,7 @@ import { DeleteItemDto } from './dto/delete-item';
 import { Cron } from '@nestjs/schedule';
 import { CartDataComplet } from 'src/interfaces/cart.interface';
 import { format } from 'date-fns';
+import { CreateInvoiceDto } from './dto/create-invoice.dto';
 
 @Injectable()
 export class CartService {
@@ -357,16 +358,30 @@ export class CartService {
     const businessHours = await this.prisma.businessHours.findFirst({
       where: { dayOfWeek: today, isOpen: true }
     });
-
     if (!businessHours) {
       throw new BadRequestException('The business is closed today.');
     }
 
-    // Validar si la hora actual está dentro del rango de horarios permitidos
+    // Validar si la hora actual está dentro del rango de horarios permitidos y que sean mayor a la hora actual
 
-    const currentTime = format(new Date(createOrderDto.pickupTime), 'HH:mm');
+    const currentTimeOrder = format(new Date(createOrderDto.pickupTime), 'HH:mm');
+    const currentTime = format(new Date(), 'HH:mm');
 
-    if (currentTime < businessHours.openingTime || currentTime > businessHours.closingTime) {
+    // Si la fecha es hoy, la hora de recojo debe ser mayor a la hora actual
+    if (
+      format(new Date(createOrderDto.pickupTime), 'yyyy-MM-dd') === format(new Date(), 'yyyy-MM-dd')
+    ) {
+      if (currentTimeOrder < currentTime) {
+        throw new BadRequestException('Orders cannot be placed in the past.');
+      }
+    }
+
+    // Si la hora de recojo es fuera del horario de atención
+    if (
+      currentTimeOrder < businessHours.openingTime ||
+      currentTimeOrder > businessHours.closingTime ||
+      currentTimeOrder < currentTime
+    ) {
       throw new BadRequestException('Orders cannot be placed outside business hours.');
     }
 
@@ -403,9 +418,10 @@ export class CartService {
   /**
    * Completar la compra del carrito y crear una orden.
    * @param cartId  ID del carrito
+   * @param invoice Datos de la factura
    * @returns     Respuesta de la operación.
    */
-  async checkoutCart(cartId: string) {
+  async checkoutCart(cartId: string, invoice: CreateInvoiceDto) {
     try {
       // Buscar el carrito y sus ítems asociados
       const cart = await this.prisma.cart.findUnique({
@@ -415,7 +431,6 @@ export class CartService {
       if (!cart) {
         throw new NotFoundException(`Cart with ID ${cartId} not found`);
       }
-
       if (cart.cartItems.length === 0) {
         throw new BadRequestException('The cart is empty.');
       }
@@ -433,6 +448,34 @@ export class CartService {
           cartStatus: CartStatus.COMPLETED,
           orderId: cart.orderId
         }
+      });
+
+      const invoiceData = {
+        orderId: order.id,
+        billingDocumentType: invoice.billingDocumentType,
+        typeDocument: invoice.typeDocument,
+        documentNumber: invoice.documentNumber,
+        address: invoice.address,
+        country: invoice.country,
+        state: invoice.state,
+        city: invoice.city,
+        postalCode: invoice.postalCode,
+        paymentStatus: invoice.paymentStatus,
+        totalAmount: order.totalAmount,
+        issuedAt: new Date(),
+        businessName: invoice.businessName
+      };
+
+      const billingExists = await this.prisma.billingDocument.findFirst({
+        where: { orderId: order.id }
+      });
+
+      if (billingExists) {
+        throw new BadRequestException('The invoice already exists for this order.');
+      }
+
+      await this.prisma.billingDocument.create({
+        data: invoiceData
       });
 
       // Emitir evento para notificar al administrador

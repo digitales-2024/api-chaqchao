@@ -10,6 +10,7 @@ import { UpdateCartItemDto } from './dto/update-cart-item.dto';
 import { CreateOrderDto } from './dto/create-order.dto';
 import { GetClient } from '../auth/decorators/get-client.decorator';
 import { DeleteItemDto } from './dto/delete-item';
+import { CreateInvoiceDto } from './dto/create-invoice.dto';
 
 @ApiTags('Shop Cart')
 @Controller({
@@ -118,8 +119,8 @@ export class CartController {
   @Post(':id/checkout')
   @ApiOperation({ summary: 'Actualizar el pedido con el pago realizado' })
   @ApiResponse({ status: 200, description: 'Pago realizado correctamente.' })
-  async checkoutCart(@Param('id') orderId: string) {
-    return this.cartsService.checkoutCart(orderId);
+  async checkoutCart(@Body() invoice: CreateInvoiceDto, @Param('id') orderId: string) {
+    return this.cartsService.checkoutCart(orderId, invoice);
   }
 
   /**
