@@ -103,19 +103,23 @@ export class CartController {
   }
 
   /**
-   * Completar la compra del carrito y crear una orden.
+   * Completar la compra del carrito y crear una orden pendiente.
    */
-  @Post(':id/checkout')
+  @Post(':id/complete')
   @ApiOperation({ summary: 'Completar la compra del carrito' })
   @ApiResponse({ status: 201, description: 'Compra completada exitosamente.' })
-  @ClientAuth()
-  async completeCart(
-    @Param('id') cartId: string,
-    @Body() createOrderDto: CreateOrderDto,
-    @GetClient() client: ClientData
-  ) {
-    const clientId = client ? client.id : null;
-    return this.cartsService.completeCart(cartId, createOrderDto, clientId);
+  async completeCart(@Param('id') cartId: string, @Body() createOrderDto: CreateOrderDto) {
+    return this.cartsService.completeCart(cartId, createOrderDto);
+  }
+
+  /**
+   * Actualizar el pedido con el pago realizado.
+   */
+  @Post(':id/checkout')
+  @ApiOperation({ summary: 'Actualizar el pedido con el pago realizado' })
+  @ApiResponse({ status: 200, description: 'Pago realizado correctamente.' })
+  async checkoutCart(@Param('id') orderId: string) {
+    return this.cartsService.checkoutCart(orderId);
   }
 
   /**

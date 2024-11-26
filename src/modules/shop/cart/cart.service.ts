@@ -19,11 +19,11 @@ import { MAX_QUANTITY } from 'src/constants/cart';
 import { UpdateCartItemDto } from './dto/update-cart-item.dto';
 import { CreateOrderDto } from './dto/create-order.dto';
 import { PickupCodeService } from './pickup-code/pickup-code.service';
-import moment from 'moment';
 import { AdminGateway } from 'src/modules/admin/admin.gateway';
 import { DeleteItemDto } from './dto/delete-item';
 import { Cron } from '@nestjs/schedule';
 import { CartDataComplet } from 'src/interfaces/cart.interface';
+import { format } from 'date-fns';
 
 @Injectable()
 export class CartService {
@@ -302,9 +302,11 @@ export class CartService {
    * @param createOrderDto Datos para crear la orden.
    * @param clientId ID del cliente autenticado (opcional).
    */
-  async completeCart(cartId: string, createOrderDto: CreateOrderDto, clientId?: string) {
+  async completeCart(cartId: string, createOrderDto: CreateOrderDto) {
+    const { clientId } = createOrderDto;
+
     const cart = await this.prisma.cart.findUnique({
-      where: { id: cartId },
+      where: { tempId: cartId },
       include: { cartItems: true }
     });
 
@@ -351,8 +353,7 @@ export class CartService {
     const pickupCode = await this.pickupCodeService.generatePickupCode();
 
     // Obtener el día actual de la semana
-    const today = moment().format('dddd').toUpperCase() as DayOfWeek;
-
+    const today = format(new Date(), 'EEEE').toUpperCase() as DayOfWeek;
     const businessHours = await this.prisma.businessHours.findFirst({
       where: { dayOfWeek: today, isOpen: true }
     });
@@ -362,9 +363,18 @@ export class CartService {
     }
 
     // Validar si la hora actual está dentro del rango de horarios permitidos
-    const currentTime = moment.utc(createOrderDto.pickupTime).tz('America/Lima').format('HH:mm');
+    const currentTime = format(new Date(createOrderDto.pickupTime), 'HH:mm');
     if (currentTime < businessHours.openingTime || currentTime > businessHours.closingTime) {
       throw new BadRequestException('Orders cannot be placed outside business hours.');
+    }
+
+    // Verificamos que no haya una orden pendiente del mismo cart
+    const existingOrder = await this.prisma.order.findFirst({
+      where: { cartId: cart.id, orderStatus: OrderStatus.PENDING }
+    });
+
+    if (existingOrder) {
+      return existingOrder;
     }
 
     // Crear la orden
@@ -385,18 +395,47 @@ export class CartService {
       }
     });
 
-    // Actualizar el estado del carrito a COMPLETED y vincular la orden
-    await this.prisma.cart.update({
-      where: { id: cart.id },
-      data: {
-        cartStatus: CartStatus.COMPLETED,
-        orderId: order.id
-      }
-    });
-
-    this.orderGateway.sendOrderCreated(order.id);
-
     return order;
+  }
+
+  /**
+   * Completar la compra del carrito y crear una orden.
+   * @param cartId  ID del carrito
+   * @returns     Respuesta de la operación.
+   */
+  async checkoutCart(cartId: string) {
+    try {
+      // Buscar el carrito y sus ítems asociados
+      const cart = await this.prisma.cart.findUnique({
+        where: { tempId: cartId },
+        include: { cartItems: true, order: true }
+      });
+      if (!cart) {
+        throw new NotFoundException(`Cart with ID ${cartId} not found`);
+      }
+
+      if (cart.cartItems.length === 0) {
+        throw new BadRequestException('The cart is empty.');
+      }
+
+      // Actualizar el estado de la order a confirmado / osea pagado
+      await this.prisma.order.update({
+        where: { id: cart.order.id },
+        data: { orderStatus: OrderStatus.CONFIRMED }
+      });
+
+      // Actualizar el estado del carrito a COMPLETED y vincular la orden
+      await this.prisma.cart.update({
+        where: { id: cart.id },
+        data: {
+          cartStatus: CartStatus.COMPLETED,
+          orderId: cart.orderId
+        }
+      });
+    } catch (error) {
+      this.logger.error(`Error during checkout: ${error.message}`, error.stack);
+      handleException(error, 'Error during checkout');
+    }
   }
 
   /**
@@ -962,8 +1001,6 @@ export class CartService {
           id: true
         }
       });
-      console.log('🚀 ~ CartService ~ handleCron ~ carts:', carts);
-
       // Eliminamos los items de los carritos encontrados
       for (const cart of carts) {
         await this.prisma.cartItem.deleteMany({
