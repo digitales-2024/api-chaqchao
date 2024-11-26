@@ -1,16 +1,26 @@
-import { Injectable, InternalServerErrorException, Logger } from '@nestjs/common';
+import {
+  BadRequestException,
+  Injectable,
+  InternalServerErrorException,
+  Logger
+} from '@nestjs/common';
 import { ConfigService } from '@nestjs/config';
 import { CreatePaymentDto } from './dto/create-payment.dto';
 import * as http from 'http';
 import * as https from 'https';
+import { ValidatePaymentDto } from './dto/validate-payment.dto';
+import hmacSHA256 from 'crypto-js/hmac-sha256';
+import Hex from 'crypto-js/enc-hex';
 
 @Injectable()
 export class PaymentService {
   private readonly logger = new Logger(PaymentService.name);
 
   private authHeader: string;
+  private readonly hmacSecretKey: string;
 
   constructor(private configService: ConfigService) {
+    this.hmacSecretKey = this.configService.get<string>('IZIPAY_HMAC_KEY');
     const username = this.configService.get<string>('IZIPAY_PAYMENT_USERNAME');
     const password = this.configService.get<string>('IZIPAY_PAYMENT_PASSWORD');
 
@@ -18,6 +28,9 @@ export class PaymentService {
       throw new Error('API_USERNAME and API_PASSWORD must be set in environment variables.');
     }
 
+    if (!this.hmacSecretKey) {
+      throw new Error('HMAC_SECRET_KEY must be defined in environment variables');
+    }
     // Generar el header de autenticación Basic
     this.authHeader = 'Basic ' + Buffer.from(`${username}:${password}`).toString('base64');
   }
@@ -98,5 +111,28 @@ export class PaymentService {
       req.write(postData);
       req.end();
     });
+  }
+
+  /**
+   * Valida el hash del pago
+   * @param validatePaymentDto Datos de pago y hash
+   * @returns Mensaje de validación
+   */
+  validatePayment(validatePaymentDto: ValidatePaymentDto): boolean {
+    const { clientAnswer, hash } = validatePaymentDto;
+    console.log('🚀 ~ PaymentService ~ validatePayment ~ hash:', hash);
+    console.log('🚀 ~ PaymentService ~ validatePayment ~ clientAnswer:', clientAnswer);
+
+    // Generar el hash del clientAnswer
+    const answerString = JSON.stringify(clientAnswer);
+    console.log('🚀 ~ PaymentService ~ validatePayment ~ answerString:', answerString);
+    const generatedHash = Hex.stringify(hmacSHA256(answerString, this.hmacSecretKey));
+    console.log('🚀 ~ PaymentService ~ validatePayment ~ generatedHash:', generatedHash);
+
+    if (hash === generatedHash) {
+      return true;
+    } else {
+      throw new BadRequestException('Payment hash mismatch');
+    }
   }
 }
