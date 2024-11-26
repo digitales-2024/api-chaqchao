@@ -89,7 +89,7 @@ export class BillingDocumentService {
             country,
             postalCode,
             totalAmount,
-            paymentStatus: paymentStatus || 'PENDING',
+            paymentStatus: paymentStatus,
             issuedAt,
             orderId
           },
