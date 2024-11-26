@@ -120,15 +120,9 @@ export class PaymentService {
    */
   validatePayment(validatePaymentDto: ValidatePaymentDto): boolean {
     const { clientAnswer, hash } = validatePaymentDto;
-    console.log('🚀 ~ PaymentService ~ validatePayment ~ hash:', hash);
-    console.log('🚀 ~ PaymentService ~ validatePayment ~ clientAnswer:', clientAnswer);
-
     // Generar el hash del clientAnswer
     const answerString = JSON.stringify(clientAnswer);
-    console.log('🚀 ~ PaymentService ~ validatePayment ~ answerString:', answerString);
     const generatedHash = Hex.stringify(hmacSHA256(answerString, this.hmacSecretKey));
-    console.log('🚀 ~ PaymentService ~ validatePayment ~ generatedHash:', generatedHash);
-
     if (hash === generatedHash) {
       return true;
     } else {
