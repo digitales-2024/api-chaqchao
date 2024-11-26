@@ -323,7 +323,8 @@ export class OrdersService {
   private generateOrderHtml(orderData: OrderDetails): string {
     const translateStatus: Record<Order['orderStatus'], string> = {
       PENDING: 'Pendiente',
-      READY: 'Listo',
+      CONFIRMED: 'Confirmado',
+      PROCESSING: 'Procesando',
       COMPLETED: 'Completado',
       CANCELLED: 'Cancelado'
     };
