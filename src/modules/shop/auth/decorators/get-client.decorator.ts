@@ -11,6 +11,9 @@ export const GetClient = createParamDecorator((data, ctx: ExecutionContext): Cli
   return {
     id: client.id,
     name: client.name,
-    email: client.email
+    lastName: client.lastName,
+    email: client.email,
+    phone: client.phone,
+    image: client.image
   };
 });

@@ -8,3 +8,16 @@ export type CartCreateData = {
   clientId?: string;
   cartStatus: CartStatus;
 };
+
+export type CartDataComplet = {
+  id: string;
+  clientId: string;
+  cartStatus: CartStatus;
+  items: CartItemData[];
+};
+
+export type CartItemData = {
+  id: string;
+  productId: string;
+  quantity: number;
+};

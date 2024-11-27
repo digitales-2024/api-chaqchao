@@ -146,7 +146,10 @@ export class ClientService {
         data: {
           id: clientDB.id,
           name: clientDB.name,
-          email: clientDB.email
+          lastName: clientDB.lastName,
+          email: clientDB.email,
+          phone: clientDB.phone,
+          image: clientDB.image
         }
       };
     } catch (error) {
@@ -186,7 +189,10 @@ export class ClientService {
         data: {
           id: clientDB.id,
           name: clientDB.name,
-          email: clientDB.email
+          email: clientDB.email,
+          phone: clientDB.phone,
+          lastName: clientDB.lastName,
+          image: clientDB.image
         }
       };
     } catch (error) {
@@ -209,8 +215,10 @@ export class ClientService {
       select: {
         id: true,
         name: true,
-        email: true,
+        lastName: true,
         phone: true,
+        image: true,
+        email: true,
         birthDate: true,
         isGoogleAuth: true,
         lastLogin: true,
@@ -227,8 +235,10 @@ export class ClientService {
     return {
       id: clientDB.id,
       name: clientDB.name,
+      lastName: clientDB.lastName,
       email: clientDB.email,
       phone: clientDB.phone,
+      image: clientDB.image,
       birthDate: clientDB.birthDate,
       isGoogleAuth: clientDB.isGoogleAuth,
       isActive: clientDB.isActive,
@@ -255,7 +265,10 @@ export class ClientService {
         id: true,
         name: true,
         email: true,
-        password: true
+        password: true,
+        phone: true,
+        lastName: true,
+        image: true
       }
     });
 
@@ -266,7 +279,10 @@ export class ClientService {
     return {
       id: clientDB.id,
       name: clientDB.name,
+      lastName: clientDB.lastName,
+      phone: clientDB.phone,
       email: clientDB.email,
+      image: clientDB.image,
       password: clientDB.password
     };
   }
@@ -286,6 +302,9 @@ export class ClientService {
         id: true,
         name: true,
         email: true,
+        phone: true,
+        lastName: true,
+        image: true,
         isGoogleAuth: true
       }
     });
@@ -300,7 +319,10 @@ export class ClientService {
     return {
       id: clientDB.id,
       name: clientDB.name,
-      email: clientDB.email
+      image: clientDB.image,
+      lastName: clientDB.lastName,
+      email: clientDB.email,
+      phone: clientDB.phone
     };
   }
 
@@ -350,7 +372,10 @@ export class ClientService {
       select: {
         id: true,
         name: true,
-        email: true
+        lastName: true,
+        email: true,
+        phone: true,
+        image: true
       }
     });
 
@@ -361,7 +386,10 @@ export class ClientService {
     return {
       id: clientDB.id,
       name: clientDB.name,
-      email: clientDB.email
+      email: clientDB.email,
+      lastName: clientDB.lastName,
+      phone: clientDB.phone,
+      image: clientDB.image
     };
   }
 
@@ -427,7 +455,10 @@ export class ClientService {
         select: {
           id: true,
           name: true,
+          lastName: true,
           email: true,
+          phone: true,
+          image: true,
           isActive: true
         }
       });
@@ -450,7 +481,10 @@ export class ClientService {
         data: {
           id: clientDB.id,
           name: clientDB.name,
-          email: clientDB.email
+          lastName: clientDB.lastName,
+          email: clientDB.email,
+          phone: clientDB.phone,
+          image: clientDB.image
         }
       };
     } catch (error) {

@@ -19,8 +19,12 @@ import { MAX_QUANTITY } from 'src/constants/cart';
 import { UpdateCartItemDto } from './dto/update-cart-item.dto';
 import { CreateOrderDto } from './dto/create-order.dto';
 import { PickupCodeService } from './pickup-code/pickup-code.service';
-import moment from 'moment';
 import { AdminGateway } from 'src/modules/admin/admin.gateway';
+import { DeleteItemDto } from './dto/delete-item';
+import { Cron } from '@nestjs/schedule';
+import { CartDataComplet } from 'src/interfaces/cart.interface';
+import { format } from 'date-fns';
+import { CreateInvoiceDto } from './dto/create-invoice.dto';
 
 @Injectable()
 export class CartService {
@@ -67,10 +71,9 @@ export class CartService {
   /**
    * Crear un nuevo carrito.
    * @param createCartDto Datos para crear el carrito.
-   * @param clientId ID del cliente autenticado (opcional).
    */
-  async createCart(createCartDto: CreateCartDto, clientId?: string): Promise<{ id: string }> {
-    const { cartStatus = CartStatus.PENDING, tempId } = createCartDto;
+  async createCart(createCartDto: CreateCartDto): Promise<{ id: string }> {
+    const { cartStatus = CartStatus.PENDING, tempId, clientId } = createCartDto;
 
     // Verificar si el cliente autenticado ya tiene un carrito activo
     if (clientId) {
@@ -133,16 +136,16 @@ export class CartService {
    * Agregar un ítem al carrito.
    * @param cartId ID del carrito.
    * @param addCartItemDto Datos del ítem a agregar.
-   * @param clientId ID del cliente autenticado (opcional).
    */
-  async addItemToCart(cartId: string, addCartItemDto: AddCartItemDto, clientId?: string) {
-    const { productId, quantity = 1 } = addCartItemDto;
+  async addItemToCart(cartId: string, addCartItemDto: AddCartItemDto) {
+    const { productId, quantity = 1, clientId } = addCartItemDto;
 
     const cart = await this.prisma.cart.findUnique({
       where: { tempId: cartId },
       include: { cartItems: true }
     });
 
+    // Verificar si el carrito es válido
     if (!cart || cart.cartStatus !== CartStatus.PENDING) {
       throw new BadRequestException('Invalid or inactive cart.');
     }
@@ -202,13 +205,8 @@ export class CartService {
    * @param updateCartItemDto Datos para actualizar el ítem.
    * @param clientId ID del cliente autenticado (opcional).
    */
-  async updateCartItem(
-    cartId: string,
-    cartItemId: string,
-    updateCartItemDto: UpdateCartItemDto,
-    clientId?: string
-  ) {
-    const { quantity } = updateCartItemDto;
+  async updateCartItem(cartId: string, cartItemId: string, updateCartItemDto: UpdateCartItemDto) {
+    const { quantity, clientId } = updateCartItemDto;
 
     const cart = await this.prisma.cart.findUnique({
       where: { tempId: cartId },
@@ -265,9 +263,11 @@ export class CartService {
    * Eliminar un ítem del carrito.
    * @param cartId ID del carrito.
    * @param cartItemId ID del ítem en el carrito.
-   * @param clientId ID del cliente autenticado (opcional).
+   * @param deleteItem ID del cliente autenticado (opcional).
    */
-  async removeCartItem(cartId: string, cartItemId: string, clientId?: string) {
+  async removeCartItem(cartId: string, cartItemId: string, deleteItem: DeleteItemDto) {
+    const { clientId } = deleteItem;
+
     const cart = await this.prisma.cart.findUnique({
       where: { tempId: cartId },
       include: { cartItems: true }
@@ -303,9 +303,11 @@ export class CartService {
    * @param createOrderDto Datos para crear la orden.
    * @param clientId ID del cliente autenticado (opcional).
    */
-  async completeCart(cartId: string, createOrderDto: CreateOrderDto, clientId?: string) {
+  async completeCart(cartId: string, createOrderDto: CreateOrderDto) {
+    const { clientId } = createOrderDto;
+
     const cart = await this.prisma.cart.findUnique({
-      where: { id: cartId },
+      where: { tempId: cartId },
       include: { cartItems: true }
     });
 
@@ -321,7 +323,6 @@ export class CartService {
       throw new BadRequestException('The cart is empty.');
     }
 
-    // Verificar stock y actualizar inventario
     for (const item of cart.cartItems) {
       const product = await this.prisma.product.findUnique({
         where: { id: item.productId }
@@ -353,20 +354,44 @@ export class CartService {
     const pickupCode = await this.pickupCodeService.generatePickupCode();
 
     // Obtener el día actual de la semana
-    const today = moment().format('dddd').toUpperCase() as DayOfWeek;
-
+    const today = format(new Date(createOrderDto.pickupTime), 'EEEE').toUpperCase() as DayOfWeek;
     const businessHours = await this.prisma.businessHours.findFirst({
       where: { dayOfWeek: today, isOpen: true }
     });
-
     if (!businessHours) {
       throw new BadRequestException('The business is closed today.');
     }
 
-    // Validar si la hora actual está dentro del rango de horarios permitidos
-    const currentTime = moment.utc(createOrderDto.pickupTime).tz('America/Lima').format('HH:mm');
-    if (currentTime < businessHours.openingTime || currentTime > businessHours.closingTime) {
+    // Validar si la hora actual está dentro del rango de horarios permitidos y que sean mayor a la hora actual
+
+    const currentTimeOrder = format(new Date(createOrderDto.pickupTime), 'HH:mm');
+    const currentTime = format(new Date(), 'HH:mm');
+
+    // Si la fecha es hoy, la hora de recojo debe ser mayor a la hora actual
+    if (
+      format(new Date(createOrderDto.pickupTime), 'yyyy-MM-dd') === format(new Date(), 'yyyy-MM-dd')
+    ) {
+      if (currentTimeOrder < currentTime) {
+        throw new BadRequestException('Orders cannot be placed in the past.');
+      }
+    }
+
+    // Si la hora de recojo es fuera del horario de atención
+    if (
+      currentTimeOrder < businessHours.openingTime ||
+      currentTimeOrder > businessHours.closingTime ||
+      currentTimeOrder < currentTime
+    ) {
       throw new BadRequestException('Orders cannot be placed outside business hours.');
+    }
+
+    // Verificamos que no haya una orden pendiente del mismo cart
+    const existingOrder = await this.prisma.order.findFirst({
+      where: { cartId: cart.id, orderStatus: OrderStatus.PENDING }
+    });
+
+    if (existingOrder) {
+      return existingOrder;
     }
 
     // Crear la orden
@@ -374,6 +399,7 @@ export class CartService {
       data: {
         cartId: cart.id,
         customerName: createOrderDto.customerName,
+        customerLastName: createOrderDto.customerLastName || '',
         customerEmail: createOrderDto.customerEmail,
         customerPhone: createOrderDto.customerPhone || '',
         someonePickup: createOrderDto.someonePickup,
@@ -386,18 +412,78 @@ export class CartService {
       }
     });
 
-    // Actualizar el estado del carrito a COMPLETED y vincular la orden
-    await this.prisma.cart.update({
-      where: { id: cart.id },
-      data: {
-        cartStatus: CartStatus.COMPLETED,
-        orderId: order.id
-      }
-    });
-
-    this.orderGateway.sendOrderCreated(order.id);
-
     return order;
+  }
+
+  /**
+   * Completar la compra del carrito y crear una orden.
+   * @param cartId  ID del carrito
+   * @param invoice Datos de la factura
+   * @returns     Respuesta de la operación.
+   */
+  async checkoutCart(cartId: string, invoice: CreateInvoiceDto) {
+    try {
+      // Buscar el carrito y sus ítems asociados
+      const cart = await this.prisma.cart.findUnique({
+        where: { tempId: cartId },
+        include: { cartItems: true, order: true }
+      });
+      if (!cart) {
+        throw new NotFoundException(`Cart with ID ${cartId} not found`);
+      }
+      if (cart.cartItems.length === 0) {
+        throw new BadRequestException('The cart is empty.');
+      }
+
+      // Actualizar el estado de la order a confirmado / osea pagado
+      const order = await this.prisma.order.update({
+        where: { id: cart.order.id },
+        data: { orderStatus: OrderStatus.CONFIRMED }
+      });
+
+      // Actualizar el estado del carrito a COMPLETED y vincular la orden
+      await this.prisma.cart.update({
+        where: { id: cart.id },
+        data: {
+          cartStatus: CartStatus.COMPLETED,
+          orderId: cart.orderId
+        }
+      });
+
+      const invoiceData = {
+        orderId: order.id,
+        billingDocumentType: invoice.billingDocumentType,
+        typeDocument: invoice.typeDocument,
+        documentNumber: invoice.documentNumber,
+        address: invoice.address,
+        country: invoice.country,
+        state: invoice.state,
+        city: invoice.city,
+        postalCode: invoice.postalCode,
+        paymentStatus: invoice.paymentStatus,
+        totalAmount: order.totalAmount,
+        issuedAt: new Date(),
+        businessName: invoice.businessName
+      };
+
+      const billingExists = await this.prisma.billingDocument.findFirst({
+        where: { orderId: order.id }
+      });
+
+      if (billingExists) {
+        throw new BadRequestException('The invoice already exists for this order.');
+      }
+
+      await this.prisma.billingDocument.create({
+        data: invoiceData
+      });
+
+      // Emitir evento para notificar al administrador
+      this.orderGateway.sendOrderCreated(order);
+    } catch (error) {
+      this.logger.error(`Error during checkout: ${error.message}`, error.stack);
+      handleException(error, 'Error during checkout');
+    }
   }
 
   /**
@@ -519,6 +605,28 @@ export class CartService {
         name: cartDB.client.name
       }
     };
+  }
+
+  /**
+   * Validar si el cliente tiene un carrito activo
+   * @param clientId ID del cliente
+   * @returns Si el cliente tiene un carrito activo
+   */
+  async checkCart(clientId: string): Promise<boolean> {
+    try {
+      // Buscar un carrito activo para el cliente
+      const cart = await this.prisma.cart.findFirst({
+        where: {
+          clientId,
+          cartStatus: CartStatus.PENDING
+        }
+      });
+
+      return !!cart;
+    } catch (error) {
+      this.logger.error(`Error checking cart: ${error.message}`, error.stack);
+      handleException(error, 'Error checking cart');
+    }
   }
 
   /**
@@ -868,5 +976,95 @@ export class CartService {
       message: 'Checkout successfully',
       data: []
     };
+  }
+
+  /**
+   * Buscar carrito por tempId
+   * @param tempId Temporal ID del carrito
+   * @returns Carrito encontrado
+   */
+  async getCartByTempId(tempId: string): Promise<CartDataComplet | boolean> {
+    try {
+      // Buscar el carrito por tempId
+      const cart = await this.prisma.cart.findFirst({
+        where: {
+          tempId
+        },
+        select: {
+          id: true,
+          clientId: true,
+          cartStatus: true,
+          cartItems: {
+            select: {
+              id: true,
+              quantity: true,
+              price: true,
+              product: {
+                select: {
+                  id: true,
+                  name: true,
+                  price: true
+                }
+              }
+            }
+          }
+        }
+      });
+
+      if (!cart) {
+        return false;
+      }
+
+      return {
+        id: cart.id,
+        clientId: cart.clientId,
+        cartStatus: cart.cartStatus,
+        items: cart.cartItems.map((item) => ({
+          id: item.id,
+          quantity: item.quantity,
+          productId: item.product.id
+        }))
+      };
+    } catch (error) {
+      this.logger.error(`Error getting cart by tempId: ${error.message}`, error.stack);
+      handleException(error, 'Error getting cart by tempId');
+    }
+  }
+
+  /**
+   * Cron para poder eliminar aquellos carritos que no han sido utilizados en 24 horas y que estén en estado PENDING
+   */
+  @Cron('0 0 1 * *') // Se ejecuta cada minuto
+  async handleCron() {
+    try {
+      // Buscar carritos pendientes que no han sido utilizados en 24 horas
+      const carts = await this.prisma.cart.findMany({
+        where: {
+          cartStatus: CartStatus.PENDING,
+          lastAccessed: {
+            lt: new Date(new Date().getTime() - 15 * 24 * 60 * 60 * 1000) // Hace 15 dias
+          }
+        },
+        select: {
+          id: true
+        }
+      });
+      // Eliminamos los items de los carritos encontrados
+      for (const cart of carts) {
+        await this.prisma.cartItem.deleteMany({
+          where: { cartId: cart.id }
+        });
+      }
+
+      // Eliminar los carritos encontrados
+      for (const cart of carts) {
+        await this.prisma.cart.delete({
+          where: { id: cart.id }
+        });
+      }
+    } catch (error) {
+      this.logger.error(`Error during cron job: ${error.message}`, error.stack);
+      handleException(error, 'Error during cron job');
+    }
   }
 }
