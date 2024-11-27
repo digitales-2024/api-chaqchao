@@ -1,4 +1,4 @@
-import { Controller, Get, Post, Body } from '@nestjs/common';
+import { Controller, Get, Post, Body, Query } from '@nestjs/common';
 import { ClaimsService } from './claims.service';
 import { CreateClaimDto } from './dto/create-claim.dto';
 import {
@@ -27,11 +27,11 @@ export class ClaimsController {
     return this.claimsService.create(createClaimDto);
   }
 
+  @Get()
   @ApiBadRequestResponse({ description: 'Not found claims' })
   @ApiOkResponse({ description: 'Get all claims' })
-  @Get()
   @Auth()
-  findAll() {
-    return this.claimsService.findAll();
+  findAll(@Query('date') date?: string) {
+    return this.claimsService.findAll(date);
   }
 }

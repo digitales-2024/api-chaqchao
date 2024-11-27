@@ -67,9 +67,23 @@ export class ClaimsService {
    * Listar todos los reclamos
    * @param createClaimDto Data para crear un reclamo
    */
-  async findAll(): Promise<{ statusCode: number; message: string; data: ClaimsData[] }> {
+  async findAll(
+    date?: string
+  ): Promise<{ statusCode: number; message: string; data: ClaimsData[] }> {
     try {
-      const claims = await this.prisma.claims.findMany({});
+      const filter = date
+        ? {
+            dateClaim: {
+              gte: new Date(new Date(date).setHours(0, 0, 0, 0)),
+              lt: new Date(new Date(date).setHours(23, 59, 59, 999))
+            }
+          }
+        : {};
+
+      const claims = await this.prisma.claims.findMany({
+        where: filter,
+        orderBy: { dateClaim: 'desc' }
+      });
 
       return {
         statusCode: HttpStatus.OK,
