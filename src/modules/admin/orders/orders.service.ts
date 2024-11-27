@@ -7,6 +7,9 @@ import { handleException } from 'src/utils';
 import { AdminGateway } from '../admin.gateway';
 import { OrderDetails, OrderInfo } from 'src/interfaces';
 import * as fs from 'fs';
+import { numberToLetter } from 'src/utils/numberToLetter';
+import { format } from 'date-fns';
+import { es } from 'date-fns/locale';
 
 @Injectable()
 export class OrdersService {
@@ -358,8 +361,11 @@ export class OrdersService {
       console.error('Error al leer la plantilla HTML:', error);
       throw new Error('No se pudo cargar la plantilla HTML.');
     }
+    const business = await this.prismaService.businessConfig.findFirst({
+      select: { address: true, businessName: true, ruc: true, contactNumber: true }
+    });
 
-    const orderHtml = this.generateOrderHtml(order);
+    const orderHtml = this.generateOrderHtml(order, business);
 
     const htmlContent = templateHtml.replace('{{order}}', orderHtml);
 
@@ -367,7 +373,11 @@ export class OrdersService {
     const browser = await puppeteer.launch();
     const page = await browser.newPage();
     await page.setContent(htmlContent);
-    const pdfBuffer = await page.pdf({ format: 'A4' });
+    // Formato de boleta
+    await page.emulateMediaType('screen');
+    const pdfBuffer = await page.pdf({
+      format: 'A4'
+    });
     await browser.close();
 
     // Convertir Uint8Array a Buffer
@@ -379,83 +389,122 @@ export class OrdersService {
    * @param order  Pedido
    * @returns  Contenido HTML
    */
-  private generateOrderHtml(orderData: OrderDetails): string {
-    const translateStatus: Record<Order['orderStatus'], string> = {
-      PENDING: 'Pendiente',
-      CONFIRMED: 'Confirmado',
-      PROCESSING: 'Procesando',
-      COMPLETED: 'Completado',
-      CANCELLED: 'Cancelado'
-    };
-    let invoiceHtml = '';
-
-    // Encabezado de la factura
-    invoiceHtml += `<div style="max-width: 800px; margin: auto; padding: 10px; border: 1px solid #ccc; border-radius: 8px; background-color: #fff;">
-    <h2 style="text-align: center;">Pedido# ${orderData.pickupCode}</h2>
-    <p style="text-align: center;">Fecha: ${new Date(orderData.pickupTime).toLocaleDateString()} a las ${new Date(orderData.pickupTime).toLocaleTimeString()}</p>
-    <p style="text-align: center;">Estado: <span style="color: #3498db;">${translateStatus[orderData.orderStatus]}</span></p>
-</div>`;
-
-    // Detalles del pedido
-    invoiceHtml += '<div style="margin: 20px 0;">';
-    invoiceHtml += '<h3>Detalles del pedido</h3>';
-    invoiceHtml += '<table style="width: 100%; border-collapse: collapse;">';
-    invoiceHtml += `
-    <thead>
-        <tr>
-            <th style="border: 1px solid #ccc; padding: 8px;">Producto</th>
-            <th style="border: 1px solid #ccc; padding: 8px;">Cantidad</th>
-            <th style="border: 1px solid #ccc; padding: 8px;">Precio</th>
-        </tr>
-    </thead>
-    <tbody>
-`;
-
-    orderData.cart.products.forEach((product) => {
-      invoiceHtml += `<tr>
-        <td style="border: 1px solid #ccc; padding: 8px;">
-            <img src="${product.image}" alt="${product.name}" style="width: 50px; height: auto; margin-right: 10px; vertical-align: middle;" />
-            ${product.name}
-        </td>
-        <td style="border: 1px solid #ccc; padding: 8px;">x ${product.quantity}</td>
-        <td style="border: 1px solid #ccc; padding: 8px;">S/. ${product.price.toFixed(2)}</td>
-    </tr>`;
-    });
-
+  private generateOrderHtml(orderData: OrderDetails, business): string {
     // Calcular total
     const totalPrice = orderData.cart.products.reduce(
       (total, product) => total + product.price * product.quantity,
       0
     );
-    invoiceHtml += '</tbody></table>';
-    invoiceHtml += '</div>'; // Cerrar detalles del pedido
 
-    // Totales
-    invoiceHtml += '<div style="margin: 20px 0;width:100%;">';
-    invoiceHtml += '<h3>Totales</h3>';
-    invoiceHtml += `
-    <p style="text-align: right;">Subtotal: S/. ${totalPrice.toFixed(2)}</p>
-    <p style="text-align: right;">Impuesto: S/. 0.00</p>
-    <p style="font-weight: bold;text-align: right;">Total: S/. ${totalPrice.toFixed(2)}</p>
-</div>`;
+    // Encabezado principal
+    let invoiceHtml = `
+<div style="max-width: 600px; margin: 20px auto; padding: 20px;">
+  <h2 style="text-align: center; color: #000;">${orderData.billingDocument.billingDocumentType === 'INVOICE' ? 'Factura' : 'Boleta'}</h2>
+  <p style="text-align: center; font-size: 16px; margin: 10px 0;"><strong>${business.businessName}</strong></p>
+  <p style="text-align: center; font-size: 12px; margin: 10px 0;"><strong>${business.address}</strong></p>
+  <p style="text-align: center; font-size: 12px; margin: 10px 0;"><strong>RUC: ${business.ruc}</strong></p>
+  <p style="text-align: center; font-size: 12px; margin: 10px 0;"><strong>Tel: ${business.contactNumber}</strong></p>
+  <p style="text-align: center; font-size: 16px; margin: 10px 0;"><strong>PEDIDO # ${orderData.pickupCode}</strong></p>
+`;
 
     // Información del cliente
-    invoiceHtml += '<div style="margin: 20px 0; ">';
-    invoiceHtml += '<h3>Información del cliente</h3>';
-    invoiceHtml += `    
-    <p style="text-transform: capitalize;"><strong>Cliente:</strong> ${orderData.client.name}</p>
-    <p><strong>Correo electrónico:</strong> ${orderData.client.email}</p>
-    <p><strong>Teléfono:</strong> ${orderData.client.phone}</p>
+    invoiceHtml += `
+    <div style="height: 1px; width:100%; border-top:1px dashed #a8acb6; margin-top: 20px;margin-bottom: 20px;"/>
+  <div style="margin-top: 20px;">
+            <h3 style="margin-bottom: 10px; color: #555; text-align: center;">Información del cliente</h3>
+            <div style="display: grid; grid-template-columns: repeat(2, minmax(0, 1fr));">
+                    <p style="margin: 5px 0; display:flex; flex-direction:column;"><strong style="font-size:12px; color:#9da2ab">Cliente:</strong>${orderData.client.name + ' ' + orderData.client.lastName}</p>
+                    <p style="margin: 5px 0;"><strong style="font-size:12px; color:#9da2ab">Correo electrónico:</strong> ${orderData.client.email}</p>
+                    <p style="margin: 5px 0; display:flex; flex-direction:column;"><strong style="font-size:12px; color:#9da2ab">Teléfono:</strong> ${orderData.client.phone}</p>
+                    <p></p>
+                    <p style="margin: 5px 0; display:flex; flex-direction:column;"><strong style="font-size:12px; color:#9da2ab">Tipo documento:</strong> ${orderData.billingDocument.typeDocument}</p>
+                    <p style="margin: 5px 0;display:flex; flex-direction:column;"><strong style="font-size:12px; color:#9da2ab">N° documento:</strong>${orderData.billingDocument.documentNumber}</p>
+                    <p style="margin: 5px 0; display:flex; flex-direction:column;"><strong style="font-size:12px; color:#9da2ab">Dirección:</strong> ${orderData.billingDocument.address}</p>
+                    <p style="margin: 5px 0;display:flex; flex-direction:column;"><strong style="font-size:12px; color:#9da2ab">País:</strong>${orderData.billingDocument.country}</p>
+                    <p style="margin: 5px 0;display:flex; flex-direction:column;"><strong style="font-size:12px; color:#9da2ab">Estado:</strong> ${orderData.billingDocument.state}</p>
+                    <p style="margin: 5px 0;display:flex; flex-direction:column;"><strong style="font-size:12px; color:#9da2ab">Ciudad:</strong>${orderData.billingDocument.city}</p>
+            </div>
+            
+            ${
+              orderData.billingDocument.billingDocumentType === 'INVOICE'
+                ? `<p style="margin: 5px 0;"><strong style="font-size:12px; color:#9da2ab">Empresa:</strong>${orderData.billingDocument.businessName}</p>`
+                : ''
+            }
+                <div style="height: 1px; width:100%; border-top:1px dashed #a8acb6; margin-top: 20px;margin-bottom: 20px;"/>
+                <p style="margin: 5px 0; color: #777; text-align: center;">${format(
+                  orderData.pickupTime,
+                  'dd/MM/yyyy HH:mm:ss',
+                  {
+                    locale: es
+                  }
+                )}</p>
+                <div style="height: 1px; width:100%; border-top:1px dashed #a8acb6;margin-top: 20px;margin-bottom: 20px;"/>
+        </div>
+`;
+
+    // Detalles del pedido
+    invoiceHtml += `
+  <div style="margin-bottom: 20px;">
+    <h3 style="margin-bottom: 10px; font-size: 18px;">Detalles del pedido</h3>
+    <table style="width: 100%; font-size: 14px;">
+      <thead>
+        <tr>
+          <th style="padding: 8px; color: #758399 ">Artículo</th>
+          <th style="padding: 8px; color: #758399 ">Cant.</th>
+          <th style="padding: 8px; color: #758399 ">P.U</th>
+          <th style="padding: 8px; color: #758399 ">Importe</th>
+        </tr>
+      </thead>
+      <tbody>
+`;
+
+    orderData.cart.products.forEach((product) => {
+      const importe = (product.price * product.quantity).toFixed(2);
+      invoiceHtml += `
+        <tr>
+          <td style="padding: 8px; text-align: left;">
+            <img src="${product.image}" alt="${product.name}" style="width: 40px; height: auto; margin-right: 10px; vertical-align: middle;" />
+            ${product.name}
+          </td>
+          <td style="padding: 8px; text-align: center;">${product.quantity}</td>
+          <td style="padding: 8px; text-align: center;">S/. ${product.price.toFixed(2)}</td>
+          <td style="padding: 8px; text-align: center;">S/. ${importe}</td>
+        </tr>
+    `;
+    });
+
+    invoiceHtml += `
+      </tbody>
+    </table>
+  </div>
+`;
+
+    // Total y pie de página
+    invoiceHtml += `
+  <div style="text-align: right; margin-top: 20px; font-size: 16px;">
+    <p style="margin-bottom: 5px; display:flex;justify-content: space-between;"><strong>Total venta:</strong> 
+    <span>
+    S/. ${totalPrice.toFixed(2)}
+    </span>
+    </p>
+    </div>
     
-</div>`;
+    <p style="margin-bottom: 5px; text-align: center;">Son ${numberToLetter(totalPrice)}</p>
+      <div
+      style="display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); align-items:center;"
+    >
+      <div style="height: 1px; width: 100%; border-top: 1px dashed #a8acb6;margin-top: 20px;margin-bottom: 20px;" ></div>
+      <p style="text-align: center;">Forma de pago</p>
+      <div style="height: 1px; width: 100%; border-top: 1px dashed #a8acb6;margin-top: 20px;margin-bottom: 20px;" ></div>
+    </div>
+    <p style="margin-bottom: 5px; display:flex;justify-content: space-between;"><strong>Izipay</strong> 
+    <span>
+    S/. ${totalPrice.toFixed(2)}
+    </span>
+    </p>
+    </div>
+`;
 
-    // Pie de página
-    invoiceHtml += '<div style="text-align: center; margin-top: 20px;">';
-    invoiceHtml += `<p>© CHAQCHAO ${new Date().getFullYear()} </p>`;
-    invoiceHtml += `<p style="font-size: 10px;">${new Date().toLocaleString()} </p>`;
-    invoiceHtml += '</div>';
-
-    // Devolver el HTML generado
     return invoiceHtml;
   }
 }
