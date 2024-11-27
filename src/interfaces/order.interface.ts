@@ -1,4 +1,5 @@
 import { CartStatus, Order } from '@prisma/client';
+import { BillingDocumentData } from './billing-document.interface';
 
 export type OrderData = Pick<
   Order,
@@ -31,11 +32,16 @@ export type OrderInfo = Pick<
 
 export type OrderDetails = OrderInfo & {
   cart: { quantity: number; products: ProductData[] };
+  billingDocument: Omit<
+    BillingDocumentData,
+    'order' | 'totalAmount' | 'orderId' | 'id' | 'issuedAt'
+  >;
 };
 
 interface Client {
   id: string;
   name: string;
+  lastName: string;
   email: string;
   phone: string;
 }
