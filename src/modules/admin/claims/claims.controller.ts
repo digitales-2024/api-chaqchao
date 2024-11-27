@@ -14,7 +14,6 @@ import { Auth } from '../auth/decorators';
 @ApiTags('Claims')
 @ApiInternalServerErrorResponse({ description: 'Internal server error' })
 @ApiBadRequestResponse({ description: 'Bad request' })
-@Auth()
 @Controller({
   path: 'claims',
   version: '1'
@@ -31,6 +30,7 @@ export class ClaimsController {
   @ApiBadRequestResponse({ description: 'Not found claims' })
   @ApiOkResponse({ description: 'Get all claims' })
   @Get()
+  @Auth()
   findAll() {
     return this.claimsService.findAll();
   }
