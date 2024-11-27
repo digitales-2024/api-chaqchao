@@ -145,6 +145,7 @@ enum AuditActionType {
 
 model BusinessConfig {
   id            String @id @unique @default(uuid())
+  ruc           String @default("00000000000")
   businessName  String
   contactNumber String
   email         String
