@@ -2,7 +2,7 @@ import { Module } from '@nestjs/common';
 import { PaymentController } from './payment.controller';
 import { PaymentService } from './payment.service';
 import { PrismaService } from '../../../prisma/prisma.service';
-import { PrismaModule } from 'src/prisma/prisma.module'; // Importa PrismaModule si existe
+import { PrismaModule } from 'src/prisma/prisma.module';
 import { HttpModule } from '@nestjs/axios';
 import { ConfigModule } from '@nestjs/config';
 

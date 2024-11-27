@@ -7,7 +7,7 @@ export class PaymentService {
   constructor(private prisma: PrismaService) {}
 
   async createPayPalOrder(total: number, currency: string) {
-    const PAYPAL_API = process.env.PAYPAL_API_URL; // Sandbox de PayPal
+    const PAYPAL_API = process.env.PAYPAL_API_URL;
     const PAYPAL_CLIENT = process.env.PAYPAL_CLIENT_ID;
     const PAYPAL_SECRET = process.env.PAYPAL_CLIENT_SECRET;
 
@@ -21,7 +21,6 @@ export class PaymentService {
         purchase_units: [
           {
             amount: {
-              // currency_code: "USD",
               currency_code: currency,
               value: total.toFixed(2)
             }

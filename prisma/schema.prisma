@@ -526,3 +526,23 @@ enum ClassStatus {
   CONFIRMED
   CANCELLED
 }
+
+model Claims {
+  id                        String        @id @unique @default(uuid())
+  claimantName              String
+  claimantAddress           String?
+  documentNumber            String
+  claimantEmail             String
+  claimantPhone             String
+  claimantRepresentative    String?
+  assetType                 AssetType
+  amountClaimed             String?
+  assetDescription          String
+  claimDescription          String
+  dateClaim                 DateTime
+}
+
+enum AssetType {
+  PRODUCT
+  SERVICE
+}
