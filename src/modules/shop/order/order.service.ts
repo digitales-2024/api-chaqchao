@@ -42,7 +42,7 @@ export class OrderService {
             }
           }
         },
-        billingDocuments: {
+        billingDocument: {
           where: { paymentStatus: 'PAID' }
         }
       }

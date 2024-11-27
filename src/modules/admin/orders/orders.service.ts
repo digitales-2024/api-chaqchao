@@ -38,6 +38,7 @@ export class OrdersService {
                 select: {
                   id: true,
                   name: true,
+                  lastName: true,
                   phone: true,
                   email: true
                 }
@@ -95,12 +96,14 @@ export class OrdersService {
           ? {
               id: order.cart.client.id,
               name: order.cart.client.name,
+              lastName: order.cart.client.lastName,
               phone: order.cart.client.phone,
               email: order.cart.client.email
             }
           : {
               id: null,
               name: order.customerName,
+              lastName: order.customerLastName,
               phone: order.customerPhone,
               email: order.customerEmail
             }
@@ -130,6 +133,7 @@ export class OrdersService {
                 select: {
                   id: true,
                   name: true,
+                  lastName: true,
                   phone: true,
                   email: true
                 }
@@ -154,6 +158,20 @@ export class OrdersService {
                 }
               }
             }
+          },
+          billingDocument: {
+            select: {
+              billingDocumentType: true,
+              documentNumber: true,
+              address: true,
+              state: true,
+              country: true,
+              city: true,
+              postalCode: true,
+              typeDocument: true,
+              businessName: true,
+              paymentStatus: true
+            }
           }
         },
         where: {
@@ -177,10 +195,23 @@ export class OrdersService {
             quantity: order.cart.cartItems.find((item) => item.product.id === product.id).quantity
           }))
         },
+        billingDocument: {
+          billingDocumentType: order.billingDocument.billingDocumentType,
+          documentNumber: order.billingDocument.documentNumber,
+          address: order.billingDocument.address,
+          state: order.billingDocument.state,
+          country: order.billingDocument.country,
+          city: order.billingDocument.city,
+          postalCode: order.billingDocument.postalCode,
+          typeDocument: order.billingDocument.typeDocument,
+          businessName: order.billingDocument.businessName,
+          paymentStatus: order.billingDocument.paymentStatus
+        },
         client: order.cart.client
           ? {
               id: order.cart.client.id,
               name: order.cart.client.name,
+              lastName: order.cart.client.lastName,
               phone: order.cart.client.phone,
               email: order.cart.client.email
             }
@@ -188,6 +219,7 @@ export class OrdersService {
               id: null,
               name: order.customerName,
               phone: order.customerPhone,
+              lastName: order.customerLastName,
               email: order.customerEmail
             }
       };
@@ -254,6 +286,7 @@ export class OrdersService {
                 select: {
                   id: true,
                   name: true,
+                  lastName: true,
                   phone: true,
                   email: true
                 }
@@ -294,6 +327,7 @@ export class OrdersService {
           client: {
             id: order.cart.client.id,
             name: order.cart.client.name,
+            lastName: order.cart.client.lastName,
             phone: order.cart.client.phone,
             email: order.cart.client.email
           }
