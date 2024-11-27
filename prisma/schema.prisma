@@ -405,7 +405,7 @@ model Order {
   notifications Notification[] @relation("OrderToNotificationRelation")
 
   // Relación con BillingDocument
-  billingDocuments BillingDocument[] @relation("OrderToBilling")
+  billingDocument BillingDocument? @relation("OrderToBilling")
 
   @@index([cartId])
 }
@@ -422,7 +422,7 @@ model BillingDocument {
   id String @id @unique @default(uuid())
 
   // Relación con Order
-  orderId String
+  orderId String @unique
   order   Order  @relation(fields: [orderId], references: [id], name: "OrderToBilling")
 
   billingDocumentType BillingDocumentType
