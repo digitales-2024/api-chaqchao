@@ -1,0 +1,77 @@
+<!DOCTYPE html PUBLIC "-//W3C//DTD XHTML 1.0 Transitional//EN" "http://www.w3.org/TR/xhtml1/DTD/xhtml1-transitional.dtd">
+<html xmlns="http://www.w3.org/1999/xhtml">
+  <%- include("./shared/head.ejs") %>
+  <table width="100%" border="0" cellspacing="0" cellpadding="0">
+    <tr>
+      <td align="center">
+        <table
+          width="600"
+          border="0"
+          cellspacing="0"
+          cellpadding="0"
+          style="background-color: white"
+        >
+          <tr style="padding: 20px">
+            <td align="center">
+              <h2>Hello, <strong><%= locals.name %>!</strong></h2>
+              <p>Your order has been successfully processed at <%= locals.business %>!</p>
+              <p>Thank you for your purchase. We have received your order and are processing it.</p>
+              <p>ORDER CODE:<span style="font-weight: 800"> <%= locals.orderNumber %></span></p>
+            </td>
+          </tr>
+          <tr style="padding: 20px">
+            <td align="left">
+              <table
+                style="
+                  padding-left: 20px;
+                  background-color: #fef9c3;
+                  border-left: 4px solid #eab308;
+                "
+                width="100%"
+                border="0"
+                cellspacing="0"
+                cellpadding="0"
+              >
+                <tr>
+                  <td>
+                    <strong style="color: #a16207">Pickup Date:</strong>
+                  </td>
+                </tr>
+                <tr>
+                  <td>
+                    <p style="color: #85532b">
+                      Your order will be ready for pickup on <%= locals.pickupDate %>. Please be
+                      attentive to this date.
+                    </p>
+                  </td>
+                </tr>
+              </table>
+              <table
+                style="padding-left: 20px; background-color: #f3f4f6; margin-top: 15px"
+                width="100%"
+                border="0"
+                cellspacing="0"
+                cellpadding="0"
+              >
+                <tr>
+                  <td>
+                    <strong>Instructions:</strong>
+                  </td>
+                </tr>
+                <tr>
+                  <td>
+                    <p>1. Present your order number at the pickup counter.</p>
+                    <p>2. Bring a valid ID.</p>
+                    <p>3. If you cannot pick up personally, please inform us in advance.</p>
+                  </td>
+                </tr>
+              </table>
+              <p>Best regards,<br />The <%= locals.business %> Team</p>
+            </td>
+          </tr>
+          <%- include("./shared/footer.ejs") %>
+        </table>
+      </td>
+    </tr>
+  </table>
+</html>

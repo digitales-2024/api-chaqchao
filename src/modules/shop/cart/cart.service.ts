@@ -25,6 +25,7 @@ import { Cron } from '@nestjs/schedule';
 import { CartDataComplet } from 'src/interfaces/cart.interface';
 import { format } from 'date-fns';
 import { CreateInvoiceDto } from './dto/create-invoice.dto';
+import { TypedEventEmitter } from 'src/event-emitter/typed-event-emitter.class';
 
 @Injectable()
 export class CartService {
@@ -33,6 +34,7 @@ export class CartService {
   constructor(
     private readonly prisma: PrismaService,
     private readonly pickupCodeService: PickupCodeService,
+    private readonly eventEmitter: TypedEventEmitter,
     private readonly orderGateway: AdminGateway
   ) {}
 
@@ -379,8 +381,7 @@ export class CartService {
     // Si la hora de recojo es fuera del horario de atención
     if (
       currentTimeOrder < businessHours.openingTime ||
-      currentTimeOrder > businessHours.closingTime ||
-      currentTimeOrder < currentTime
+      currentTimeOrder > businessHours.closingTime
     ) {
       throw new BadRequestException('Orders cannot be placed outside business hours.');
     }
@@ -426,7 +427,7 @@ export class CartService {
       // Buscar el carrito y sus ítems asociados
       const cart = await this.prisma.cart.findUnique({
         where: { tempId: cartId },
-        include: { cartItems: true, order: true }
+        include: { cartItems: true, order: true, client: true }
       });
       if (!cart) {
         throw new NotFoundException(`Cart with ID ${cartId} not found`);
@@ -477,6 +478,23 @@ export class CartService {
       await this.prisma.billingDocument.create({
         data: invoiceData
       });
+
+      // Enviar un correo para notificar al cliente que su pedido ha sido confirmado
+
+      // Enviamos el usuario al correo con la contraseña temporal
+      const emailResponse = await this.eventEmitter.emitAsync('order.new-order', {
+        name: cart.client
+          ? (cart.client.name + ' ' + cart.client.lastName).toUpperCase()
+          : (order.customerName + ' ' + order.customerLastName).toUpperCase(),
+        email: cart.client ? cart.client.email : order.customerEmail,
+        orderNumber: order.pickupCode,
+        totalOrder: order.totalAmount.toFixed(2),
+        pickupDate: format(order.pickupTime, 'PPPp')
+      });
+
+      if (emailResponse.every((response) => response !== true)) {
+        throw new BadRequestException('Failed to send email');
+      }
 
       // Emitir evento para notificar al administrador
       this.orderGateway.sendOrderCreated(order);

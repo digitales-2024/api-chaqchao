@@ -16,4 +16,11 @@ export interface EventPayloads {
     totalPrice: number;
     typeCurrency: TypeCurrency;
   };
+  'order.new-order': {
+    name: string;
+    email: string;
+    orderNumber: string;
+    totalOrder: string;
+    pickupDate: string;
+  };
 }
