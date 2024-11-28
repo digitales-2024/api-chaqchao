@@ -10,7 +10,6 @@ import {
 import { PaymentService } from './payment.service';
 import { CreatePaymentDto } from './dto/create-payment.dto';
 import { Response } from 'express';
-import { ValidatePaymentDto } from './dto/validate-payment.dto';
 
 @Controller({
   path: 'payment',
@@ -44,7 +43,7 @@ export class PaymentController {
    * Válida los datos de pago dados (hash)
    */
   @Post('validate')
-  async validatePayment(@Body() body: ValidatePaymentDto, @Res() res: Response) {
+  async validatePayment(@Body() body, @Res() res: Response) {
     try {
       const isValid = this.paymentService.validatePayment(body);
       res.status(HttpStatus.OK).send({ isValid });
