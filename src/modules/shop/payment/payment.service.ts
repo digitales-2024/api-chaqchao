@@ -8,9 +8,7 @@ import { ConfigService } from '@nestjs/config';
 import { CreatePaymentDto } from './dto/create-payment.dto';
 import * as http from 'http';
 import * as https from 'https';
-import { ValidatePaymentDto } from './dto/validate-payment.dto';
-import hmacSHA256 from 'crypto-js/hmac-sha256';
-import Hex from 'crypto-js/enc-hex';
+import * as crypto from 'crypto';
 
 @Injectable()
 export class PaymentService {
@@ -18,13 +16,14 @@ export class PaymentService {
 
   private authHeader: string;
   private readonly hmacSecretKey: string;
+  private readonly password: string;
 
   constructor(private configService: ConfigService) {
     this.hmacSecretKey = this.configService.get<string>('IZIPAY_HMAC_KEY');
     const username = this.configService.get<string>('IZIPAY_PAYMENT_USERNAME');
-    const password = this.configService.get<string>('IZIPAY_PAYMENT_PASSWORD');
+    this.password = this.configService.get<string>('IZIPAY_PAYMENT_PASSWORD');
 
-    if (!username || !password) {
+    if (!username || !this.password) {
       throw new Error('API_USERNAME and API_PASSWORD must be set in environment variables.');
     }
 
@@ -32,7 +31,7 @@ export class PaymentService {
       throw new Error('HMAC_SECRET_KEY must be defined in environment variables');
     }
     // Generar el header de autenticación Basic
-    this.authHeader = 'Basic ' + Buffer.from(`${username}:${password}`).toString('base64');
+    this.authHeader = 'Basic ' + Buffer.from(`${username}:${this.password}`).toString('base64');
   }
 
   /**
@@ -118,15 +117,34 @@ export class PaymentService {
    * @param validatePaymentDto Datos de pago y hash
    * @returns Mensaje de validación
    */
-  validatePayment(validatePaymentDto: ValidatePaymentDto): boolean {
-    const { clientAnswer, hash } = validatePaymentDto;
+  validatePayment(validatePaymentDto): boolean {
+    const { hashKey, hash, rawClientAnswer } = validatePaymentDto;
+    let generatedHash = '';
+
+    // Convertir el objeto a JSON
+    const message = JSON.stringify(rawClientAnswer);
+
     // Generar el hash del clientAnswer
-    const answerString = JSON.stringify(clientAnswer);
-    const generatedHash = Hex.stringify(hmacSHA256(answerString, this.hmacSecretKey));
+
+    if (!hashKey) {
+      throw new BadRequestException('Payment hash is required');
+    }
+
+    if (hashKey === 'sha256_hmac') {
+      generatedHash = this.generateHmacSha256(JSON.parse(message), this.hmacSecretKey);
+    } else if (hashKey === 'password') {
+      generatedHash = this.generateHmacSha256(message, this.password);
+    } else {
+      return false;
+    }
     if (hash === generatedHash) {
       return true;
     } else {
       throw new BadRequestException('Payment hash mismatch');
     }
+  }
+
+  generateHmacSha256(message: string, secretKey: string): string {
+    return crypto.createHmac('sha256', secretKey).update(message).digest('hex');
   }
 }
