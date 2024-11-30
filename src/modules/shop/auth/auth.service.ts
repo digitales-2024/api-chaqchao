@@ -357,7 +357,7 @@ export class AuthService {
       const payload = { id: clientDB.id };
       const token = this.jwtService.sign(payload, {
         secret: this.configService.get<string>('JWT_SECRET'),
-        expiresIn: this.configService.get<string>('JWT_RESET_PASSWORD_EXPIRES_IN')
+        expiresIn: this.configService.get<string>('JWT_RESET_PASSWORD_EXPIRES_IN') || '5m'
       });
 
       const link = `${this.configService.get<string>('WEB_URL_SHOP')}/reset-password?token=${token}`;
