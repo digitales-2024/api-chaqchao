@@ -1,4 +1,13 @@
-import { Controller, Post, Body, Get, Patch, Param } from '@nestjs/common';
+import {
+  Controller,
+  Post,
+  Body,
+  Get,
+  Patch,
+  Param,
+  Query,
+  BadRequestException
+} from '@nestjs/common';
 import { ClassesService } from './classes.service';
 import { CreateClassDto } from './dto/create-class.dto';
 import {
@@ -11,6 +20,7 @@ import {
 } from '@nestjs/swagger';
 import {
   ClassesData,
+  ClassesDataAdmin,
   ClassLanguageData,
   ClassPriceConfigData,
   ClassScheduleData,
@@ -106,5 +116,32 @@ export class ClassesController {
     @Body() classDto: UpdateClassDto
   ): Promise<HttpResponse<ClassesData>> {
     return this.classesService.confirmClass(id, classDto);
+  }
+
+  /**
+   * Verificar si hay una clase una fecha y hora
+   */
+  @Post('/check')
+  @ApiOperation({ summary: 'Verificar si hay una clase una fecha y hora' })
+  @ApiOkResponse({ description: 'Clase encontrada' })
+  @ApiBadRequestResponse({ description: 'No se encuentra clase' })
+  checkClass(
+    @Query('schedule') scheduleClass: string,
+    @Query('date') dateClass: string
+  ): Promise<ClassesDataAdmin> {
+    try {
+      if (!scheduleClass || !dateClass) {
+        throw new BadRequestException('Date and time are required');
+      }
+
+      const dateTime = new Date(dateClass);
+
+      if (isNaN(dateTime.getTime())) {
+        throw new BadRequestException('Invalid date or time format');
+      }
+      return this.classesService.checkClass(scheduleClass, dateClass);
+    } catch (error) {
+      throw new BadRequestException(error.message);
+    }
   }
 }

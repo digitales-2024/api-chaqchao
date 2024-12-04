@@ -7,6 +7,7 @@ import * as ExcelJS from 'exceljs';
 import * as puppeteer from 'puppeteer';
 import * as fs from 'fs';
 import * as path from 'path';
+import { ClassStatus } from '@prisma/client';
 
 @Injectable()
 export class ClassesAdminService {
@@ -81,10 +82,19 @@ export class ClassesAdminService {
    * @returns Registros de clases por fecha
    */
   async findByDate(date: string): Promise<ClassesDataAdmin[]> {
+    const startOfDay = new Date(date);
+    startOfDay.setUTCHours(0, 0, 0, 0); // Inicio del día en UTC
+    const endOfDay = new Date(date);
+    endOfDay.setUTCHours(23, 59, 59, 999); // Fin del día en UTC
+
     try {
       const classesRegistrations = await this.prisma.classes.findMany({
         where: {
-          dateClass: new Date(date)
+          dateClass: {
+            gte: startOfDay, // Mayor o igual al inicio del día
+            lte: endOfDay // Menor o igual al fin del día
+          },
+          status: ClassStatus.CONFIRMED
         },
         select: {
           id: true,
