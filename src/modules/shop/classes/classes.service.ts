@@ -406,10 +406,7 @@ export class ClassesService {
    * @param class Data de la clase
    * @returns Clase confirmada
    */
-  async confirmClass(
-    classId: string,
-    classData: UpdateClassDto
-  ): Promise<HttpResponse<ClassesData>> {
+  async confirmClass(classId: string, classData: UpdateClassDto): Promise<HttpResponse<void>> {
     const existingClass = await this.prisma.classes.findUnique({
       where: { id: classId }
     });
@@ -455,7 +452,7 @@ export class ClassesService {
     return {
       statusCode: HttpStatus.OK,
       message: 'Class confirmed successfully',
-      data: classConfirm
+      data: null
     };
   }
 

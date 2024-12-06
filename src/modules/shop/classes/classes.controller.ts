@@ -114,7 +114,7 @@ export class ClassesController {
   confirmClass(
     @Param('id') id: string,
     @Body() classDto: UpdateClassDto
-  ): Promise<HttpResponse<ClassesData>> {
+  ): Promise<HttpResponse<void>> {
     return this.classesService.confirmClass(id, classDto);
   }
 
