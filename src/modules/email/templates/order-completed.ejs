@@ -1,0 +1,101 @@
+<!DOCTYPE html PUBLIC "-//W3C//DTD XHTML 1.0 Transitional//EN" "http://www.w3.org/TR/xhtml1/DTD/xhtml1-transitional.dtd">
+<html xmlns="http://www.w3.org/1999/xhtml">
+  <%- include("./shared/head.ejs") %>
+  <table width="100%" border="0" cellspacing="0" cellpadding="0">
+    <tr>
+      <td align="center">
+        <table
+          width="600"
+          border="0"
+          cellspacing="0"
+          cellpadding="0"
+          style="background-color: white"
+        >
+          <tr style="padding: 20px">
+            <td align="center">
+              <h2>Hello, <strong><%= locals.name %>!</strong></h2>
+              <p>Your order has been successfully delivered at <%= locals.business %></p>
+              <p>ORDER CODE:<span style="font-weight: 800"> <%= locals.orderNumber %></span></p>
+            </td>
+          </tr>
+          <tr style="padding: 20px">
+            <td align="left">
+              <table
+                style="
+                  padding-left: 20px;
+                  background-color: #c3feef;
+                  border-left: 4px solid #08eaa6;
+                "
+                width="100%"
+                border="0"
+                cellspacing="0"
+                cellpadding="0"
+              >
+                <tr>
+                  <td>
+                    <strong style="color: #07a180">Order Details:</strong>
+                  </td>
+                </tr>
+                <tr>
+                  <td>
+                    <p style="color: #2b8579">Date: <%= locals.pickupDate %>.</p>
+                  </td>
+                  <td>
+                    <p style="color: #2b8579">Total: <%= locals.totalOrder %>.</p>
+                  </td>
+                </tr>
+              </table>
+              <table
+                style="
+                  padding-left: 20px;
+                  background-color: #ffffff;
+                  border-left: 4px solid #08eaa6;
+                "
+                width="100%"
+                border="0"
+                cellspacing="0"
+                cellpadding="0"
+              >
+                <tr>
+                  <td>
+                    <strong style="color: #07a180">Products:</strong>
+                  </td>
+                </tr>
+                <tr>
+                  <td></td>
+                  <td>
+                    <p style="color: #2b8579">Name</p>
+                  </td>
+                  <td>
+                    <p style="color: #2b8579">Quantity</p>
+                  </td>
+                  <td>
+                    <p style="color: #2b8579">Price</p>
+                  </td>
+                </tr>
+                <% locals.products.forEach((product) => { %>
+                <tr>
+                  <td>
+                    <img src="<%= product.image %>" alt="<%= product.name %>" style="width: 60px; height: 60px; object-fit: cover;">
+                  </td>
+                  <td>
+                    <p><%= product.name %></p>
+                  </td>
+                  <td>
+                    <p><%= product.quantity %></p>
+                  </td>
+                  <td>
+                    <p><%= product.price %></p>
+                  </td>
+                </tr>
+                <% }); %>
+              </table>
+              <p>Thank you for choosing <%= locals.business %>. We hope you enjoy your products.</p>
+            </td>
+          </tr>
+          <%- include("./shared/footer.ejs") %>
+        </table>
+      </td>
+    </tr>
+  </table>
+</html>
