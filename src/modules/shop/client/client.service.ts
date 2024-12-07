@@ -180,6 +180,7 @@ export class ClientService {
       // Eliminar la cookie 'access_token'
       res.cookie('access_token', '', {
         httpOnly: true,
+        domain: process.env.WEB_DOMAIN,
         expires: new Date(0) // Establece la fecha de expiración a una fecha pasada para eliminar la cookie
       });
 
