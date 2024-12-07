@@ -23,4 +23,17 @@ export interface EventPayloads {
     totalOrder: string;
     pickupDate: string;
   };
+  'order.order-completed': {
+    name: string;
+    email: string;
+    orderNumber: string;
+    totalOrder: string;
+    pickupDate: string;
+    products: {
+      name: string;
+      quantity: number;
+      price: number;
+      image: string;
+    }[];
+  };
 }

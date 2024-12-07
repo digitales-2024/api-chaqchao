@@ -12,13 +12,14 @@ import { ClassScheduleService } from 'src/modules/admin/class-schedule/class-sch
 import { ClassRegistrationService } from 'src/modules/admin/class-registration/class-registration.service';
 import { ClassLanguageService } from 'src/modules/admin/class-language/class-language.service';
 import * as moment from 'moment-timezone';
-import { ClassesData, ClientData, HttpResponse } from 'src/interfaces';
+import { ClassesData, ClassesDataAdmin, ClientData, HttpResponse } from 'src/interfaces';
 import { ClassPriceService } from 'src/modules/admin/class-price/class-price.service';
 import { TypedEventEmitter } from 'src/event-emitter/typed-event-emitter.class';
 import { AdminGateway } from 'src/modules/admin/admin.gateway';
 import { ClassStatus, TypeCurrency } from '@prisma/client';
 import { Cron } from '@nestjs/schedule';
 import { UpdateClassDto } from './dto/update-class.dto';
+import { isEqual } from 'date-fns';
 
 @Injectable()
 export class ClassesService {
@@ -130,6 +131,7 @@ export class ClassesService {
    * Verificar reglas y condiciones antes de la creación de la clase
    */
   private validateClassCreation(
+    dateClass: Date,
     currentTime: string,
     closeBeforeDate: string,
     finalRegistrationDate: string,
@@ -146,7 +148,7 @@ export class ClassesService {
       if (totalParticipants < 2 || totalParticipants > 8) {
         throw new BadRequestException('Invalid number of participants');
       }
-      if (currentTime >= closeBeforeDate) {
+      if (currentTime >= closeBeforeDate && isEqual(new Date(dateClass), new Date())) {
         throw new BadRequestException('Class is close');
       }
     } else {
@@ -156,7 +158,7 @@ export class ClassesService {
       }
     }
 
-    if (currentTime >= finalRegistrationDate) {
+    if (currentTime >= finalRegistrationDate && isEqual(new Date(dateClass), new Date())) {
       throw new BadRequestException('Registration is close');
     }
   }
@@ -239,6 +241,7 @@ export class ClassesService {
       const totalParticipants = totalAdults + totalChildren;
 
       this.validateClassCreation(
+        dateClass,
         currentTime,
         closeBeforeDate,
         finalRegistrationDate,
@@ -335,9 +338,20 @@ export class ClassesService {
    * @returns Clases encontradas
    */
   async findClassesByscheduleClass(scheduleClass: string, dateClass: Date): Promise<ClassesData[]> {
+    const startOfDay = new Date(dateClass);
+    startOfDay.setUTCHours(0, 0, 0, 0); // Inicio del día en UTC
+    const endOfDay = new Date(dateClass);
+    endOfDay.setUTCHours(23, 59, 59, 999); // Fin del día en UTC
     try {
       const classesDB = await this.prisma.classes.findMany({
-        where: { scheduleClass, dateClass },
+        where: {
+          scheduleClass,
+          dateClass: {
+            gte: startOfDay,
+            lte: endOfDay
+          },
+          status: ClassStatus.CONFIRMED
+        },
         select: {
           id: true,
           userName: true,
@@ -392,10 +406,7 @@ export class ClassesService {
    * @param class Data de la clase
    * @returns Clase confirmada
    */
-  async confirmClass(
-    classId: string,
-    classData: UpdateClassDto
-  ): Promise<HttpResponse<ClassesData>> {
+  async confirmClass(classId: string, classData: UpdateClassDto): Promise<HttpResponse<void>> {
     const existingClass = await this.prisma.classes.findUnique({
       where: { id: classId }
     });
@@ -441,7 +452,35 @@ export class ClassesService {
     return {
       statusCode: HttpStatus.OK,
       message: 'Class confirmed successfully',
-      data: classConfirm
+      data: null
+    };
+  }
+
+  /**
+   * Verificar si hay una clase en una fecha y hora específica
+   * @param scheduleClass Horario de inicio
+   * @param dateClass Fecha de la clase
+   * @returns Retorna si hay una clase en la fecha y hora especificada
+   */
+  async checkClass(scheduleClass: string, dateClass: string): Promise<ClassesDataAdmin> {
+    const parsedDate = new Date(dateClass);
+    const classesDB = await this.findClassesByscheduleClass(scheduleClass, parsedDate);
+
+    // Agrupamos el total de participantes
+    const totalParticipants = classesDB.reduce(
+      (sum, classItem) => sum + classItem.totalParticipants,
+      0
+    );
+
+    // Sacamos el idioma de la primera clase
+    const languageClass = classesDB.length ? classesDB[0].languageClass : '';
+
+    return {
+      dateClass: dateClass,
+      scheduleClass: scheduleClass,
+      totalParticipants: totalParticipants,
+      languageClass: languageClass,
+      classes: classesDB
     };
   }
 }

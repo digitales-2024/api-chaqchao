@@ -69,7 +69,7 @@ export class AuthService {
   async validateUserGoogle(client: ClientGoogleData, res: Response): Promise<any> {
     try {
       // Buscar cliente en la base de datos por correo electrónico
-      let clientDB = await this.prisma.client.findUnique({
+      const clientDB = await this.prisma.client.findUnique({
         where: {
           email: client.email,
           isGoogleAuth: true
@@ -87,20 +87,27 @@ export class AuthService {
           }
         });
       }
-      // Genera el refresh token
-      const refreshToken = this.getJwtRefreshToken({ id: clientDB.id });
+
+      let refreshToken: string;
+
       // Si no existe, crear un nuevo cliente
       if (!clientDB) {
         this.logger.log(`Creando nuevo cliente: ${client.name} (${client.email})`);
-        clientDB = await this.prisma.client.create({
+        const newClient = await this.prisma.client.create({
           data: {
             name: client.name,
             email: client.email,
-            isGoogleAuth: true,
-            token: refreshToken
+            image: client.image,
+            isGoogleAuth: true
           }
         });
+
+        // Genera el refresh token
+        refreshToken = this.getJwtRefreshToken({ id: newClient.id });
+        await this.clientService.updateToken(newClient.id, refreshToken);
       } else {
+        // Genera el refresh token
+        refreshToken = this.getJwtRefreshToken({ id: clientDB.id });
         await this.clientService.updateLastLogin(clientDB.id);
         if (clientDB.token !== client.token) {
           await this.clientService.updateToken(clientDB.id, refreshToken);

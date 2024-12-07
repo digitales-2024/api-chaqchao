@@ -50,7 +50,8 @@ async function bootstrap() {
     { name: 'Shop Client', description: 'Operaciones sobre los clientes de la tienda' },
     { name: 'Shop Cart', description: 'Operaciones sobre el carrito de la tienda' },
     { name: 'Shop Order', description: 'Operaciones sobre las órdenes de la tienda' },
-    { name: 'Shop Product', description: 'Operaciones sobre los productos de la tienda' }
+    { name: 'Shop Product', description: 'Operaciones sobre los productos de la tienda' },
+    { name: 'Shop Class', description: 'Operaciones sobre las clases de la tienda' }
   ];
 
   SwaggerModule.setup('api', app, document);

@@ -2,6 +2,7 @@ import { Injectable, Logger, NotFoundException } from '@nestjs/common';
 import { PrismaService } from 'src/prisma/prisma.service';
 import { handleException } from 'src/utils';
 import { OrdersService } from 'src/modules/admin/orders/orders.service';
+import { OrderDetails } from 'src/interfaces';
 
 @Injectable()
 export class OrderService {
@@ -17,36 +18,9 @@ export class OrderService {
    * @param orderId Identificador del pedido
    * @returns Los detalles del pedido y la dirección del local
    */
-  async getOrderDetails(orderId: string): Promise<any> {
+  async getOrderDetails(orderId: string): Promise<OrderDetails> {
     // Obtener el pedido por ID y asegurarse que el cliente autenticado es el propietario
-    const order = await this.prisma.order.findFirst({
-      where: {
-        id: orderId
-      },
-      include: {
-        cart: {
-          include: {
-            cartItems: {
-              select: {
-                id: true,
-                quantity: true,
-                price: true,
-                product: {
-                  select: {
-                    id: true,
-                    name: true,
-                    price: true
-                  }
-                }
-              }
-            }
-          }
-        },
-        billingDocument: {
-          where: { paymentStatus: 'PAID' }
-        }
-      }
-    });
+    const order = await this.ordersService.findOne(orderId);
 
     if (!order) {
       throw new NotFoundException(
@@ -54,29 +28,7 @@ export class OrderService {
       );
     }
 
-    // Calcular totalAmount sumando (precio del producto * cantidad)
-    const totalAmount = order.cart.cartItems.reduce((total, item) => {
-      return total + item.product.price * item.quantity;
-    }, 0);
-
-    // Actualizar el totalAmount en el pedido (Order)
-    await this.prisma.order.update({
-      where: { id: order.id },
-      data: { totalAmount }
-    });
-
-    // Obtener la dirección del local desde BusinessConfig
-    const businessConfig = await this.prisma.businessConfig.findFirst({
-      select: { address: true }
-    });
-
-    // Retornar la información consolidada
-    return {
-      orderDetails: {
-        order
-      },
-      businessAddress: businessConfig?.address
-    };
+    return order;
   }
 
   /**
@@ -92,6 +44,20 @@ export class OrderService {
     } catch (error) {
       this.logger.error(`Error getting orders for client id: ${id}`, error.stack);
       handleException(error, 'Error getting orders');
+    }
+  }
+
+  /**
+   * Exportar un pedido en formato PDF
+   * @param orderId Identificador del pedido
+   * @returns Código del pedido y buffer del PDF
+   */
+  async exportPdfOrder(orderId: string): Promise<any> {
+    try {
+      return await this.ordersService.exportPdf(orderId);
+    } catch (error) {
+      this.logger.error(`Error exporting order id: ${orderId}`, error.stack);
+      handleException(error, 'Error exporting order');
     }
   }
 }

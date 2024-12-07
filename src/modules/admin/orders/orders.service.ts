@@ -10,13 +10,15 @@ import * as fs from 'fs';
 import { numberToLetter } from 'src/utils/numberToLetter';
 import { format } from 'date-fns';
 import { es } from 'date-fns/locale';
+import { TypedEventEmitter } from 'src/event-emitter/typed-event-emitter.class';
 
 @Injectable()
 export class OrdersService {
   private logger = new Logger('OrdersService');
   constructor(
     private readonly prismaService: PrismaService,
-    private readonly adminGateway: AdminGateway
+    private readonly adminGateway: AdminGateway,
+    private readonly eventEmitter: TypedEventEmitter
   ) {}
 
   /**
@@ -246,10 +248,64 @@ export class OrdersService {
         },
         where: {
           id
+        },
+        include: {
+          cart: {
+            select: {
+              id: true,
+              client: {
+                select: {
+                  id: true,
+                  name: true,
+                  lastName: true,
+                  phone: true,
+                  email: true
+                }
+              },
+              cartItems: {
+                select: {
+                  quantity: true,
+                  product: {
+                    select: {
+                      id: true,
+                      price: true,
+                      name: true,
+                      image: true,
+                      category: {
+                        select: {
+                          id: true,
+                          name: true
+                        }
+                      }
+                    }
+                  }
+                }
+              }
+            }
+          }
         }
       });
 
       this.adminGateway.sendOrderStatusUpdated(order.id, order.orderStatus);
+
+      // Verficamos que cuando se cambie a estado COMPLETED se envie el correo
+      if (order.orderStatus === OrderStatus.COMPLETED) {
+        await this.eventEmitter.emitAsync('order.order-completed', {
+          name: order.cart.client
+            ? (order.cart.client.name + ' ' + order.cart.client.lastName).toUpperCase()
+            : (order.customerName + ' ' + order.customerLastName).toUpperCase(),
+          email: order.cart.client ? order.cart.client.email : order.customerEmail,
+          orderNumber: order.pickupCode,
+          totalOrder: order.totalAmount.toFixed(2),
+          pickupDate: format(order.pickupTime, 'PPPp'),
+          products: order.cart.cartItems.map((item) => ({
+            name: item.product.name,
+            quantity: item.quantity,
+            price: item.product.price,
+            image: item.product.image
+          }))
+        });
+      }
 
       return order;
     } catch (error) {
