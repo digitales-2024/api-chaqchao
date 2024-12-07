@@ -6,6 +6,11 @@ export class CreateBusinessConfigDto {
   @ApiProperty()
   @IsString()
   @IsNotEmpty()
+  ruc: string;
+
+  @ApiProperty()
+  @IsString()
+  @IsNotEmpty()
   @Transform(({ value }) => value.trim())
   businessName: string;
 

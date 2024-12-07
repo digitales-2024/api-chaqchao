@@ -28,7 +28,7 @@ export class BusinessConfigService {
     createBusinessConfigDto: CreateBusinessConfigDto,
     user: UserData
   ): Promise<HttpResponse<BusinessConfigData>> {
-    const { businessName, contactNumber, email, address } = createBusinessConfigDto;
+    const { businessName, contactNumber, email, address, ruc } = createBusinessConfigDto;
 
     try {
       // Verificar si ya existe un registro en la tabla BusinessConfig
@@ -47,6 +47,7 @@ export class BusinessConfigService {
         // Si no existe, crear un nuevo registro
         const newConfig = await this.prisma.businessConfig.create({
           data: {
+            ruc,
             businessName,
             contactNumber,
             email,
@@ -69,6 +70,7 @@ export class BusinessConfigService {
           message: 'Business config created successfully',
           data: {
             id: newConfig.id,
+            ruc: newConfig.ruc,
             businessName: newConfig.businessName,
             contactNumber: newConfig.contactNumber,
             email: newConfig.email,
@@ -106,7 +108,7 @@ export class BusinessConfigService {
     updateBusinessConfigDto: UpdateBusinessConfigDto,
     user: UserData
   ): Promise<HttpResponse<BusinessConfigData>> {
-    const { businessName, contactNumber, email, address } = updateBusinessConfigDto;
+    const { businessName, contactNumber, email, address, ruc } = updateBusinessConfigDto;
 
     try {
       // Verificar si ya existe un registro en la tabla BusinessConfig con el id proporcionado
@@ -123,7 +125,8 @@ export class BusinessConfigService {
         (businessName !== undefined && businessName !== existingConfig.businessName) ||
         (contactNumber !== undefined && contactNumber !== existingConfig.contactNumber) ||
         (email !== undefined && email !== existingConfig.email) ||
-        (address !== undefined && address !== existingConfig.address);
+        (address !== undefined && address !== existingConfig.address) ||
+        (ruc !== undefined && ruc !== existingConfig.ruc);
 
       if (!hasChanges) {
         return {
@@ -134,7 +137,8 @@ export class BusinessConfigService {
             businessName: existingConfig.businessName,
             contactNumber: existingConfig.contactNumber,
             email: existingConfig.email,
-            address: existingConfig.address
+            address: existingConfig.address,
+            ruc: existingConfig.ruc
           }
         };
       }
@@ -146,7 +150,8 @@ export class BusinessConfigService {
           businessName,
           contactNumber,
           email,
-          address
+          address,
+          ruc
         }
       });
 
@@ -168,7 +173,8 @@ export class BusinessConfigService {
           businessName: updatedConfig.businessName,
           contactNumber: updatedConfig.contactNumber,
           email: updatedConfig.email,
-          address: updatedConfig.address
+          address: updatedConfig.address,
+          ruc: updatedConfig.ruc
         }
       };
     } catch (error) {
@@ -194,7 +200,8 @@ export class BusinessConfigService {
           businessName: true,
           contactNumber: true,
           email: true,
-          address: true
+          address: true,
+          ruc: true
         }
       });
 
@@ -204,7 +211,8 @@ export class BusinessConfigService {
         businessName: config.businessName,
         contactNumber: config.contactNumber,
         email: config.email,
-        address: config.address
+        address: config.address,
+        ruc: config.ruc
       }));
 
       return businessConfigs;
@@ -243,7 +251,8 @@ export class BusinessConfigService {
         businessName: true,
         contactNumber: true,
         email: true,
-        address: true
+        address: true,
+        ruc: true
       }
     });
 
@@ -258,7 +267,8 @@ export class BusinessConfigService {
       businessName: businessConfigDB.businessName,
       contactNumber: businessConfigDB.contactNumber,
       email: businessConfigDB.email,
-      address: businessConfigDB.address
+      address: businessConfigDB.address,
+      ruc: businessConfigDB.ruc
     };
   }
 
