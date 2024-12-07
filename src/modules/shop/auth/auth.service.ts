@@ -124,6 +124,7 @@ export class AuthService {
         sameSite: 'strict',
         path: '/',
         maxAge: 1000 * 60 * 60 * 24 * 30, // 30 días
+        domain: this.configService.get('WEB_DOMAIN'),
         expires: new Date(Date.now() + 1000 * 60 * 60 * 24 * 30) // 30 días
       });
 
@@ -132,6 +133,7 @@ export class AuthService {
         secure: process.env.NODE_ENV === 'production',
         sameSite: 'strict',
         maxAge: this.configService.get('COOKIE_EXPIRES_IN'),
+        domain: this.configService.get('WEB_DOMAIN'),
         expires: new Date(Date.now() + this.configService.get('COOKIE_EXPIRES_IN'))
       });
 
@@ -142,6 +144,7 @@ export class AuthService {
         sameSite: 'strict',
         path: '/',
         maxAge: this.configService.get('COOKIE_REFRESH_EXPIRES_IN'), // Asegúrate de que esta configuración exista
+        domain: this.configService.get('WEB_DOMAIN'),
         expires: new Date(Date.now() + this.configService.get('COOKIE_REFRESH_EXPIRES_IN'))
       });
       const webUrlShop = this.configService.get<string>('WEB_URL_SHOP');
@@ -203,6 +206,7 @@ export class AuthService {
         secure: process.env.NODE_ENV === 'production',
         sameSite: 'strict',
         path: '/',
+        domain: this.configService.get('WEB_DOMAIN'),
         maxAge: 1000 * 60 * 60 * 24 * 30, // 30 días
         expires: new Date(Date.now() + 1000 * 60 * 60 * 24 * 30) // 30 días
       });
@@ -212,6 +216,7 @@ export class AuthService {
         secure: process.env.NODE_ENV === 'production',
         sameSite: 'strict',
         maxAge: this.configService.get('COOKIE_EXPIRES_IN'),
+        domain: this.configService.get('WEB_DOMAIN'),
         expires: new Date(Date.now() + this.configService.get('COOKIE_EXPIRES_IN'))
       });
 
@@ -224,6 +229,7 @@ export class AuthService {
         secure: process.env.NODE_ENV === 'production',
         sameSite: 'strict',
         path: '/',
+        domain: this.configService.get('WEB_DOMAIN'),
         maxAge: this.configService.get('COOKIE_REFRESH_EXPIRES_IN'), // Asegúrate de que esta configuración exista
         expires: new Date(Date.now() + this.configService.get('COOKIE_REFRESH_EXPIRES_IN'))
       });
@@ -308,6 +314,7 @@ export class AuthService {
           sameSite: 'strict',
           path: '/',
           maxAge: 1000 * 60 * 60 * 24 * 30, // 30 días
+          domain: this.configService.get('WEB_DOMAIN'),
           expires: new Date(Date.now() + 1000 * 60 * 60 * 24 * 30) // 30 días
         });
 
@@ -316,6 +323,7 @@ export class AuthService {
           secure: process.env.NODE_ENV === 'production',
           sameSite: 'strict',
           maxAge: this.configService.get('COOKIE_EXPIRES_IN'),
+          domain: this.configService.get('WEB_DOMAIN'),
           expires: new Date(Date.now() + this.configService.get('COOKIE_EXPIRES_IN'))
         });
 
@@ -326,6 +334,7 @@ export class AuthService {
           secure: process.env.NODE_ENV === 'production',
           sameSite: 'strict',
           path: '/',
+          domain: this.configService.get('WEB_DOMAIN'),
           maxAge: this.configService.get('COOKIE_REFRESH_EXPIRES_IN'), // Asegúrate de que esta configuración exista
           expires: new Date(Date.now() + this.configService.get('COOKIE_REFRESH_EXPIRES_IN'))
         });
@@ -459,18 +468,21 @@ export class AuthService {
     // Borra la cookie que contiene el token JWT
     res.cookie('client_access_token', '', {
       httpOnly: true,
+      domain: this.configService.get('WEB_DOMAIN'),
       expires: new Date(0) // Establece la fecha de expiración a una fecha pasada para eliminar la cookie
     });
 
     // Borra la cookie que contiene el refresh token
     res.cookie('client_refresh_token', '', {
       httpOnly: true,
+      domain: this.configService.get('WEB_DOMAIN'),
       expires: new Date(0) // Establece la fecha de expiración a una fecha pasada para eliminar la cookie
     });
 
     // Borra la cookie que indica que el usuario está logueado
     res.cookie('client_logged_in', '', {
       httpOnly: false,
+      domain: this.configService.get('WEB_DOMAIN'),
       expires: new Date(0) // Establece la fecha de expiración a una fecha pasada para eliminar la cookie
     });
 
@@ -514,6 +526,7 @@ export class AuthService {
         secure: process.env.NODE_ENV === 'production',
         sameSite: 'strict',
         path: '/',
+        domain: this.configService.get('WEB_DOMAIN'),
         maxAge: this.configService.get<number>('COOKIE_EXPIRES_IN'), // tiempo corto para el access_token
         expires: new Date(Date.now() + this.configService.get('COOKIE_EXPIRES_IN'))
       });
@@ -525,6 +538,7 @@ export class AuthService {
         secure: process.env.NODE_ENV === 'production',
         sameSite: 'strict',
         path: '/',
+        domain: this.configService.get('WEB_DOMAIN'),
         maxAge: this.configService.get<number>('COOKIE_REFRESH_EXPIRES_IN'), // tiempo largo para el refresh_token
         expires: new Date(Date.now() + this.configService.get('COOKIE_REFRESH_EXPIRES_IN'))
       });
@@ -533,6 +547,7 @@ export class AuthService {
         httpOnly: false,
         secure: process.env.NODE_ENV === 'production',
         sameSite: 'strict',
+        domain: this.configService.get('WEB_DOMAIN'),
         maxAge: this.configService.get('COOKIE_EXPIRES_IN'),
         expires: new Date(Date.now() + this.configService.get('COOKIE_EXPIRES_IN'))
       });
