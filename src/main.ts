@@ -34,8 +34,8 @@ async function bootstrap() {
 
   document.tags = [
     { name: 'Admin Auth', description: 'Operaciones de autenticación y autorización' },
-    { name: 'Admin Account', description: 'Operations about admin' },
-    { name: 'Users', description: 'Operations about users' },
+    { name: 'Admin Account', description: 'Gestión de cuentas de administrador y configuraciones' },
+    { name: 'Admin Users', description: 'Gestión de usuarios administradores' },
     { name: 'Rol', description: 'Operations about roles' },
     { name: 'Modules', description: 'Operations about modules' },
     { name: 'Permissions', description: 'Operations about permissions' },

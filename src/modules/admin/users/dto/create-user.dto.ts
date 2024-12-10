@@ -12,19 +12,28 @@ import {
 } from 'class-validator';
 
 export class CreateUserDto {
-  @ApiProperty()
+  @ApiProperty({
+    description: 'Nombre del usuario',
+    example: 'John Doe'
+  })
   @IsString()
   @IsNotEmpty()
   @Transform(({ value }) => value.trim().toLowerCase())
   name: string;
 
-  @ApiProperty()
+  @ApiProperty({
+    description: 'Correo electrónico del usuario',
+    example: 'example@gmail'
+  })
   @IsEmail()
   @IsNotEmpty()
   @Transform(({ value }) => value.trim())
   email: string;
 
-  @ApiProperty()
+  @ApiProperty({
+    description: 'Contraseña del usuario',
+    example: 'Password123'
+  })
   @IsString()
   @IsNotEmpty()
   @MinLength(6)
@@ -37,6 +46,8 @@ export class CreateUserDto {
   password: string;
 
   @ApiProperty({
+    description: 'Número de teléfono del usuario',
+    example: '1234567890',
     required: false
   })
   @IsString()
@@ -44,7 +55,10 @@ export class CreateUserDto {
   @Transform(({ value }) => value.trim())
   phone?: string;
 
-  @ApiProperty()
+  @ApiProperty({
+    description: 'Roles del usuario',
+    example: ['123e4567-e89b-12d3-a456-426614174000', '123e4567-e89b-12d3-a456-426614174001']
+  })
   @IsArray()
   @IsNotEmpty()
   roles: string[];
