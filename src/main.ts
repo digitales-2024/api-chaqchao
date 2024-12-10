@@ -40,7 +40,7 @@ async function bootstrap() {
     { name: 'Admin Modules', description: 'Gestión de módulos' },
     { name: 'Admin Permissions', description: 'Gestión de permisos' },
     { name: 'Admin Products', description: 'Gestión de productos' },
-    { name: 'Category', description: 'Operations about categories' },
+    { name: 'Admin Categories', description: 'Gestión de categorías' },
     { name: 'Order', description: 'Operations about orders' },
     { name: 'Cart', description: 'Operations about cart' },
     { name: 'CartItem', description: 'Operations about cart items' },
