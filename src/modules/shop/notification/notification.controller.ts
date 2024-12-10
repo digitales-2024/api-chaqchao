@@ -1,20 +1,12 @@
 import { Body, Controller, Get, Post } from '@nestjs/common';
-import {
-  ApiBadRequestResponse,
-  ApiCreatedResponse,
-  ApiOkResponse,
-  ApiTags,
-  ApiUnauthorizedResponse
-} from '@nestjs/swagger';
+import { ApiCreatedResponse, ApiExcludeController, ApiOkResponse } from '@nestjs/swagger';
 import { NotificationData } from 'src/interfaces/notification.interface';
 import { Auth } from 'src/modules/admin/auth/decorators';
 import { NotificationService } from './notification.service';
 import { CreateNotificationDto } from './dto/create-notification.dto';
 import { HttpResponse } from 'src/interfaces';
 
-@ApiTags('Notifications')
-@ApiBadRequestResponse({ description: 'Bas Request' })
-@ApiUnauthorizedResponse({ description: 'UnAuthorized' })
+@ApiExcludeController()
 @Auth()
 @Controller({
   path: 'notification',
