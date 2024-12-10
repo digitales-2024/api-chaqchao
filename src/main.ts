@@ -42,9 +42,9 @@ async function bootstrap() {
     { name: 'Products', description: 'Operations about products' },
     { name: 'Category', description: 'Operations about categories' },
     { name: 'Order', description: 'Operations about orders' },
-    { name: 'Audit', description: 'Operations about audit' },
     { name: 'Cart', description: 'Operations about cart' },
     { name: 'CartItem', description: 'Operations about cart items' },
+    { name: 'Admin Audit', description: 'Operaciones sobre auditoría' },
     // Shop
     { name: 'Shop Auth', description: 'Operaciones sobre la autenticación de la tienda' },
     { name: 'Shop Client', description: 'Operaciones sobre los clientes de la tienda' },
