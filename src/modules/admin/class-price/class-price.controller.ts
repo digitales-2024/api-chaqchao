@@ -4,14 +4,17 @@ import { CreateClassPriceDto } from './dto/create-class-price.dto';
 import { UpdateClassPriceDto } from './dto/update-class-price.dto';
 import {
   ApiBadRequestResponse,
+  ApiBody,
   ApiOkResponse,
+  ApiOperation,
+  ApiParam,
   ApiTags,
   ApiUnauthorizedResponse
 } from '@nestjs/swagger';
 import { Auth, GetUser } from '../auth/decorators';
 import { ClassPriceConfigData, HttpResponse, UserData } from 'src/interfaces';
 
-@ApiTags('Class Price')
+@ApiTags('Admin Settings')
 @ApiBadRequestResponse({ description: 'Bad Request' })
 @ApiUnauthorizedResponse({ description: 'Unauthorized' })
 @Auth()
@@ -19,8 +22,16 @@ import { ClassPriceConfigData, HttpResponse, UserData } from 'src/interfaces';
 export class ClassPriceController {
   constructor(private readonly classPriceService: ClassPriceService) {}
 
-  @ApiOkResponse({ description: 'Class Price created' })
+  /**
+   * Crear un precio de clase
+   * @param createClassPriceDto datosParaCrearUnPrecioDeClase
+   * @param user Usuario que crea el precio de clase
+   * @returns Precio de clase creado
+   */
   @Post()
+  @ApiOperation({ summary: 'Crear un precio de clase' })
+  @ApiOkResponse({ description: 'Precio de clase creado' })
+  @ApiBody({ type: CreateClassPriceDto, description: 'Datos para crear un precio de clase' })
   create(
     @Body() createClassPriceDto: CreateClassPriceDto,
     @GetUser() user: UserData
@@ -28,20 +39,42 @@ export class ClassPriceController {
     return this.classPriceService.create(createClassPriceDto, user);
   }
 
-  @ApiOkResponse({ description: 'Get all class prices' })
+  /**
+   * Obtener todos los precios de clase
+   * @returns Todos los precios de clase
+   */
   @Get()
+  @ApiOperation({ summary: 'Obtener todos los precios de clase' })
+  @ApiOkResponse({ description: 'Todos los precios de clase' })
   findAll(): Promise<ClassPriceConfigData[]> {
     return this.classPriceService.findAll();
   }
 
-  @ApiOkResponse({ description: 'Get class price by id' })
+  /**
+   * Obtener un precio de clase por su id
+   * @param id Id del precio de clase
+   * @returns Precio de clase encontrado
+   */
   @Get(':id')
+  @ApiOperation({ summary: 'Obtener un precio de clase por su id' })
+  @ApiOkResponse({ description: 'Precio de clase encontrado' })
+  @ApiParam({ name: 'id', description: 'Id del precio de clase' })
   findOne(@Param('id') id: string): Promise<ClassPriceConfigData> {
     return this.classPriceService.findOne(id);
   }
 
-  @ApiOkResponse({ description: 'Class Price updated' })
+  /**
+   * Actualizar un precio de clase
+   * @param id Id del precio de clase
+   * @param updateClassPriceDto datosParaActualizarUnPrecioDeClase
+   * @param user Usuario que actualiza el precio de clase
+   * @returns Precio de clase actualizado
+   */
   @Patch(':id')
+  @ApiOperation({ summary: 'Actualizar un precio de clase' })
+  @ApiOkResponse({ description: 'Precio de clase actualizado' })
+  @ApiParam({ name: 'id', description: 'Id del precio de clase' })
+  @ApiBody({ type: UpdateClassPriceDto, description: 'Datos para actualizar un precio de clase' })
   update(
     @Param('id') id: string,
     @Body() updateClassPriceDto: UpdateClassPriceDto,
@@ -50,8 +83,16 @@ export class ClassPriceController {
     return this.classPriceService.update(id, updateClassPriceDto, user);
   }
 
-  @ApiOkResponse({ description: 'Class Price deleted' })
+  /**
+   * Eliminar un precio de clase
+   * @param id Id del precio de clase
+   * @param user Usuario que elimina el precio de clase
+   * @returns Precio de clase eliminado
+   */
   @Delete(':id')
+  @ApiOperation({ summary: 'Eliminar un precio de clase' })
+  @ApiOkResponse({ description: 'Precio de clase eliminado' })
+  @ApiParam({ name: 'id', description: 'Id del precio de clase' })
   remove(
     @Param('id') id: string,
     @GetUser() user: UserData
