@@ -11,7 +11,7 @@ import {
 import { Auth, GetUser } from '../auth/decorators';
 import { ClassScheduleData, HttpResponse, UserData } from 'src/interfaces';
 
-@ApiTags('Class Schedule')
+@ApiTags('Admin Settings')
 @ApiBadRequestResponse({ description: 'Bad Request' })
 @ApiUnauthorizedResponse({ description: 'Unauthorized' })
 @Auth()
