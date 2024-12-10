@@ -4,6 +4,8 @@ import { IsNumber, IsOptional, IsString } from 'class-validator';
 
 export class GetProductDto {
   @ApiProperty({
+    description: 'Nombre del producto',
+    example: 'Café',
     required: false
   })
   @IsOptional()
@@ -11,6 +13,8 @@ export class GetProductDto {
   name?: string;
 
   @ApiProperty({
+    description: 'Precio máximo del producto',
+    example: 10.5,
     required: false
   })
   @IsOptional()
@@ -19,6 +23,8 @@ export class GetProductDto {
   priceMax?: number;
 
   @ApiProperty({
+    description: 'Precio mínimo del producto',
+    example: 5.5,
     required: false
   })
   @IsOptional()
@@ -27,6 +33,8 @@ export class GetProductDto {
   priceMin?: number;
 
   @ApiProperty({
+    description: 'Nombre de la categoría',
+    example: 'Café',
     required: false
   })
   @IsOptional()

@@ -4,18 +4,28 @@ import { Transform } from 'class-transformer';
 import { IsNotEmpty, IsString } from 'class-validator';
 
 export class CreateCategoryDto {
-  @ApiProperty()
+  @ApiProperty({
+    description: 'Nombre de la categoría',
+    example: 'Chocolates'
+  })
   @IsString()
   @Transform(({ value }) => value.trim())
   @IsNotEmpty()
   name: string;
 
-  @ApiProperty()
+  @ApiProperty({
+    description: 'Descripción de la categoría',
+    example: 'Chocolates de diferentes sabores'
+  })
   @IsString()
   @Transform(({ value }) => value.trim())
   description?: string;
 
-  @ApiProperty()
+  @ApiProperty({
+    description: 'Familia de la categoría',
+    example: 'CHOCOLAT',
+    enum: Family
+  })
   @IsString()
   family: Family;
 }

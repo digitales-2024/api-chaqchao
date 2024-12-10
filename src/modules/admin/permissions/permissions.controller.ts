@@ -4,11 +4,13 @@ import { Auth } from '../auth/decorators';
 import {
   ApiBadRequestResponse,
   ApiOkResponse,
+  ApiOperation,
+  ApiParam,
   ApiTags,
   ApiUnauthorizedResponse
 } from '@nestjs/swagger';
 
-@ApiTags('Permissions')
+@ApiTags('Admin Permissions')
 @ApiUnauthorizedResponse({ description: 'Unauthorized' })
 @ApiBadRequestResponse({ description: 'Bad request' })
 @Auth()
@@ -19,14 +21,26 @@ import {
 export class PermissionsController {
   constructor(private readonly permissionsService: PermissionsService) {}
 
-  @ApiOkResponse({ description: 'Return all permissions' })
+  /**
+   * Recupera todos los permisos.
+   * @returns Una promesa que se resuelve con una serie de todos los permisos.
+   */
   @Get()
+  @ApiOperation({ summary: 'Obtenga todos los permisos' })
+  @ApiOkResponse({ description: 'Devolver todos los permisos' })
   findAll() {
     return this.permissionsService.findAll();
   }
 
-  @ApiOkResponse({ description: 'Return a permission' })
+  /**
+   * Recupera un permiso por su ID.
+   * @param id El ID del permiso a recuperar.
+   * @returns Una promesa que se resuelve con los datos del permiso.
+   */
   @Get(':id')
+  @ApiOperation({ summary: 'Obtenga un permiso' })
+  @ApiParam({ name: 'id', description: 'ID del permiso' })
+  @ApiOkResponse({ description: 'Devolver un permiso' })
   findOne(@Param('id') id: string) {
     return this.permissionsService.findOne(id);
   }

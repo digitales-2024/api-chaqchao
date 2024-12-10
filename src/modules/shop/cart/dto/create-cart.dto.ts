@@ -6,6 +6,7 @@ export class CreateCartDto {
 
   @ApiProperty({
     description: 'ID temporal del carrito',
+    example: '123e4567-e89b-12d3-a456-426614174000',
     required: false
   })
   @IsOptional()
@@ -14,6 +15,7 @@ export class CreateCartDto {
 
   @ApiProperty({
     description: 'ID del cliente',
+    example: '123e4567-e89b-12d3-a456-426614174000',
     required: false
   })
   @IsOptional()

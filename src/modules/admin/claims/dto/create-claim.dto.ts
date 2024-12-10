@@ -15,8 +15,8 @@ import {
 
 export class CreateClaimDto {
   @ApiProperty({
-    name: 'claimantName',
-    description: 'Name of the claimant'
+    description: 'Nombre del reclamante',
+    example: 'John Doe'
   })
   @IsNotEmpty()
   @IsString()
@@ -24,8 +24,8 @@ export class CreateClaimDto {
   claimantName: string;
 
   @ApiProperty({
-    name: 'claimantAddress',
-    description: 'Address of the claimant',
+    description: 'Dirección del reclamante',
+    example: 'Av. Los Pinos 123, Lima, Perú',
     required: false
   })
   @IsOptional()
@@ -33,8 +33,8 @@ export class CreateClaimDto {
   claimantAddress?: string;
 
   @ApiProperty({
-    name: 'documentNumber',
-    description: 'Document number of the claimant'
+    description: 'Número de documento del reclamante',
+    example: '12345678'
   })
   @IsNotEmpty()
   @MinLength(8)
@@ -43,8 +43,8 @@ export class CreateClaimDto {
   documentNumber: string;
 
   @ApiProperty({
-    name: 'claimantEmail',
-    description: 'Email address of the claimant'
+    description: 'Dirección de correo electrónico del reclamante',
+    example: 'pDx5G@example.com'
   })
   @IsNotEmpty()
   @IsEmail()
@@ -52,8 +52,8 @@ export class CreateClaimDto {
   claimantEmail: string;
 
   @ApiProperty({
-    name: 'claimantPhone',
-    description: 'Phone number of the claimant'
+    description: 'Número de teléfono del reclamante',
+    example: '+51987654321'
   })
   @IsNotEmpty()
   @IsPhoneNumber(null)
@@ -62,8 +62,8 @@ export class CreateClaimDto {
   claimantPhone: string;
 
   @ApiProperty({
-    name: 'claimantRepresentative',
-    description: 'Representative of the claimant',
+    description: 'Representante del reclamante',
+    example: 'Jane Doe',
     required: false
   })
   @IsOptional()
@@ -72,16 +72,17 @@ export class CreateClaimDto {
   claimantRepresentative?: string;
 
   @ApiProperty({
-    name: 'assetType',
-    description: 'Type of asset offered'
+    description: 'Tipo de activo ofrecido',
+    example: 'PRODUCT',
+    enum: AssetType
   })
   @IsNotEmpty()
   @IsEnum(AssetType)
   assetType: AssetType;
 
   @ApiProperty({
-    name: 'amountClaimed',
-    description: 'Amount associated with the claim (if applicable)',
+    description: 'Cantidad asociada con el reclamo (si corresponde)',
+    example: '1000',
     required: false
   })
   @IsString()
@@ -89,16 +90,16 @@ export class CreateClaimDto {
   amountClaimed?: string;
 
   @ApiProperty({
-    name: 'assetDescription',
-    description: 'Description of the asset offered'
+    description: 'Descripción del activo ofrecido',
+    example: 'Producto de la tienda'
   })
   @IsNotEmpty()
   @IsString()
   assetDescription: string;
 
   @ApiProperty({
-    name: 'claimDescription',
-    description: 'Detailed description of the claim'
+    description: 'Descripción detallada del reclamo',
+    example: 'El producto no funciona como se esperaba'
   })
   @IsNotEmpty()
   @IsString()
@@ -106,8 +107,8 @@ export class CreateClaimDto {
   claimDescription: string;
 
   @ApiProperty({
-    name: 'dateClaim',
-    description: 'Date of claim'
+    description: 'Fecha de reclamación',
+    example: '2021-12-31T23:59:59Z'
   })
   @IsDate()
   @Transform(({ value }) => new Date(value))

@@ -11,6 +11,8 @@ import { PaymentService } from './payment.service';
 import { CreatePaymentDto } from './dto/create-payment.dto';
 import { Response } from 'express';
 
+import { ApiExcludeController } from '@nestjs/swagger';
+@ApiExcludeController()
 @Controller({
   path: 'payment',
   version: '1'
@@ -19,9 +21,10 @@ export class PaymentController {
   constructor(private readonly paymentService: PaymentService) {}
 
   /**
-   * Ruta para crear un pago
+   * Crear un pago
    * @param createPaymentDto Datos del pago
    * @param res Objeto de respuesta de Express
+   * @returns Promesa con el formToken del pago o lanza una excepción
    */
   @Post()
   async createPayment(@Body() createPaymentDto: CreatePaymentDto, @Res() res: Response) {

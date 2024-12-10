@@ -10,13 +10,14 @@ import {
   ApiCreatedResponse,
   ApiInternalServerErrorResponse,
   ApiOkResponse,
+  ApiOperation,
   ApiTags,
   ApiUnauthorizedResponse
 } from '@nestjs/swagger';
 import { HttpResponse, UserData, UserPayload } from 'src/interfaces';
 import { DeleteUsersDto } from './dto/delete-users.dto';
 
-@ApiTags('Users')
+@ApiTags('Admin Users')
 @ApiUnauthorizedResponse({ description: 'Unauthorized' })
 @ApiInternalServerErrorResponse({ description: 'Internal server error' })
 @ApiBadRequestResponse({ description: 'Bad request' })
@@ -29,29 +30,82 @@ export class UsersController {
   private readonly logger = new Logger(UsersController.name);
   constructor(private readonly usersService: UsersService) {}
 
-  @ApiCreatedResponse({ description: 'User created' })
+  /**
+   * Crear un usuario
+   * @param createUserDto Data del usuario a crear
+   * @param user Usuario que crea el usuario
+   * @returns Objeto con los datos del usuario creado
+   */
   @Post()
-  create(
+  @ApiOperation({ summary: 'Crear un usuario' })
+  @ApiCreatedResponse({ description: 'Usuario creado con exito' })
+  async create(
     @Body() createUserDto: CreateUserDto,
     @GetUser() user: UserData
   ): Promise<HttpResponse<UserData>> {
     return this.usersService.create(createUserDto, user);
   }
 
-  @ApiOkResponse({ description: 'User updated' })
+  /**
+   * Mostrar todos los usuarios
+   * @param user Usuario que busca los usuarios
+   * @returns Retorna un array con los datos de los usuarios
+   */
+  @Get()
+  @ApiOperation({ summary: 'Mostrar todos los usuarios' })
+  @ApiOkResponse({ description: 'Usuarios obtenidos con exito' })
+  findAll(@GetUser() user: UserPayload): Promise<UserPayload[]> {
+    return this.usersService.findAll(user);
+  }
+
+  /**
+   * Obtener un usuario por su ID
+   * @param id ID del usuario a buscar
+   * @returns Promesa que resuelve con los datos del usuario encontrado
+   */
+  @Get(':id')
+  @ApiOperation({ summary: 'Obtener un usuario por su ID' })
+  @ApiOkResponse({ description: 'Usuario obtenido con éxito' })
+  findOne(@Param('id') id: string): Promise<UserData> {
+    return this.usersService.findOne(id);
+  }
+
+  /**
+   * Actualizar un usuario
+   * @param updateUserDto Data del usuario a actualizar
+   * @param id Id del usuario a actualizar
+   * @param user Usuario que actualiza el usuario
+   * @returns Objeto con los datos del usuario actualizado
+   */
   @Patch(':id')
+  @ApiOperation({ summary: 'Actualizar un usuario' })
+  @ApiOkResponse({ description: 'Usuario actualizada' })
   update(@Body() updateUserDto: UpdateUserDto, @Param('id') id: string, @GetUser() user: UserData) {
     return this.usersService.update(updateUserDto, id, user);
   }
 
-  @ApiOkResponse({ description: 'User deleted' })
+  /**
+   * Eliminar un usuario
+   * @param id Id del usuario a eliminar
+   * @param user Usuario que elimina el usuario
+   * @returns Objeto con los datos del usuario eliminado
+   */
   @Delete(':id')
+  @ApiOperation({ summary: 'Eliminar un usuario' })
+  @ApiOkResponse({ description: 'Usuario eliminada' })
   remove(@Param('id') id: string, @GetUser() user: UserData): Promise<HttpResponse<UserData>> {
     return this.usersService.remove(id, user);
   }
 
-  @ApiOkResponse({ description: 'Users deactivated' })
+  /**
+   * Desactivar varios usuarios seleccionados
+   * @param users Arreglo de usuarios a desactivar
+   * @param user Usuario que desactiva los usuarios
+   * @returns Retorna un mensaje de la desactivacion correcta
+   */
   @Delete('deactivate/all')
+  @ApiOperation({ summary: 'Desactivar varios usuarios seleccionados' })
+  @ApiOkResponse({ description: 'Usuarios desactivadas' })
   deactivate(
     @Body() users: DeleteUsersDto,
     @GetUser() user: UserData
@@ -59,38 +113,52 @@ export class UsersController {
     return this.usersService.deactivate(users, user);
   }
 
-  @ApiOkResponse({ description: 'Users reactivated' })
+  /**
+   * Reactivar varios usuarios seleccionados
+   * @param user Usuario que reactiva los usuarios
+   * @param users Arreglo de usuarios a reactivar
+   * @returns Retorna un mensaje de la reactivacion correcta
+   */
   @Patch('reactivate/all')
+  @ApiOperation({ summary: 'Reactivar varios usuarios seleccionados' })
+  @ApiOkResponse({ description: 'Usuarios reactivadas' })
   reactivateAll(@GetUser() user: UserData, @Body() users: DeleteUsersDto) {
     return this.usersService.reactivateAll(user, users);
   }
 
-  @ApiOkResponse({ description: 'User reactivated' })
+  /**
+   * Reactivar un usuario por su ID.
+   * @param id ID del usuario a reactivar.
+   * @param user Usuario que realiza la acción de reactivación.
+   * @returns Promesa que resuelve con los datos del usuario reactivado.
+   */
   @Patch('reactivate/:id')
+  @ApiOperation({ summary: 'Reactivar un usuario por su ID' })
+  @ApiOkResponse({ description: 'Usuario reactivada' })
   reactivate(@Param('id') id: string, @GetUser() user: UserData): Promise<HttpResponse<UserData>> {
     return this.usersService.reactivate(id, user);
   }
 
-  @ApiOkResponse({ description: 'Get all users' })
-  @Get()
-  findAll(@GetUser() user: UserPayload): Promise<UserPayload[]> {
-    return this.usersService.findAll(user);
-  }
-
-  @ApiOkResponse({ description: 'Get user by id' })
-  @Get(':id')
-  findOne(@Param('id') id: string): Promise<UserData> {
-    return this.usersService.findOne(id);
-  }
-
-  @ApiOkResponse({ description: 'Get new password' })
+  /**
+   * Genera una nueva contraseña aleatoria.
+   * @returns Un objeto que contiene la contraseña recién generada.
+   */
   @Post('generate-password')
+  @ApiOperation({ summary: 'Generar una nueva contraseña' })
+  @ApiOkResponse({ description: 'Obtener una nueva contraseña' })
   generatePassword(): { password: string } {
     return this.usersService.generatePassword();
   }
 
-  @ApiOkResponse({ description: 'Send new password' })
+  /**
+   * Enviar un correo electrónico con una nueva contraseña temporal
+   * @param sendEmailDto Data para enviar el correo electrónico
+   * @param user Usuario que envia el correo electrónico
+   * @returns Estado del envio del correo electrónico
+   */
   @Post('send-new-password')
+  @ApiOperation({ summary: 'Enviar un correo electrónico con una nueva contraseña temporal' })
+  @ApiOkResponse({ description: 'Enviar una nueva contraseña' })
   sendNewPassword(@Body() sendEmailDto: SendEmailDto, @GetUser() user: UserData) {
     return this.usersService.sendNewPassword(sendEmailDto, user);
   }

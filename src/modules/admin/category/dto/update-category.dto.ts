@@ -5,18 +5,31 @@ import { Transform } from 'class-transformer';
 import { Family } from '@prisma/client';
 
 export class UpdateCategoryDto extends PartialType(CreateCategoryDto) {
-  @ApiProperty()
+  @ApiProperty({
+    description: 'Nombre de la categoría',
+    example: 'Chocolates',
+    required: false
+  })
   @IsString()
   @IsNotEmpty()
   @Transform(({ value }) => value.trim())
   name?: string;
 
-  @ApiProperty()
+  @ApiProperty({
+    description: 'Descripción de la categoría',
+    example: 'Chocolates de diferentes sabores',
+    required: false
+  })
   @IsString()
   @Transform(({ value }) => value.trim())
   description?: string;
 
-  @ApiProperty()
+  @ApiProperty({
+    description: 'Familia de la categoría',
+    example: 'CHOCOLAT',
+    enum: Family,
+    required: false
+  })
   @IsString()
   family?: Family;
 }

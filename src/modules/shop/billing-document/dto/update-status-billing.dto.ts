@@ -4,7 +4,11 @@ import { Transform } from 'class-transformer';
 import { IsNotEmpty } from 'class-validator';
 
 export class UpdateStatusBillingDocumentDto {
-  @ApiProperty()
+  @ApiProperty({
+    description: 'Estado de pago',
+    enum: PaymentStatus,
+    example: PaymentStatus.PAID
+  })
   @IsNotEmpty()
   @Transform(({ value }) => value.trim().toUpperCase())
   paymentStatus?: PaymentStatus;

@@ -4,21 +4,40 @@ import { Transform } from 'class-transformer';
 import { IsDefined, IsNumber, IsOptional, IsString } from 'class-validator';
 
 export class OrderFilterDto {
-  @ApiProperty({ example: '2024-01-01' })
+  @ApiProperty({
+    description:
+      'Fecha de inicio para filtrar los pedidos por un rango de fechas, en formato `YYYY-MM-DD`',
+    example: '2024-01-01',
+    required: false
+  })
   @IsOptional()
   @IsString()
   startDate?: string;
 
-  @ApiProperty({ example: '2024-01-01' })
+  @ApiProperty({
+    description:
+      'Fecha de fin para filtrar los pedidos por un rango de fechas, en formato `YYYY-MM-DD`',
+    example: '2024-01-01',
+    required: false
+  })
   @IsOptional()
   @IsString()
   endDate?: string;
 
-  @ApiProperty()
+  @ApiProperty({
+    description: 'Filtrado por estado de los pedidos',
+    example: OrderStatus.COMPLETED,
+    enum: OrderStatus,
+    required: false
+  })
   @IsOptional()
   orderStatus?: OrderStatus;
 
-  @ApiProperty({ example: '2024-01-01' })
+  @ApiProperty({
+    description: 'Filtrado por fecha de los pedidos, en formato `YYYY-MM-DD`',
+    example: '2024-01-01',
+    required: false
+  })
   @IsOptional()
   @IsString()
   @Transform(({ value }) => {
@@ -29,19 +48,31 @@ export class OrderFilterDto {
   })
   date?: string;
 
-  @ApiProperty()
+  @ApiProperty({
+    description: 'Rango de precios para filtrar los pedidos',
+    example: 10,
+    required: false
+  })
   @IsOptional()
   @IsNumber()
   @Transform(({ value }) => parseFloat(value))
   priceMax?: number;
 
-  @ApiProperty()
+  @ApiProperty({
+    description: 'Rango de precios para filtrar los pedidos',
+    example: 100,
+    required: false
+  })
   @IsOptional()
   @IsNumber()
   @Transform(({ value }) => parseFloat(value))
   priceMin?: number;
 
-  @ApiProperty()
+  @ApiProperty({
+    description: 'Filtrado por activo o inactivo',
+    example: true,
+    required: false
+  })
   @IsOptional()
   @IsDefined()
   @Transform(({ obj, key }) => {

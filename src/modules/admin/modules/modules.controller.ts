@@ -3,12 +3,14 @@ import { ModulesService } from './modules.service';
 import {
   ApiBadRequestResponse,
   ApiOkResponse,
+  ApiOperation,
+  ApiParam,
   ApiTags,
   ApiUnauthorizedResponse
 } from '@nestjs/swagger';
 import { Auth } from '../auth/decorators';
 
-@ApiTags('Modules')
+@ApiTags('Admin Modules')
 @ApiUnauthorizedResponse({ description: 'Unauthorized' })
 @ApiBadRequestResponse({ description: 'Bad request' })
 @Auth()
@@ -19,14 +21,26 @@ import { Auth } from '../auth/decorators';
 export class ModulesController {
   constructor(private readonly modulesService: ModulesService) {}
 
-  @ApiOkResponse({ description: 'Return all modules' })
+  /**
+   * Visualiza todos los m&oacute;dulos registrados en la base de datos
+   * @returns Los m&oacute;dulos registrados en la base de datos
+   */
   @Get()
+  @ApiOperation({ summary: 'Visualiza todos los módulos registrados en la base de datos' })
+  @ApiOkResponse({ description: 'Devolver todos los módulos' })
   findAll() {
     return this.modulesService.findAll();
   }
 
-  @ApiOkResponse({ description: 'Return a module' })
+  /**
+   * Visualiza un módulo en específico por su id
+   * @param id Id del módulo a buscar
+   * @returns Datos del módulo encontrado
+   */
   @Get(':id')
+  @ApiOperation({ summary: 'Visualiza un módulo en específico por su id' })
+  @ApiParam({ name: 'id', description: 'Id del módulo a buscar' })
+  @ApiOkResponse({ description: 'Devolver un módulo' })
   findOne(@Param('id') id: string) {
     return this.modulesService.findOne(id);
   }
