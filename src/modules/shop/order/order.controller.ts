@@ -2,6 +2,8 @@ import {
   ApiBadRequestResponse,
   ApiInternalServerErrorResponse,
   ApiOkResponse,
+  ApiOperation,
+  ApiParam,
   ApiTags,
   ApiUnauthorizedResponse
 } from '@nestjs/swagger';
@@ -25,20 +27,27 @@ export class OrderController {
   constructor(private readonly orderService: OrderService) {}
 
   /**
-   * Mostrar detalle de una orden de un usuario.
+   * Obtenga información de pedido pagado
+   * @param id Identificador del orden
+   * @returns Detalles del pedido
    */
   @Get('details/:id')
-  @ApiOkResponse({ description: 'Get paid order information' })
+  @ApiOperation({ summary: 'Obtenga información de pedido pagado' })
+  @ApiOkResponse({ description: 'Obtenga información de pedido pagado' })
+  @ApiParam({ name: 'id', description: 'Identificador del orden', example: '1' })
   @ClientAuth()
   async getOrderDetails(@Param('id') id: string) {
     return this.orderService.getOrderDetails(id);
   }
 
   /**
-   * Recupera los pedidos para una cliente.
+   * Obtenga todos los pedidos para una cliente.
+   * @param client Cliente para obtener pedidos para
+   * @returns Órdenes de la clienta
    */
   @Get('/orders')
-  @ApiOkResponse({ description: 'Orders client' })
+  @ApiOperation({ summary: 'Obtenga todos los pedidos para una cliente' })
+  @ApiOkResponse({ description: 'Pedido del Cliente' })
   @ClientAuth()
   async getOrders(@GetClient() client: ClientPayload) {
     return await this.orderService.getOrders(client.id);
@@ -46,8 +55,13 @@ export class OrderController {
 
   /**
    * Exportar un pedido en formato PDF
+   * @param id  ID del pedido
+   * @returns  Archivo PDF
    */
   @Post('export/pdf/:id')
+  @ApiOperation({ summary: 'Exportar un pedido en formato PDF' })
+  @ApiOkResponse({ description: 'Archivo PDF' })
+  @ApiParam({ name: 'id', description: 'Identificador del pedido', example: '1' })
   @ClientAuth()
   async exportPdf(@Res() res: Response, @Param('id') id: string) {
     const { code, pdfBuffer } = await this.orderService.exportPdfOrder(id);
