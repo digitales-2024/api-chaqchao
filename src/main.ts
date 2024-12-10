@@ -37,7 +37,7 @@ async function bootstrap() {
     { name: 'Admin Account', description: 'Gestión de cuentas de administrador y configuraciones' },
     { name: 'Admin Users', description: 'Gestión de usuarios administradores' },
     { name: 'Admin Roles', description: 'Gestión de roles de administradores' },
-    { name: 'Modules', description: 'Operations about modules' },
+    { name: 'Admin Modules', description: 'Gestión de módulos' },
     { name: 'Permissions', description: 'Operations about permissions' },
     { name: 'Products', description: 'Operations about products' },
     { name: 'Category', description: 'Operations about categories' },
