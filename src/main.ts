@@ -57,7 +57,7 @@ async function bootstrap() {
     { name: 'Shop Order', description: 'Operaciones sobre las órdenes de la tienda' },
     { name: 'Shop Billing', description: 'Operaciones sobre la facturación de la tienda' },
     { name: 'Shop Classes', description: 'Operaciones sobre las clases de la tienda' },
-    { name: 'Shop Business', description: 'Operaciones sobre los negocios de la tienda' },
+    { name: 'Shop Business', description: 'Operaciones sobre la información de la tienda' },
     { name: 'Shop Settings', description: 'Operaciones sobre las configuraciones de la tienda' },
     { name: 'Shop Claims', description: 'Operaciones sobre los reclamos de la tienda' }
   ];
