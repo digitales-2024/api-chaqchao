@@ -5,12 +5,20 @@ import { Transform } from 'class-transformer';
 import { ApiProperty } from '@nestjs/swagger';
 
 export class UpdatePasswordDto extends PartialType(CreateUserDto) {
-  @ApiProperty()
+  @ApiProperty({
+    description: 'Contraseña actual del usuario',
+    example: '123456'
+  })
   @IsString()
   @IsNotEmpty()
   password: string;
 
-  @ApiProperty()
+  @ApiProperty({
+    description: 'Nueva contraseña del usuario',
+    example: '123456',
+    minLength: 6,
+    maxLength: 50
+  })
   @IsString()
   @IsNotEmpty()
   @MinLength(6)
@@ -22,7 +30,12 @@ export class UpdatePasswordDto extends PartialType(CreateUserDto) {
   @Transform(({ value }) => value.trim())
   newPassword: string;
 
-  @ApiProperty()
+  @ApiProperty({
+    description: 'Confirmar nueva contraseña del usuario',
+    example: '123456',
+    minLength: 6,
+    maxLength: 50
+  })
   @IsString()
   @IsNotEmpty()
   @MinLength(6)

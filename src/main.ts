@@ -33,7 +33,7 @@ async function bootstrap() {
   const document = SwaggerModule.createDocument(app, config);
 
   document.tags = [
-    { name: 'Auth', description: 'Operations about authentication' },
+    { name: 'Admin Auth', description: 'Operaciones de autenticación y autorización' },
     { name: 'Admin', description: 'Operations about admin' },
     { name: 'Users', description: 'Operations about users' },
     { name: 'Rol', description: 'Operations about roles' },
