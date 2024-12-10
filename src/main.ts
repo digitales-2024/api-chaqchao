@@ -46,6 +46,7 @@ async function bootstrap() {
     { name: 'Admin Business', description: 'Gestión de negocios' },
     { name: 'Admin Settings', description: 'Gestión de configuraciones' },
     { name: 'Admin Classes', description: 'Gestión de clases' },
+    { name: 'Admin Clients', description: 'Gestión de clientes' },
     { name: 'Admin Audit', description: 'Gestión de auditoría' },
     // Shop
     { name: 'Shop Auth', description: 'Operaciones sobre la autenticación de la tienda' },
