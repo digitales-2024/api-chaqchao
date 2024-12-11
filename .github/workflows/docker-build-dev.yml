@@ -2,7 +2,7 @@ name: Docker Build and Deploy
 
 on:
   push:
-    branches: [develop]
+    branches: [develop, feature/ci]
     paths-ignore:
       - '**.md'
 
@@ -139,7 +139,7 @@ jobs:
           REMOTE_SCRIPT="${REMOTE_SCRIPT//__ENV_TAG__/${{ env.ENV_TAG }}}"
           REMOTE_SCRIPT="${REMOTE_SCRIPT//__REPO_NAME__/${{ env.REPO_NAME }}}"
           REMOTE_SCRIPT="${REMOTE_SCRIPT//__ESCAPED_IMAGE_NAME__/${{ env.ESCAPED_IMAGE_NAME }}}"
-          REMOTE_SCRIPT="${REMOTE_SCRIPT//__CONTAINER__/${{ env.SERVICE_NAME }}}"
+          REMOTE_SCRIPT="${REMOTE_SCRIPT//__SERVICE_NAME__/${{ vars.SERVICE_NAME }}}"
 
           # Debug: Mostrar el script que se va a ejecutar
           echo "Script to be executed:"
