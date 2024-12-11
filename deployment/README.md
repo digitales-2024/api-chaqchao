@@ -65,4 +65,5 @@ Agregar secretos:
 Agregar variable:
 
 - SERVICE_NAME : nombre del servicio en el docker-compose
+- SERVICE_HOME : carpeta en el VPS donde esta el docker-compose
 

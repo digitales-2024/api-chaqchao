@@ -87,7 +87,7 @@ jobs:
             docker pull "__DOCKER_TAG__"
 
             # Update the API service without affecting others
-            cd ~/docker/chaqchao/
+            cd ${{ vars.SERVICE_HOME }}
 
             # Verificar si el archivo docker-compose existe
             if [ ! -f "docker-compose.__ENV_TAG__.yml" ]; then
