@@ -1,0 +1,149 @@
+name: Docker Build and Deploy
+
+on:
+  push:
+    branches: [develop]
+    paths-ignore:
+      - '**.md'
+
+jobs:
+  build-and-push:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Set up Docker Buildx
+        uses: docker/setup-buildx-action@v3
+        with:
+          platforms: linux/amd64
+
+      - name: Set environment variables
+        run: |
+          # Get repository name in lowercase, removing any organization prefix
+          REPO_NAME="$(echo "${{ github.repository }}" | sed 's/.*\///' | tr '[:upper:]' '[:lower:]')"
+          echo "REPO_NAME=${REPO_NAME}" >> "${GITHUB_ENV}"
+
+          if [[ "${{ github.ref }}" == 'refs/heads/main' ]]; then
+            echo "ENV_TAG=prod" >> "${GITHUB_ENV}"
+          else
+            echo "ENV_TAG=stage" >> "${GITHUB_ENV}"
+          fi
+
+      - name: Login to Docker Hub
+        uses: docker/login-action@v3
+        with:
+          username: ${{ secrets.DOCKERHUB_USERNAME }}
+          password: ${{ secrets.DOCKERHUB_TOKEN }}
+
+      - name: Build and push Docker image
+        uses: docker/build-push-action@v5
+        with:
+          context: .
+          file: ./deployment/Dockerfile
+          platforms: linux/amd64
+          push: true
+          tags: |
+            ${{ secrets.DOCKERHUB_USERNAME }}/${{ env.REPO_NAME }}:${{ github.sha }}
+          cache-from: type=registry,ref=${{ secrets.DOCKERHUB_USERNAME }}/${{ env.REPO_NAME }}:latest-${{ env.ENV_TAG }}
+          cache-to: type=inline
+          provenance: false
+          sbom: false
+
+  deploy:
+    needs: build-and-push
+    runs-on: ubuntu-latest
+    steps:
+      - name: Set environment variables
+        run: |
+          REPO_NAME="$(echo "${{ github.repository }}" | sed 's/.*\///' | tr '[:upper:]' '[:lower:]')"
+          echo "REPO_NAME=${REPO_NAME}" >> "${GITHUB_ENV}"
+
+          if [[ "${{ github.ref }}" == 'refs/heads/main' ]]; then
+            echo "ENV_TAG=prod" >> "${GITHUB_ENV}"
+          else
+            echo "ENV_TAG=stage" >> "${GITHUB_ENV}"
+          fi
+          echo "DOCKER_TAG=${{ secrets.DOCKERHUB_USERNAME }}/${REPO_NAME}:${{ github.sha }}" >> "${GITHUB_ENV}"
+          echo "ESCAPED_DOCKER_TAG=${{ secrets.DOCKERHUB_USERNAME }}\\\\/${REPO_NAME}:${{ github.sha }}" >> "${GITHUB_ENV}"
+          echo "ESCAPED_IMAGE_NAME=${{ secrets.DOCKERHUB_USERNAME }}\\\\/${REPO_NAME}" >> "${GITHUB_ENV}"
+
+      - name: Configure SSH
+        uses: shimataro/ssh-key-action@v2
+        with:
+          key: ${{ github.ref == 'refs/heads/main' && secrets.PROD_SSH_PRIVATE_KEY || secrets.STAGE_SSH_PRIVATE_KEY }}
+          known_hosts: unnecessary
+          if_key_exists: replace
+          config: |
+            Host deployment-target
+              HostName ${{ github.ref == 'refs/heads/main' && secrets.PROD_SERVER_HOST || secrets.STAGE_SERVER_HOST }}
+              User ${{ github.ref == 'refs/heads/main' && secrets.PROD_SSH_USERNAME || secrets.STAGE_SSH_USERNAME }}
+              Port ${{ github.ref == 'refs/heads/main' && secrets.PROD_SSH_PORT || secrets.STAGE_SSH_PORT || 22 }}
+              StrictHostKeyChecking no
+
+      - name: Update docker-compose on server
+        run: |
+          REMOTE_SCRIPT=$(cat << 'EOF'
+            # Pull new image
+            docker pull "__DOCKER_TAG__"
+
+            # Update the API service without affecting others
+            cd ~/docker/chaqchao/
+
+            # Verificar si el archivo docker-compose existe
+            if [ ! -f "docker-compose.__ENV_TAG__.yml" ]; then
+              echo "Error: docker-compose.__ENV_TAG__.yml not found"
+              ls -la
+              pwd
+              exit 1
+            fi
+
+            # Hacer backup del archivo docker-compose
+            cp "docker-compose.__ENV_TAG__.yml" "docker-compose.__ENV_TAG__.yml.bak"
+
+            # debug
+            echo "s/image: __ESCAPED_IMAGE_NAME__:.+\$/image: __ESCAPED_DOCKER_TAG__/" >> command
+
+            # Usar sed con una expresión que busca el container_name específico y luego actualiza la siguiente línea de image
+            sed -i -r "s/image: __ESCAPED_IMAGE_NAME__:.+\$/image: __ESCAPED_DOCKER_TAG__/" docker-compose.__ENV_TAG__.yml
+
+            # Debug: Mostrar la nueva configuración
+            echo "New service configuration:"
+            grep -A 3 "container_name: __REPO_NAME__" "docker-compose.__ENV_TAG__.yml"
+
+            # Restart
+            if command -v docker-compose &> /dev/null; then
+              docker-compose -f "docker-compose.__ENV_TAG__.yml" up -d __SERVICE_NAME__
+            else
+              docker compose -f "docker-compose.__ENV_TAG__.yml" up -d __SERVICE_NAME__
+            fi
+
+            # Cleanup old images
+            docker images -q --filter "dangling=true" | xargs -r docker rmi
+
+            # Eliminar el backup si todo salió bien
+            rm "docker-compose.__ENV_TAG__.yml.bak"
+
+            # Debug: Verificar el estado final del servicio
+            echo "Service status:"
+            if command -v docker-compose &> /dev/null; then
+              docker-compose -f "docker-compose.__ENV_TAG__.yml" ps __SERVICE_NAME__
+            else
+              docker compose -f "docker-compose.__ENV_TAG__.yml" ps __SERVICE_NAME__
+            fi
+          EOF
+          )
+
+          # Reemplazar los placeholders con los valores reales
+          REMOTE_SCRIPT="${REMOTE_SCRIPT//__DOCKER_TAG__/${{ env.DOCKER_TAG }}}"
+          REMOTE_SCRIPT="${REMOTE_SCRIPT//__ESCAPED_DOCKER_TAG__/${{ env.ESCAPED_DOCKER_TAG }}}"
+          REMOTE_SCRIPT="${REMOTE_SCRIPT//__ENV_TAG__/${{ env.ENV_TAG }}}"
+          REMOTE_SCRIPT="${REMOTE_SCRIPT//__REPO_NAME__/${{ env.REPO_NAME }}}"
+          REMOTE_SCRIPT="${REMOTE_SCRIPT//__ESCAPED_IMAGE_NAME__/${{ env.ESCAPED_IMAGE_NAME }}}"
+          REMOTE_SCRIPT="${REMOTE_SCRIPT//__CONTAINER__/${{ env.SERVICE_NAME }}}"
+
+          # Debug: Mostrar el script que se va a ejecutar
+          echo "Script to be executed:"
+          echo "$REMOTE_SCRIPT"
+
+          # Ejecutar el script en el servidor remoto
+          echo "$REMOTE_SCRIPT" | ssh deployment-target bash
