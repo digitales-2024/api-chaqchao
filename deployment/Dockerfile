@@ -16,6 +16,9 @@ RUN npm run build
 FROM node:22
 
 WORKDIR /app
+
+RUN apt-get update && apt-get install -y --no-install-recommends libnss3 libnss3-dev libgdk-pixbuf2.0-dev libgtk-3-dev libxss-dev libasound2
+
 USER node
 
 COPY --from=builder /app/node_modules ./node_modules
@@ -28,7 +31,6 @@ COPY --from=builder /app/templates ./templates
 # instalar puppeteer y dependencias
 RUN npx puppeteer browsers install chrome
 
-RUN apt-get update && apt-get install -y --no-install-recommends libnss3 libnss3-dev libgdk-pixbuf2.0-dev libgtk-3-dev libxss-dev libasound2
 
 COPY deployment/docker-entrypoint.sh .
 RUN chmod +x docker-entrypoint.sh && \
