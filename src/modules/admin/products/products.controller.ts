@@ -12,7 +12,7 @@ import {
 import { ProductsService } from './products.service';
 import { CreateProductDto } from './dto/create-product.dto';
 import { UpdateProductDto } from './dto/update-product.dto';
-import { Auth, GetUser } from '../auth/decorators';
+import { Auth, GetUser, Module, Permission } from '../auth/decorators';
 import { HttpResponse, ProductData, UserData, UserPayload } from 'src/interfaces';
 import {
   ApiBadRequestResponse,
@@ -31,6 +31,7 @@ import { FileInterceptor } from '@nestjs/platform-express';
 @ApiBadRequestResponse({ description: 'Bad Request' })
 @ApiUnauthorizedResponse({ description: 'Unauthorized' })
 @Auth()
+@Module('PRD')
 @Controller({
   path: 'products',
   version: '1'
@@ -45,6 +46,7 @@ export class ProductsController {
    * @returns Informacion del producto creado
    */
   @Post()
+  @Permission(['CREATE'])
   @ApiOperation({ summary: 'Crear un nuevo producto' })
   @ApiCreatedResponse({ description: 'Producto creado' })
   @ApiBody({ type: CreateProductDto, description: 'Informacion del producto a crear' })
@@ -61,6 +63,7 @@ export class ProductsController {
    * @returns Todos los productos
    */
   @Get()
+  @Permission(['READ'])
   @ApiOperation({ summary: 'Mostrar todos los productos' })
   @ApiOkResponse({ description: 'Obtener todos los productos' })
   findAll(@GetUser() user: UserPayload): Promise<ProductData[]> {
@@ -73,6 +76,7 @@ export class ProductsController {
    * @returns URL de la imagen
    */
   @Post('upload/image')
+  @Permission(['CREATE'])
   @ApiOperation({ summary: 'Subir una imagen' })
   @ApiCreatedResponse({ description: 'Imagen cargado' })
   @UseInterceptors(FileInterceptor('image'))
