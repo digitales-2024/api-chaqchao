@@ -11,13 +11,14 @@ import {
   ApiTags,
   ApiUnauthorizedResponse
 } from '@nestjs/swagger';
-import { Auth, GetUser } from '../auth/decorators';
+import { Auth, GetUser, Module, Permission } from '../auth/decorators';
 import { ClassScheduleData, HttpResponse, UserData } from 'src/interfaces';
 
 @ApiTags('Admin Settings')
 @ApiBadRequestResponse({ description: 'Bad Request' })
 @ApiUnauthorizedResponse({ description: 'Unauthorized' })
 @Auth()
+@Module('STG')
 @Controller({
   path: 'class-schedule',
   version: '1'
@@ -32,6 +33,7 @@ export class ClassScheduleController {
    * @returns El horario de clases creado con su identificación
    */
   @Post()
+  @Permission(['CREATE'])
   @ApiOperation({ summary: 'Crear un nuevo horario de clases' })
   @ApiOkResponse({ description: 'Horario de clases creado' })
   @ApiBody({ type: CreateClassScheduleDto, description: 'Datos para crear un horario de clases' })
@@ -48,6 +50,7 @@ export class ClassScheduleController {
    * @returns Todos los horarios de clases
    */
   @Get()
+  @Permission(['READ'])
   @ApiOperation({ summary: 'Mostrar todos los horarios de clases' })
   @ApiOkResponse({ description: 'Todos los horarios de clases' })
   findAll(): Promise<ClassScheduleData[]> {
@@ -61,6 +64,7 @@ export class ClassScheduleController {
    * @returns El horario de clases encontrado
    */
   @Get(':id')
+  @Permission(['READ'])
   @ApiOperation({ summary: 'Mostrar un horario de clases por su identificación' })
   @ApiOkResponse({ description: 'Horario de clases encontrado' })
   @ApiParam({ name: 'id', description: 'Identificación del horario de clases' })
@@ -76,6 +80,7 @@ export class ClassScheduleController {
    * @returns El horario de clases actualizado
    */
   @Patch(':id')
+  @Permission(['UPDATE'])
   @ApiOperation({ summary: 'Actualizar un horario de clases' })
   @ApiOkResponse({ description: 'Horario de clases actualizado' })
   @ApiParam({ name: 'id', description: 'Identificación del horario de clases' })
@@ -99,6 +104,7 @@ export class ClassScheduleController {
    * @returns El horario de clases eliminado
    */
   @Delete(':id')
+  @Permission(['DELETE'])
   @ApiOperation({ summary: 'Eliminar un horario de clases' })
   @ApiOkResponse({ description: 'Horario de clases eliminado' })
   @ApiParam({ name: 'id', description: 'Identificación del horario de clases' })
