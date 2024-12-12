@@ -51,7 +51,7 @@ export class ModulePermissionsGuard implements CanActivate {
     ]);
     // Verificar si el usuario tiene el modulo requerido
     if (!requiredModule) {
-      return true;
+      return false;
     }
 
     const userRol = await this.prisma.userRol.findFirst({
@@ -73,7 +73,6 @@ export class ModulePermissionsGuard implements CanActivate {
     const moduleExists = userModules.rolPermissions.some(
       (module) => module.module.cod === requiredModule
     );
-
     if (!moduleExists) {
       return false;
     }
@@ -82,6 +81,11 @@ export class ModulePermissionsGuard implements CanActivate {
       context.getHandler(),
       context.getClass()
     ]);
+
+    // Verificar si el modulo tiene permisos requeridos
+    if (!requiredPermissions) {
+      return false;
+    }
 
     // Buscar si en ese modulo tiene los permisos requeridos
     const permissionsExists = userModules.rolPermissions.some((module) => {
