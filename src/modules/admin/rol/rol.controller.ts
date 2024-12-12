@@ -139,6 +139,7 @@ export class RolController {
    * @returns Una lista de módulos con sus permisos
    */
   @Get('modules-permissions/all')
+  @Module('PRM')
   @Permission(['READ'])
   @ApiOperation({ summary: 'Obtener todos los módulos con sus permisos' })
   @ApiBadRequestResponse({ description: 'Módulos no encontrados' })

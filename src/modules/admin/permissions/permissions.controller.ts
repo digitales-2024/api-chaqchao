@@ -1,6 +1,6 @@
 import { Controller, Get, Param } from '@nestjs/common';
 import { PermissionsService } from './permissions.service';
-import { Auth } from '../auth/decorators';
+import { Auth, Module, Permission } from '../auth/decorators';
 import {
   ApiBadRequestResponse,
   ApiOkResponse,
@@ -14,6 +14,7 @@ import {
 @ApiUnauthorizedResponse({ description: 'Unauthorized' })
 @ApiBadRequestResponse({ description: 'Bad request' })
 @Auth()
+@Module('PRM')
 @Controller({
   path: 'permissions',
   version: '1'
@@ -26,6 +27,7 @@ export class PermissionsController {
    * @returns Una promesa que se resuelve con una serie de todos los permisos.
    */
   @Get()
+  @Permission(['READ'])
   @ApiOperation({ summary: 'Obtenga todos los permisos' })
   @ApiOkResponse({ description: 'Devolver todos los permisos' })
   findAll() {
@@ -38,6 +40,7 @@ export class PermissionsController {
    * @returns Una promesa que se resuelve con los datos del permiso.
    */
   @Get(':id')
+  @Permission(['READ'])
   @ApiOperation({ summary: 'Obtenga un permiso' })
   @ApiParam({ name: 'id', description: 'ID del permiso' })
   @ApiOkResponse({ description: 'Devolver un permiso' })
