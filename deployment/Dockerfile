@@ -28,10 +28,7 @@ COPY --from=builder /app/templates ./templates
 # instalar puppeteer y dependencias
 RUN npx puppeteer browsers install chrome
 
-RUN apt update
-RUN apt install -y libnss3
-RUN apt install -y libnss3-dev libgdk-pixbuf2.0-dev libgtk-3-dev libxss-dev
-RUN apt install -t libasound2
+RUN apt-get update && apt-get install -y --no-install-recommends libnss3 libnss3-dev libgdk-pixbuf2.0-dev libgtk-3-dev libxss-dev libasound2
 
 COPY deployment/docker-entrypoint.sh .
 RUN chmod +x docker-entrypoint.sh && \
