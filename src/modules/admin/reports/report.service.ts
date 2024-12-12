@@ -72,7 +72,7 @@ const translateStatus: Record<Order['orderStatus'], string> = {
 @Injectable()
 export class ReportsService {
   private readonly logger = new Logger(ReportsService.name);
-  constructor(private prisma: PrismaService) {}
+  constructor(private prisma: PrismaService) { }
 
   // Método para generar Excel para Orders
   async generateExcelOrder(data: Order[], filter: OrderFilterDto) {
@@ -178,7 +178,12 @@ export class ReportsService {
     );
 
     // Generar el PDF usando Puppeteer
-    const browser = await puppeteer.launch();
+    const browser = await puppeteer.launch({
+      args: [
+        '--no-sandbox',
+        '--disable-setuid-sandbox'
+      ]
+    });
     const page = await browser.newPage();
     await page.setContent(htmlContent);
     await page.setContent(htmlContentWithInfo);
@@ -383,7 +388,12 @@ export class ReportsService {
     );
 
     // Generar el PDF usando Puppeteer
-    const browser = await puppeteer.launch();
+    const browser = await puppeteer.launch({
+      args: [
+        '--no-sandbox',
+        '--disable-setuid-sandbox'
+      ]
+    });
     const page = await browser.newPage();
     await page.setContent(htmlContent);
     await page.setContent(htmlContentWithInfo);
@@ -644,7 +654,12 @@ export class ReportsService {
     );
 
     // Generar el PDF usando Puppeteer
-    const browser = await puppeteer.launch();
+    const browser = await puppeteer.launch({
+      args: [
+        '--no-sandbox',
+        '--disable-setuid-sandbox'
+      ]
+    });
     const page = await browser.newPage();
     await page.setContent(htmlContent);
     await page.setContent(htmlContentWithInfo);

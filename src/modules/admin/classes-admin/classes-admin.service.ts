@@ -13,7 +13,7 @@ import { ClassStatus } from '@prisma/client';
 export class ClassesAdminService {
   private readonly logger = new Logger(ClassesAdminService.name);
 
-  constructor(private readonly prisma: PrismaService) {}
+  constructor(private readonly prisma: PrismaService) { }
 
   /**
    * Agrupar los datos de las clases registradas
@@ -268,7 +268,12 @@ export class ClassesAdminService {
     );
 
     // Generar el PDF usando Puppeteer
-    const browser = await puppeteer.launch();
+    const browser = await puppeteer.launch({
+      args: [
+        '--no-sandbox',
+        '--disable-setuid-sandbox'
+      ]
+    });
     const page = await browser.newPage();
     await page.setContent(htmlContent);
     await page.setContent(htmlContentWithInfo);
