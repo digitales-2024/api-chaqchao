@@ -1,7 +1,7 @@
 import { Body, Controller, Get, Post, Query, Res } from '@nestjs/common';
 import { Response } from 'express';
 import { ClassesAdminService } from './classes-admin.service';
-import { Auth } from '../auth/decorators';
+import { Auth, Module, Permission } from '../auth/decorators';
 import { ClassesDataAdmin } from 'src/interfaces';
 import {
   ApiBadRequestResponse,
@@ -17,6 +17,7 @@ import {
 @ApiBadRequestResponse({ description: 'Bad Request' })
 @ApiUnauthorizedResponse({ description: 'Unauthorized' })
 @Auth()
+@Module('CLS')
 @Controller({ path: '/class/admin', version: '1' })
 export class ClassesAdminController {
   constructor(private readonly classesAdminService: ClassesAdminService) {}
@@ -27,6 +28,7 @@ export class ClassesAdminController {
    * @returns Registros de clases por fecha
    */
   @Get()
+  @Permission(['READ'])
   @ApiOperation({ summary: 'Mostrar todos los registros de clases por fecha' })
   @ApiOkResponse({ description: 'Registros de clases por fecha' })
   @ApiQuery({ name: 'date', description: 'Fecha de la clase', required: false })
@@ -41,6 +43,7 @@ export class ClassesAdminController {
    * @returns Archivo Excel
    */
   @Post('export/classes/excel')
+  @Permission(['READ'])
   @ApiOperation({ summary: 'Exportar un archivo Excel con los registros de las clases' })
   @ApiOkResponse({ description: 'Descargar el archivo de Excel' })
   @ApiBody({ description: 'Registros de las clases' })
@@ -66,6 +69,7 @@ export class ClassesAdminController {
    * @returns Envío del archivo PDF como respuesta.
    */
   @Post('export/classes/pdf')
+  @Permission(['READ'])
   @ApiOperation({ summary: 'Exportar un archivo PDF con los registros de las clases' })
   @ApiOkResponse({ description: 'Descargar el archivo PDF' })
   @ApiBody({ description: 'Registros de las clases' })
