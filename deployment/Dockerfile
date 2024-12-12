@@ -24,6 +24,9 @@ COPY --from=builder /app/prisma ./prisma
 COPY --from=builder /app/images ./images
 COPY --from=builder /app/templates ./templates
 
+# instalar puppeteer
+RUN npx puppeteer browsers install chrome
+
 COPY deployment/docker-entrypoint.sh .
 RUN chmod +x docker-entrypoint.sh && \
     chown node:node docker-entrypoint.sh
