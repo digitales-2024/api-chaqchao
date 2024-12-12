@@ -2,7 +2,7 @@ import { Controller, Get, Post, Body, Patch, Param } from '@nestjs/common';
 import { BusinessHoursService } from './business-hours.service';
 import { CreateBusinessHourDto } from './dto/create-business-hour.dto';
 import { UpdateBusinessHourDto } from './dto/update-business-hour.dto';
-import { Auth, GetUser } from '../auth/decorators';
+import { Auth, GetUser, Module, Permission } from '../auth/decorators';
 import {
   ApiBadRequestResponse,
   ApiBody,
@@ -20,6 +20,7 @@ import { AllBusinessHoursData, BusinessHoursData, HttpResponse, UserData } from 
 @ApiInternalServerErrorResponse({ description: 'Internal server error' })
 @ApiBadRequestResponse({ description: 'Bad request' })
 @Auth()
+@Module('BNSS')
 @Controller({
   path: 'business-hours',
   version: '1'
@@ -34,6 +35,7 @@ export class BusinessHoursController {
    * @returns Horario de atencion creado
    */
   @Post()
+  @Permission(['CREATE'])
   @ApiOperation({ summary: 'Crear un horario de atencion' })
   @ApiOkResponse({ description: 'Horario de atencion creado' })
   @ApiBody({ type: CreateBusinessHourDto, description: 'Datos del horario de atencion a crear' })
@@ -49,6 +51,7 @@ export class BusinessHoursController {
    * @returns Un objeto con una lista de horarios de atencion y la informacion del negocio
    */
   @Get()
+  @Permission(['READ'])
   @ApiOperation({ summary: 'Mostrar todos los horarios de atencion' })
   @ApiOkResponse({ description: 'Lista de horarios de atencion' })
   findAll(): Promise<AllBusinessHoursData> {
@@ -61,6 +64,7 @@ export class BusinessHoursController {
    * @returns Horario de atencion encontrado
    */
   @Get(':id')
+  @Permission(['READ'])
   @ApiOperation({ summary: 'Mostrar un horario de atencion por id' })
   @ApiOkResponse({ description: 'Horario de atencion encontrado' })
   @ApiParam({ name: 'id', description: 'Id del horario de atencion' })
@@ -76,6 +80,7 @@ export class BusinessHoursController {
    * @returns Horario de atencion actualizado
    */
   @Patch(':id')
+  @Permission(['UPDATE'])
   @ApiOperation({ summary: 'Actualizar un horario de atencion' })
   @ApiOkResponse({ description: 'Horario de atencion actualizado' })
   @ApiBody({
