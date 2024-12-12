@@ -2,7 +2,7 @@ import { Controller, Get, Post, Body, Patch, Param, Delete } from '@nestjs/commo
 import { CategoryService } from './category.service';
 import { CreateCategoryDto } from './dto/create-category.dto';
 import { UpdateCategoryDto } from './dto/update-category.dto';
-import { Auth, GetUser } from '../auth/decorators';
+import { Auth, GetUser, Module, Permission } from '../auth/decorators';
 import { CategoryData, HttpResponse, UserData } from 'src/interfaces';
 import {
   ApiBadRequestResponse,
@@ -19,6 +19,7 @@ import {
 @ApiBadRequestResponse({ description: 'Bad Request' })
 @ApiUnauthorizedResponse({ description: 'Unauthorized' })
 @Auth()
+@Module('CAT')
 @Controller({
   path: 'category',
   version: '1'
@@ -33,6 +34,7 @@ export class CategoryController {
    * @returns Una promesa que se resuelve a la respuesta HTTP que contiene los datos de categoría creados.
    */
   @Post()
+  @Permission(['CREATE'])
   @ApiOperation({ summary: 'Crear una nueva categoría' })
   @ApiCreatedResponse({ description: 'Categoría creada' })
   @ApiBody({
@@ -52,6 +54,7 @@ export class CategoryController {
    * @returns Una promesa que se resuelve en un array de datos de categoría.
    */
   @Get()
+  @Permission(['READ'])
   @ApiOperation({ summary: 'Obtener todas las categorías' })
   @ApiOkResponse({ description: 'Lista de categorías' })
   findAll(@GetUser() user: UserData): Promise<CategoryData[]> {
@@ -64,6 +67,7 @@ export class CategoryController {
    * @returns Una promesa que se resuelve en los datos de la categoría.
    */
   @Get(':id')
+  @Permission(['READ'])
   @ApiOperation({ summary: 'Obtener una categoría por su id' })
   @ApiOkResponse({ description: 'Categoría encontrada' })
   @ApiParam({ name: 'id', description: 'Id de la categoría' })
@@ -79,6 +83,7 @@ export class CategoryController {
    * @returns Una promesa que se resuelve a la respuesta HTTP que contiene los datos de la categoría actualizada.
    */
   @Patch(':id')
+  @Permission(['UPDATE'])
   @ApiOperation({ summary: 'Actualizar una categoría existente' })
   @ApiBody({
     type: UpdateCategoryDto,
@@ -103,6 +108,7 @@ export class CategoryController {
    *          datos de la categoría eliminada.
    */
   @Delete(':id')
+  @Permission(['DELETE'])
   @ApiOperation({ summary: 'Eliminar una categoría existente' })
   @ApiParam({ name: 'id', description: 'Id de la categoría' })
   @ApiOkResponse({ description: 'Categoría eliminada' })
@@ -118,6 +124,7 @@ export class CategoryController {
    *          datos de la categoría reactivada.
    */
   @Patch('reactivate/:id')
+  @Permission(['UPDATE'])
   @ApiOperation({ summary: 'Reactivar una categoría existente' })
   @ApiParam({ name: 'id', description: 'Id de la categoría' })
   @ApiOkResponse({ description: 'Categoría reactivada' })
@@ -136,6 +143,7 @@ export class CategoryController {
    *          datos de la categoría desactivada.
    */
   @Patch('desactivate/:id')
+  @Permission(['UPDATE'])
   @ApiOperation({ summary: 'Desactivar una categoría existente' })
   @ApiParam({ name: 'id', description: 'Id de la categoría' })
   @ApiOkResponse({ description: 'Categoría desactivada' })
