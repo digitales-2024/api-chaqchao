@@ -1,0 +1,125 @@
+services:
+  chaqchao-dev-api:
+    image: digitalesacide/api-chaqchao:1
+    container_name: chaqchao-dev-api
+    restart: unless-stopped
+    depends_on:
+      chaqchao-dev-db:
+        condition: service_started
+    environment:
+      NODE_ENV: "${NODE_ENV}"
+      PORT: "${PORT}"
+      WEBSOCKET_PORT: "${WEBSOCKET_PORT}"
+      DATABASE_URL: "${DATABASE_URL}"
+      WEB_URL: "${WEB_URL}"
+      WEB_URL_SHOP: "${WEB_URL_SHOP}"
+      JWT_SECRET: "${JWT_SECRET}"
+      JWT_EXPIRES_IN: "${JWT_EXPIRES_IN}"
+      JWT_REFRESH_SECRET: "${JWT_REFRESH_SECRET}"
+      JWT_REFRESH_EXPIRES_IN: "${JWT_REFRESH_EXPIRES_IN}"
+      COOKIE_EXPIRES_IN: "${COOKIE_EXPIRES_IN}"
+      COOKIE_REFRESH_EXPIRES_IN: "${COOKIE_REFRESH_EXPIRES_IN}"
+      JWT_RESET_PASSWORD_EXPIRES_IN: "${JWT_RESET_PASSWORD_EXPIRES_IN}"
+      MAIL_HOST: "${MAIL_HOST}"
+      MAIL_PORT: "${MAIL_PORT}"
+      MAIL_USER: "${MAIL_USER}"
+      MAIL_PASS: "${MAIL_PASS}"
+      GOOGLE_CLIENT_ID: "${GOOGLE_CLIENT_ID}"
+      GOOGLE_REDIRECT_URI: "${GOOGLE_REDIRECT_URI}"
+      GOOGLE_CLIENT_SECRET: "${GOOGLE_CLIENT_SECRET}"
+      ACCESS_KEY_ID: "${ACCESS_KEY_ID}"
+      SECRET_ACCESS_KEY: "${SECRET_ACCESS_KEY}"
+      ACCOUNT_ID: "${ACCOUNT_ID}"
+      API_S3: "${API_S3}"
+      CLOUDFLARE_BUCKET_NAME: "${CLOUDFLARE_BUCKET_NAME}"
+      PUBLIC_URL_IMAGE: "${PUBLIC_URL_IMAGE}"
+      IZIPAY_HMAC_KEY: "${IZIPAY_HMAC_KEY}"
+      IZIPAY_PAYMENT_USERNAME: "${IZIPAY_PAYMENT_USERNAME}"
+      IZIPAY_PAYMENT_PASSWORD: "${IZIPAY_PAYMENT_PASSWORD}"
+      IZIPAY_PAYMENT_ENDPOINT: "${IZIPAY_PAYMENT_ENDPOINT}"
+
+    networks:
+      - proxy
+      - chaqchao-dev
+    labels:
+      - "traefik.enable=true"
+      - "traefik.http.routers.chaqchao-dev-api.rule=Host(`develop-chaqchao-api.acide.win`)"
+      - "traefik.http.routers.chaqchao-dev-api.priority=21"
+      - "traefik.http.routers.chaqchao-dev-api.entrypoints=websecure"
+      - "traefik.http.routers.chaqchao-dev-api.tls=true"
+      - "traefik.http.routers.chaqchao-dev-api.tls.certresolver=dns-cloudflare"
+      - "traefik.http.routers.chaqchao-dev-api.tls.domains[0].main=acide.win"
+      - "traefik.http.routers.chaqchao-dev-api.tls.domains[0].sans=*.acide.win"
+      - "traefik.http.services.chaqchao-dev-api.loadbalancer.server.port=${PORT}"
+      # Endpoint para websocket
+      - "traefik.http.routers.chaqchao-dev-api-ws.rule=Host(`develop-chaqchao-api.acide.win`) && (PathPrefix(`/ws`))"
+      - "traefik.http.routers.chaqchao-dev-api-ws.priority=22"
+      - "traefik.http.routers.chaqchao-dev-api-ws.entrypoints=websecure"
+      - "traefik.http.routers.chaqchao-dev-api-ws.tls=true"
+      - "traefik.http.routers.chaqchao-dev-api-ws.tls.certresolver=dns-cloudflare"
+      - "traefik.http.routers.chaqchao-dev-api-ws.tls.domains[0].main=acide.win"
+      - "traefik.http.routers.chaqchao-dev-api.tls.domains[0].sans=*.acide.win"
+
+  chaqchao-dev-admin:
+    image: digitalesacide/api-chaqchao:1
+    container_name: chaqchao-dev-admin
+    restart: unless-stopped
+    depends_on:
+      chaqchao-dev-api:
+        condition: service_started
+    environment:
+      NODE_ENV: "${NODE_ENV}"
+    networks:
+      - proxy
+    labels:
+      - "traefik.enable=true"
+      - "traefik.http.routers.chaqchao-dev-admin.rule=Host(`develop-chaqchao-admin.acide.win`)"
+      - "traefik.http.routers.chaqchao-dev-admin.entrypoints=websecure"
+      - "traefik.http.routers.chaqchao-dev-admin.tls=true"
+      - "traefik.http.routers.chaqchao-dev-admin.tls.certresolver=dns-cloudflare"
+      - "traefik.http.routers.chaqchao-dev-admin.tls.domains[0].main=acide.win"
+      - "traefik.http.routers.chaqchao-dev-admin.tls.domains[0].sans=*.acide.win"
+      - "traefik.http.services.chaqchao-dev-admin.loadbalancer.server.port=3000"
+
+  chaqchao-dev-shop:
+    image: digitalesacide/api-chaqchao:1
+    container_name: chaqchao-dev-shop
+    restart: unless-stopped
+    depends_on:
+      chaqchao-dev-api:
+        condition: service_started
+    environment:
+      NODE_ENV: "${NODE_ENV}"
+    networks:
+      - proxy
+    labels:
+      - "traefik.enable=true"
+      - "traefik.http.routers.chaqchao-dev-shop.rule=Host(`develop-chaqchao-shop.acide.win`)"
+      - "traefik.http.routers.chaqchao-dev-shop.entrypoints=websecure"
+      - "traefik.http.routers.chaqchao-dev-shop.tls=true"
+      - "traefik.http.routers.chaqchao-dev-shop.tls.certresolver=dns-cloudflare"
+      - "traefik.http.routers.chaqchao-dev-shop.tls.domains[0].main=acide.win"
+      - "traefik.http.routers.chaqchao-dev-shop.tls.domains[0].sans=*.acide.win"
+      - "traefik.http.services.chaqchao-dev-shop.loadbalancer.server.port=3000"
+
+
+  chaqchao-dev-db:
+    image: postgres:latest
+    container_name: chaqchao-dev-db
+    restart: unless-stopped
+    # set shared memory limit when using docker-compose
+    shm_size: 128mb
+    volumes:
+      # store db data in a volume
+      - ./data:/var/lib/postgresql/data
+    environment:
+      POSTGRES_USER: root
+      POSTGRES_PASSWORD: root
+    networks:
+      - chaqchao-dev
+
+networks:
+  proxy:
+    external: true
+  chaqchao-dev:
+    driver: bridge

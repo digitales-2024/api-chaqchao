@@ -9,8 +9,9 @@ import { Order } from '@prisma/client';
 import { Socket, Server } from 'socket.io';
 
 @WebSocketGateway(Number(process.env.WEBSOCKET_PORT) || 5000, {
-  cors: true,
-  origin: '*'
+  cors: {
+    origin: '*'
+  },
 })
 export class AdminGateway implements OnGatewayConnection, OnGatewayDisconnect {
   @WebSocketServer()
