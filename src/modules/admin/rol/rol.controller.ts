@@ -1,7 +1,7 @@
 import { Controller, Get, Post, Body, Patch, Param, Delete } from '@nestjs/common';
 import { RolService } from './rol.service';
 import { CreateRolDto } from './dto/create-rol.dto';
-import { Auth, GetUser } from '../auth/decorators';
+import { Auth, GetUser, Module, Permission } from '../auth/decorators';
 import { UpdateRolDto } from './dto/update-rol.dto';
 import {
   ApiBadRequestResponse,
@@ -20,6 +20,7 @@ import { DeleteRolesDto } from './dto/delete-roles.dto';
 @ApiInternalServerErrorResponse({ description: 'Internal server error' })
 @Controller({ path: 'rol', version: '1' })
 @Auth()
+@Module('ROL')
 export class RolController {
   constructor(private readonly rolService: RolService) {}
 
@@ -29,6 +30,7 @@ export class RolController {
    * @returns Una promesa que se resuelve a la respuesta HTTP que contiene el papel creado.
    */
   @Post()
+  @Permission(['CREATE'])
   @ApiOperation({ summary: 'Crear un nuevo rol' })
   @ApiCreatedResponse({ description: 'Rol creado' })
   @ApiBadRequestResponse({ description: 'Error al crear el rol' })
@@ -43,6 +45,7 @@ export class RolController {
    * @returns Una promesa que se resuelve a la respuesta HTTP que contiene el papel actualizado.
    */
   @Patch(':id')
+  @Permission(['UPDATE'])
   @ApiOperation({ summary: 'Actualizar un rol' })
   @ApiOkResponse({ description: 'ROL actualizado' })
   @ApiBadRequestResponse({ description: 'No hay datos para actualizar' })
@@ -59,6 +62,7 @@ export class RolController {
    * @returns Una promesa que resuelve una lista de roles con módulos y permisos.
    */
   @Get()
+  @Permission(['READ'])
   @ApiOperation({ summary: 'Obtener todos los roles' })
   @ApiBadRequestResponse({ description: 'Roles no encontrado' })
   @ApiOkResponse({ description: 'Roles encontrados' })
@@ -72,6 +76,7 @@ export class RolController {
    * @returns Una promesa que se resuelve a la respuesta HTTP que contiene el rol eliminado.
    */
   @Delete(':id')
+  @Permission(['DELETE'])
   @ApiOperation({ summary: 'Eliminar un rol' })
   @ApiBadRequestResponse({ description: 'Rol no encontrado' })
   @ApiOkResponse({ description: 'Rol eliminado' })
@@ -86,6 +91,7 @@ export class RolController {
    * @returns Retorna un mensaje de la eliminación correcta
    */
   @Delete('remove/all')
+  @Permission(['DELETE'])
   @ApiOperation({ summary: 'Eliminar todos los roles' })
   @ApiBadRequestResponse({ description: 'Roles no encontrado' })
   @ApiOkResponse({ description: 'Rols eliminados' })
@@ -103,6 +109,7 @@ export class RolController {
    * @returns Una promesa que se resuelve a una respuesta HTTP sin datos.
    */
   @Patch('reactivate/all')
+  @Permission(['UPDATE'])
   @ApiOperation({ summary: 'Reactivar todos los roles' })
   @ApiBadRequestResponse({ description: 'Rols no encontrado' })
   @ApiOkResponse({ description: 'Rols reactivados' })
@@ -119,6 +126,7 @@ export class RolController {
    * @returns Una promesa que se resuelve a los datos del rol encontrado con módulos y permisos agrupados.
    */
   @Get(':id')
+  @Permission(['READ'])
   @ApiOperation({ summary: 'Obtener un rol' })
   @ApiBadRequestResponse({ description: 'Rol no encontrado' })
   @ApiOkResponse({ description: 'Rol encontrado' })
@@ -131,6 +139,7 @@ export class RolController {
    * @returns Una lista de módulos con sus permisos
    */
   @Get('modules-permissions/all')
+  @Permission(['READ'])
   @ApiOperation({ summary: 'Obtener todos los módulos con sus permisos' })
   @ApiBadRequestResponse({ description: 'Módulos no encontrados' })
   @ApiOkResponse({ description: 'Módulos encontrados' })
