@@ -91,6 +91,7 @@ export class ProductsController {
    * @returns URL de la imagen actualizada
    */
   @Patch('update/image/:existingFileName')
+  @Permission(['UPDATE'])
   @ApiOperation({ summary: 'Actualizar imagen' })
   @ApiCreatedResponse({ description: 'Image updated' })
   @UseInterceptors(FileInterceptor('image'))
@@ -107,6 +108,7 @@ export class ProductsController {
    * @returns Informacion del producto
    */
   @Get(':id')
+  @Permission(['READ'])
   @ApiOperation({ summary: 'Mostrar producto por id' })
   @ApiParam({ name: 'id', description: 'Id del producto' })
   @ApiOkResponse({ description: 'Obtener producto por identificación' })
@@ -122,6 +124,7 @@ export class ProductsController {
    * @returns Información del producto actualizado
    */
   @Patch(':id')
+  @Permission(['UPDATE'])
   @ApiOperation({ summary: 'Actualizar el producto por id' })
   @ApiParam({ name: 'id', description: 'Id del producto' })
   @ApiBody({ type: UpdateProductDto, description: 'Datos del producto a actualizar' })
@@ -141,6 +144,7 @@ export class ProductsController {
    * @returns Información del producto eliminado
    */
   @Delete(':id')
+  @Permission(['DELETE'])
   @ApiOperation({ summary: 'Eliminar un producto' })
   @ApiParam({ name: 'id', description: 'Id del producto' })
   @ApiOkResponse({ description: 'Producto eliminado' })
@@ -155,6 +159,7 @@ export class ProductsController {
    * @returns Mensaje de desactivación correcta
    */
   @Delete('remove/all')
+  @Permission(['DELETE'])
   @ApiOperation({ summary: 'Desactivar varios productos' })
   @ApiBody({
     type: DeleteProductsDto,
@@ -175,6 +180,7 @@ export class ProductsController {
    * @returns Datos de producto actualizados con estado de activación alternado
    */
   @Patch('toggleactivation/:id')
+  @Permission(['UPDATE'])
   @ApiOperation({ summary: 'Alternar el estado de activación de un producto' })
   @ApiParam({ name: 'id', description: 'ID del producto' })
   @ApiOkResponse({ description: 'Producto actualizado' })
@@ -191,6 +197,7 @@ export class ProductsController {
    * @returns Confirmation message of successful reactivation
    */
   @Patch('reactivate/all')
+  @Permission(['UPDATE'])
   @ApiOperation({ summary: 'Reactivar varios productos' })
   @ApiBody({
     type: DeleteProductsDto,
@@ -208,6 +215,7 @@ export class ProductsController {
    * @returns Datos de producto actualizados con estado de activación reactivado
    */
   @Patch('reactivate/:id')
+  @Permission(['UPDATE'])
   @ApiOperation({ summary: 'Reactivar un producto por id' })
   @ApiParam({ name: 'id', description: 'ID del producto' })
   @ApiOkResponse({ description: 'Producto reactivado' })
