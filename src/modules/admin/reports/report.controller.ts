@@ -8,7 +8,7 @@ import {
   ApiTags,
   ApiUnauthorizedResponse
 } from '@nestjs/swagger';
-import { Auth } from '../auth/decorators';
+import { Auth, Module, Permission } from '../auth/decorators';
 import { ProductFilterDto } from './dto/product-filter.dto';
 import { GetTopProductsDto } from './dto/get-top-products.dto';
 
@@ -16,6 +16,7 @@ import { GetTopProductsDto } from './dto/get-top-products.dto';
 @ApiUnauthorizedResponse({ description: 'Unauthorized' })
 @ApiBadRequestResponse({ description: 'Bad request' })
 @Auth()
+@Module('RPT')
 @Controller({
   path: 'reports',
   version: '1'
@@ -34,6 +35,7 @@ export class ReportsController {
    * @returns Los pedidos filtrados.
    */
   @Get('orders')
+  @Permission(['READ'])
   @ApiOperation({ summary: 'Obtener reporte de pedidos' })
   @ApiBadRequestResponse({ description: 'Error al obtener los pedidos' })
   async getOrdersReport(@Query() filter: OrderFilterDto, @Res() res: Response) {
@@ -49,6 +51,7 @@ export class ReportsController {
    * @returns {Promise<void>}
    */
   @Get('products')
+  @Permission(['READ'])
   @ApiOperation({ summary: 'Obtener reporte de productos' })
   @ApiBadRequestResponse({ description: 'Error al obtener los productos' })
   async getProductsReport(@Query() filter: ProductFilterDto, @Res() res: Response): Promise<void> {
@@ -63,6 +66,7 @@ export class ReportsController {
    * @returns {Promise<void>}
    */
   @Get('export/order/pdf')
+  @Permission(['READ'])
   @ApiOperation({ summary: 'Exportar reporte de pedidos en PDF' })
   @ApiBadRequestResponse({ description: 'Error al exportar el reporte de pedidos' })
   async exportPdf(@Res() res: Response, @Query() filter: OrderFilterDto): Promise<void> {
@@ -83,6 +87,7 @@ export class ReportsController {
    * @returns {Promise<void>} - Una promesa que se resuelve cuando el archivo Excel se envía como respuesta.
    */
   @Get('export/order/excel')
+  @Permission(['READ'])
   @ApiOperation({ summary: 'Exportar reporte de pedidos en Excel' })
   @ApiBadRequestResponse({ description: 'Error al exportar el reporte de pedidos' })
   async exportExcel(@Res() res: Response, @Query() filter: OrderFilterDto): Promise<void> {
@@ -106,6 +111,7 @@ export class ReportsController {
    * @returns {Promise<void>} - Una promesa que se resuelve cuando el archivo PDF se envía como respuesta.
    */
   @Get('export/product/pdf')
+  @Permission(['READ'])
   @ApiOperation({ summary: 'Exportar reporte de productos en PDF' })
   @ApiBadRequestResponse({ description: 'Error al exportar el reporte de productos' })
   async exportPdfProduct(@Res() res: Response, @Query() filter: ProductFilterDto): Promise<void> {
@@ -126,6 +132,7 @@ export class ReportsController {
    * @returns {Promise<void>} - Una promesa que se resuelve cuando el archivo Excel se envía como respuesta.
    */
   @Get('export/product/excel')
+  @Permission(['READ'])
   @ApiOperation({ summary: 'Exportar reporte de productos en Excel' })
   @ApiBadRequestResponse({ description: 'Error al exportar el reporte de productos' })
   async exportExcelProduct(@Res() res: Response, @Query() filter: ProductFilterDto): Promise<void> {
@@ -152,6 +159,7 @@ export class ReportsController {
    * @returns {Promise<void>} - Una promesa que se resuelve cuando los productos más vendidos se envían en la respuesta.
    */
   @Get('top-products')
+  @Permission(['READ'])
   @ApiOperation({ summary: 'Obtener productos más vendidos' })
   @ApiBadRequestResponse({ description: 'Error al obtener los productos más vendidos' })
   async getTopProducts(
@@ -170,6 +178,7 @@ export class ReportsController {
    * @returns {Promise<void>} - Una promesa que se resuelve cuando el archivo PDF se envía como respuesta.
    */
   @Get('export/top-product/pdf')
+  @Permission(['READ'])
   @ApiOperation({ summary: 'Exportar reporte de productos más vendidos en PDF' })
   @ApiBadRequestResponse({ description: 'Error al exportar el reporte de productos más vendidos' })
   async exportPdfTopProduct(
@@ -193,6 +202,7 @@ export class ReportsController {
    * @returns {Promise<void>} - Una promesa que se resuelve cuando el archivo Excel se envía como respuesta.
    */
   @Get('export/top-product/excel')
+  @Permission(['READ'])
   @ApiOperation({ summary: 'Exportar reporte de productos más vendidos en Excel' })
   @ApiBadRequestResponse({ description: 'Error al exportar el reporte de productos más vendidos' })
   async exportExcelTopProduct(
