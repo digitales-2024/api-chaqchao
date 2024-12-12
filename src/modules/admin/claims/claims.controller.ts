@@ -12,7 +12,7 @@ import {
   ApiTags
 } from '@nestjs/swagger';
 import { HttpResponse, ClaimsData } from 'src/interfaces';
-import { Auth } from '../auth/decorators';
+import { Auth, Module, Permission } from '../auth/decorators';
 
 @ApiInternalServerErrorResponse({ description: 'Internal server error' })
 @ApiBadRequestResponse({ description: 'Bad request' })
@@ -54,6 +54,8 @@ export class ClaimsController {
     required: false
   })
   @Auth()
+  @Module('CLM')
+  @Permission(['READ'])
   findAll(@Query('date') date?: string) {
     return this.claimsService.findAll(date);
   }
