@@ -11,13 +11,14 @@ import {
   ApiTags,
   ApiUnauthorizedResponse
 } from '@nestjs/swagger';
-import { Auth, GetUser } from '../auth/decorators';
+import { Auth, GetUser, Module, Permission } from '../auth/decorators';
 import { ClassLanguageData, HttpResponse, UserData } from 'src/interfaces';
 
 @ApiTags('Admin Settings')
 @ApiBadRequestResponse({ description: 'Bad Request' })
 @ApiUnauthorizedResponse({ description: 'Unauthorized' })
 @Auth()
+@Module('STG')
 @Controller({ path: 'class-language', version: '1' })
 export class ClassLanguageController {
   constructor(private readonly classLanguageService: ClassLanguageService) {}
@@ -29,6 +30,7 @@ export class ClassLanguageController {
    * @returns El idioma de clase creado
    */
   @Post()
+  @Permission(['CREATE'])
   @ApiOperation({ summary: 'Crear un nuevo lenguaje de clase' })
   @ApiOkResponse({ description: 'Lenguaje de clase creado' })
   @ApiBody({ type: CreateClassLanguageDto, description: 'Datos para el nuevo lenguaje de clase' })
@@ -44,6 +46,7 @@ export class ClassLanguageController {
    * @returns Un listado de lenguajes de clase
    */
   @Get()
+  @Permission(['READ'])
   @ApiOperation({ summary: 'Obtener todos los lenguajes de clase' })
   @ApiOkResponse({ description: 'Get all class languages' })
   findAll(): Promise<ClassLanguageData[]> {
@@ -56,6 +59,7 @@ export class ClassLanguageController {
    * @returns El lenguaje de clase encontrado
    */
   @Get(':id')
+  @Permission(['READ'])
   @ApiOperation({ summary: 'Obtener un lenguaje de clase por su id' })
   @ApiOkResponse({ description: 'Get class language by id' })
   @ApiParam({ name: 'id', description: 'El id del lenguaje de clase a obtener' })
@@ -71,6 +75,7 @@ export class ClassLanguageController {
    * @returns El lenguaje de clase actualizado
    */
   @Patch(':id')
+  @Permission(['UPDATE'])
   @ApiOperation({ summary: 'Actualizar un lenguaje de clase' })
   @ApiOkResponse({ description: 'Idioma de clase actualizado' })
   @ApiParam({ name: 'id', description: 'El id del lenguaje de clase a actualizar' })
@@ -93,6 +98,7 @@ export class ClassLanguageController {
    * @returns El lenguaje de clase eliminado
    */
   @Delete(':id')
+  @Permission(['DELETE'])
   @ApiOperation({ summary: 'Eliminar un lenguaje de clase' })
   @ApiOkResponse({ description: 'Lenguaje de clase eliminado' })
   @ApiParam({ name: 'id', description: 'El id del lenguaje de clase a eliminar' })

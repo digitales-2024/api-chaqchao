@@ -11,13 +11,14 @@ import {
   ApiTags,
   ApiUnauthorizedResponse
 } from '@nestjs/swagger';
-import { Auth, GetUser } from '../auth/decorators';
+import { Auth, GetUser, Module, Permission } from '../auth/decorators';
 import { ClassPriceConfigData, HttpResponse, UserData } from 'src/interfaces';
 
 @ApiTags('Admin Settings')
 @ApiBadRequestResponse({ description: 'Bad Request' })
 @ApiUnauthorizedResponse({ description: 'Unauthorized' })
 @Auth()
+@Module('STG')
 @Controller({ path: 'class-price', version: '1' })
 export class ClassPriceController {
   constructor(private readonly classPriceService: ClassPriceService) {}
@@ -29,6 +30,7 @@ export class ClassPriceController {
    * @returns Precio de clase creado
    */
   @Post()
+  @Permission(['CREATE'])
   @ApiOperation({ summary: 'Crear un precio de clase' })
   @ApiOkResponse({ description: 'Precio de clase creado' })
   @ApiBody({ type: CreateClassPriceDto, description: 'Datos para crear un precio de clase' })
@@ -44,6 +46,7 @@ export class ClassPriceController {
    * @returns Todos los precios de clase
    */
   @Get()
+  @Permission(['READ'])
   @ApiOperation({ summary: 'Obtener todos los precios de clase' })
   @ApiOkResponse({ description: 'Todos los precios de clase' })
   findAll(): Promise<ClassPriceConfigData[]> {
@@ -56,6 +59,7 @@ export class ClassPriceController {
    * @returns Precio de clase encontrado
    */
   @Get(':id')
+  @Permission(['READ'])
   @ApiOperation({ summary: 'Obtener un precio de clase por su id' })
   @ApiOkResponse({ description: 'Precio de clase encontrado' })
   @ApiParam({ name: 'id', description: 'Id del precio de clase' })
@@ -71,6 +75,7 @@ export class ClassPriceController {
    * @returns Precio de clase actualizado
    */
   @Patch(':id')
+  @Permission(['UPDATE'])
   @ApiOperation({ summary: 'Actualizar un precio de clase' })
   @ApiOkResponse({ description: 'Precio de clase actualizado' })
   @ApiParam({ name: 'id', description: 'Id del precio de clase' })
@@ -90,6 +95,7 @@ export class ClassPriceController {
    * @returns Precio de clase eliminado
    */
   @Delete(':id')
+  @Permission(['DELETE'])
   @ApiOperation({ summary: 'Eliminar un precio de clase' })
   @ApiOkResponse({ description: 'Precio de clase eliminado' })
   @ApiParam({ name: 'id', description: 'Id del precio de clase' })

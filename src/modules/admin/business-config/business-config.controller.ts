@@ -2,7 +2,7 @@ import { Controller, Get, Post, Body, Param, Delete, Patch } from '@nestjs/commo
 import { BusinessConfigService } from './business-config.service';
 import { CreateBusinessConfigDto } from './dto/create-business-config.dto';
 import { BusinessConfigData, HttpResponse, UserData } from 'src/interfaces';
-import { Auth, GetUser } from '../auth/decorators';
+import { Auth, GetUser, Module, Permission } from '../auth/decorators';
 import {
   ApiBadRequestResponse,
   ApiBody,
@@ -20,6 +20,7 @@ import { UpdateBusinessConfigDto } from './dto/update-business-config.dto';
 @ApiInternalServerErrorResponse({ description: 'Internal server error' })
 @ApiBadRequestResponse({ description: 'Bad request' })
 @Auth()
+@Module('BNSS')
 @Controller({
   path: 'business-config',
   version: '1'
@@ -34,6 +35,7 @@ export class BusinessConfigController {
    * @returns Empresa creada
    */
   @Post()
+  @Permission(['CREATE'])
   @ApiOperation({ summary: 'Crear una empresa' })
   @ApiOkResponse({ description: 'Empresa creada' })
   @ApiBody({ type: CreateBusinessConfigDto, description: 'Datos de la empresa a crear' })
@@ -52,6 +54,7 @@ export class BusinessConfigController {
    * @returns Empresa actualizada
    */
   @Patch(':id')
+  @Permission(['UPDATE'])
   @ApiOperation({ summary: 'Actualizar una empresa' })
   @ApiOkResponse({ description: 'Empresa actualizada' })
   @ApiBody({ type: UpdateBusinessConfigDto, description: 'Datos de la empresa a actualizar' })
@@ -69,6 +72,7 @@ export class BusinessConfigController {
    * @returns Empresas encontradas
    */
   @Get()
+  @Permission(['READ'])
   @ApiOperation({ summary: 'Obtener todas las empresas' })
   @ApiOkResponse({ description: 'Empresas encontradas' })
   findAll(): Promise<BusinessConfigData[]> {
@@ -81,6 +85,7 @@ export class BusinessConfigController {
    * @returns Empresa encontrada
    */
   @Get(':id')
+  @Permission(['READ'])
   @ApiOperation({ summary: 'Obtener una empresa por su id' })
   @ApiOkResponse({ description: 'Empresa encontrada' })
   @ApiParam({ name: 'id', description: 'Id de la empresa a obtener' })
@@ -94,6 +99,7 @@ export class BusinessConfigController {
    * @returns Empresa eliminada
    */
   @Delete(':id')
+  @Permission(['DELETE'])
   @ApiOperation({ summary: 'Eliminar una empresa por su id' })
   @ApiOkResponse({ description: 'Empresa eliminada' })
   @ApiParam({ name: 'id', description: 'Id de la empresa a eliminar' })

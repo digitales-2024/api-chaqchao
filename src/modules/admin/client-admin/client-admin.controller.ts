@@ -11,7 +11,7 @@ import {
   ApiTags,
   ApiUnauthorizedResponse
 } from '@nestjs/swagger';
-import { Auth, GetUser } from '../auth/decorators';
+import { Auth, GetUser, Module, Permission } from '../auth/decorators';
 import { ClientPayload, UserData } from 'src/interfaces';
 import { Response } from 'express';
 import { ClientFilterDto } from './dto/client-filter.dto';
@@ -20,6 +20,7 @@ import { ClientFilterDto } from './dto/client-filter.dto';
 @ApiUnauthorizedResponse({ description: 'Unauthorized' })
 @ApiInternalServerErrorResponse({ description: 'Internal server error' })
 @Auth()
+@Module('CST')
 @Controller({
   path: 'admin/client',
   version: '1'
@@ -32,6 +33,7 @@ export class ClientAdminController {
    * @returns Todas las clientas
    */
   @Get()
+  @Permission(['READ'])
   @ApiOperation({ summary: 'Mostrar todas los clientes' })
   @ApiOkResponse({ description: 'Clientes encontrados' })
   findAll(): Promise<ClientPayload[]> {
@@ -46,6 +48,7 @@ export class ClientAdminController {
    * @returns El cliente actualizado
    */
   @Patch(':id')
+  @Permission(['UPDATE'])
   @ApiOperation({ summary: 'Actualizar cliente' })
   @ApiOkResponse({ description: 'Cliente actualizado' })
   @ApiBody({ type: UpdateClientDto, description: 'Datos para actualizar el cliente' })
@@ -65,6 +68,7 @@ export class ClientAdminController {
    * @returns El cliente reactivado
    */
   @Patch('desactivate/:id')
+  @Permission(['UPDATE'])
   @ApiOperation({ summary: 'Desactivar cliente' })
   @ApiOkResponse({ description: 'Cliente desactivado' })
   @ApiParam({ name: 'id', description: 'ID del cliente a desactivar' })
@@ -79,6 +83,7 @@ export class ClientAdminController {
    * @returns Todos los clientes
    */
   @Get('/all')
+  @Permission(['READ'])
   @ApiOperation({ summary: 'Obtener todos los clientes' })
   @ApiOkResponse({ description: 'Clientes encontrados' })
   @ApiQuery({ type: ClientFilterDto, description: 'Filtro para obtener los clientes' })

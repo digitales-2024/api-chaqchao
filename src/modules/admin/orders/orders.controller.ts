@@ -1,6 +1,6 @@
 import { Body, Controller, Get, Param, Patch, Post, Query, Res } from '@nestjs/common';
 import { OrdersService } from './orders.service';
-import { Auth } from '../auth/decorators';
+import { Auth, Module, Permission } from '../auth/decorators';
 import { OrderStatus } from '@prisma/client';
 import {
   ApiBadRequestResponse,
@@ -23,6 +23,7 @@ import { Response } from 'express';
   version: '1'
 })
 @Auth()
+@Module('ORD')
 export class OrdersController {
   constructor(private readonly ordersService: OrdersService) {}
 
@@ -33,6 +34,7 @@ export class OrdersController {
    * @returns Gama de pedidos
    */
   @Get()
+  @Permission(['READ'])
   @ApiOperation({ summary: 'Obtener todos los pedidos' })
   @ApiOkResponse({ description: 'Pedidos obtenidos' })
   @ApiQuery({ name: 'date', required: true, description: 'Fecha en formato ISO (aaa yyy-mm-dd)' })
@@ -48,6 +50,7 @@ export class OrdersController {
    * @returns Informaci n del pedido
    */
   @Get(':id')
+  @Permission(['READ'])
   @ApiOperation({ summary: 'Obtener un pedido' })
   @ApiOkResponse({ description: 'Pedido obtenido' })
   @ApiBadRequestResponse({ description: 'Error al obtener el pedido' })
@@ -63,6 +66,7 @@ export class OrdersController {
    * @returns Pedido actualizado
    */
   @Patch(':id')
+  @Permission(['UPDATE'])
   @ApiOperation({ summary: 'Actualizar el estado de un pedido' })
   @ApiOkResponse({ description: 'Pedido actualizado' })
   @ApiBadRequestResponse({ description: 'Error al actualizar el pedido' })
@@ -87,6 +91,7 @@ export class OrdersController {
    * @returns Pedidos del cliente
    */
   @Get('client/:id')
+  @Permission(['READ'])
   @ApiOperation({ summary: 'Obtener los pedidos de un cliente' })
   @ApiOkResponse({ description: 'Pedidos del cliente' })
   @ApiBadRequestResponse({ description: 'Error al obtener los pedidos del cliente' })
@@ -101,6 +106,7 @@ export class OrdersController {
    * @returns Archivo PDF con el pedido
    */
   @Post('export/pdf/:id')
+  @Permission(['READ'])
   @ApiOperation({ summary: 'Exportar un pedido en formato PDF' })
   @ApiOkResponse({ description: 'Archivo PDF con el pedido' })
   @ApiBadRequestResponse({ description: 'Error al exportar el pedido en formato PDF' })
