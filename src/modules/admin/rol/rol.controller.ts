@@ -62,6 +62,7 @@ export class RolController {
    * @returns Una promesa que resuelve una lista de roles con módulos y permisos.
    */
   @Get()
+  @Module('CLS')
   @Permission(['READ'])
   @ApiOperation({ summary: 'Obtener todos los roles' })
   @ApiBadRequestResponse({ description: 'Roles no encontrado' })
@@ -126,6 +127,7 @@ export class RolController {
    * @returns Una promesa que se resuelve a los datos del rol encontrado con módulos y permisos agrupados.
    */
   @Get(':id')
+  @Module('CLS')
   @Permission(['READ'])
   @ApiOperation({ summary: 'Obtener un rol' })
   @ApiBadRequestResponse({ description: 'Rol no encontrado' })
@@ -139,8 +141,6 @@ export class RolController {
    * @returns Una lista de módulos con sus permisos
    */
   @Get('modules-permissions/all')
-  @Module('PRM')
-  @Permission(['READ'])
   @ApiOperation({ summary: 'Obtener todos los módulos con sus permisos' })
   @ApiBadRequestResponse({ description: 'Módulos no encontrados' })
   @ApiOkResponse({ description: 'Módulos encontrados' })
