@@ -19,7 +19,7 @@ export class OrdersService {
     private readonly prismaService: PrismaService,
     private readonly adminGateway: AdminGateway,
     private readonly eventEmitter: TypedEventEmitter
-  ) {}
+  ) { }
 
   /**
    * Mostrar todos los pedidos
@@ -78,8 +78,8 @@ export class OrdersService {
           orderStatus: {
             ...(status === ('ALL' as unknown as OrderStatus)
               ? {
-                  not: 'PENDING'
-                }
+                not: 'PENDING'
+              }
               : { equals: status })
           }
         },
@@ -99,19 +99,19 @@ export class OrdersService {
         totalAmount: order.totalAmount,
         client: order.cart.client
           ? {
-              id: order.cart.client.id,
-              name: order.cart.client.name,
-              lastName: order.cart.client.lastName,
-              phone: order.cart.client.phone,
-              email: order.cart.client.email
-            }
+            id: order.cart.client.id,
+            name: order.cart.client.name,
+            lastName: order.cart.client.lastName,
+            phone: order.cart.client.phone,
+            email: order.cart.client.email
+          }
           : {
-              id: null,
-              name: order.customerName,
-              lastName: order.customerLastName,
-              phone: order.customerPhone,
-              email: order.customerEmail
-            }
+            id: null,
+            name: order.customerName,
+            lastName: order.customerLastName,
+            phone: order.customerPhone,
+            email: order.customerEmail
+          }
       }));
     } catch (error) {
       this.logger.error('Error get orders', error.message);
@@ -214,19 +214,19 @@ export class OrdersService {
         },
         client: order.cart.client
           ? {
-              id: order.cart.client.id,
-              name: order.cart.client.name,
-              lastName: order.cart.client.lastName,
-              phone: order.cart.client.phone,
-              email: order.cart.client.email
-            }
+            id: order.cart.client.id,
+            name: order.cart.client.name,
+            lastName: order.cart.client.lastName,
+            phone: order.cart.client.phone,
+            email: order.cart.client.email
+          }
           : {
-              id: null,
-              name: order.customerName,
-              phone: order.customerPhone,
-              lastName: order.customerLastName,
-              email: order.customerEmail
-            }
+            id: null,
+            name: order.customerName,
+            phone: order.customerPhone,
+            lastName: order.customerLastName,
+            email: order.customerEmail
+          }
       };
     } catch (error) {
       this.logger.error('Error get order', error.message);
@@ -426,7 +426,12 @@ export class OrdersService {
     const htmlContent = templateHtml.replace('{{order}}', orderHtml);
 
     // Generar el archivo PDF
-    const browser = await puppeteer.launch();
+    const browser = await puppeteer.launch({
+      args: [
+        '--no-sandbox',
+        '--disable-setuid-sandbox'
+      ]
+    });
     const page = await browser.newPage();
     await page.setContent(htmlContent);
     // Formato de boleta
@@ -481,19 +486,18 @@ export class OrdersService {
                     <p style="margin: 5px 0;display:flex; flex-direction:column;"><strong style="font-size:12px; color:#9da2ab">Ciudad:</strong>${orderData.billingDocument.city}</p>
             </div>
             
-            ${
-              orderData.billingDocument.billingDocumentType === 'INVOICE'
-                ? `<p style="margin: 5px 0;"><strong style="font-size:12px; color:#9da2ab">Empresa:</strong>${orderData.billingDocument.businessName}</p>`
-                : ''
-            }
+            ${orderData.billingDocument.billingDocumentType === 'INVOICE'
+        ? `<p style="margin: 5px 0;"><strong style="font-size:12px; color:#9da2ab">Empresa:</strong>${orderData.billingDocument.businessName}</p>`
+        : ''
+      }
                 <div style="height: 1px; width:100%; border-top:1px dashed #a8acb6; margin-top: 20px;margin-bottom: 20px;"/>
                 <p style="margin: 5px 0; color: #777; text-align: center;">${format(
-                  orderData.pickupTime,
-                  'dd/MM/yyyy HH:mm:ss',
-                  {
-                    locale: es
-                  }
-                )}</p>
+        orderData.pickupTime,
+        'dd/MM/yyyy HH:mm:ss',
+        {
+          locale: es
+        }
+      )}</p>
                 <div style="height: 1px; width:100%; border-top:1px dashed #a8acb6;margin-top: 20px;margin-bottom: 20px;"/>
         </div>
 `;
