@@ -222,16 +222,9 @@ model ClassSchedule {
   businessId String
   business   BusinessConfig @relation("businessId", fields: [businessId], references: [id])
 
-  startTime String    @unique
-  typeClass TypeClass @default(CLASSIC)
-  createdAt DateTime  @default(now()) @db.Timestamptz(6)
-  updatedAt DateTime  @updatedAt
-}
-
-enum TypeClass {
-  CLASSIC
-  PRIVATE
-  CUSTOM
+  startTime String   @unique
+  createdAt DateTime @default(now()) @db.Timestamptz(6)
+  updatedAt DateTime @updatedAt
 }
 
 model ClassLanguage {
