@@ -222,9 +222,16 @@ model ClassSchedule {
   businessId String
   business   BusinessConfig @relation("businessId", fields: [businessId], references: [id])
 
-  startTime String   @unique
-  createdAt DateTime @default(now()) @db.Timestamptz(6)
-  updatedAt DateTime @updatedAt
+  startTime String    @unique
+  typeClass TypeClass @default(CLASSIC)
+  createdAt DateTime  @default(now()) @db.Timestamptz(6)
+  updatedAt DateTime  @updatedAt
+}
+
+enum TypeClass {
+  CLASSIC
+  PRIVATE
+  CUSTOM
 }
 
 model ClassLanguage {
@@ -528,18 +535,18 @@ enum ClassStatus {
 }
 
 model Claims {
-  id                        String        @id @unique @default(uuid())
-  claimantName              String
-  claimantAddress           String?
-  documentNumber            String
-  claimantEmail             String
-  claimantPhone             String
-  claimantRepresentative    String?
-  assetType                 AssetType
-  amountClaimed             String?
-  assetDescription          String
-  claimDescription          String
-  dateClaim                 DateTime
+  id                     String    @id @unique @default(uuid())
+  claimantName           String
+  claimantAddress        String?
+  documentNumber         String
+  claimantEmail          String
+  claimantPhone          String
+  claimantRepresentative String?
+  assetType              AssetType
+  amountClaimed          String?
+  assetDescription       String
+  claimDescription       String
+  dateClaim              DateTime
 }
 
 enum AssetType {
