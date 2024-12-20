@@ -8,7 +8,7 @@ import {
 import { CreateClassScheduleDto } from './dto/create-class-schedule.dto';
 import { UpdateClassScheduleDto } from './dto/update-class-schedule.dto';
 import { ClassScheduleData, HttpResponse, UserData } from 'src/interfaces';
-import { AuditActionType } from '@prisma/client';
+import { AuditActionType, TypeClass } from '@prisma/client';
 import { PrismaService } from 'src/prisma/prisma.service';
 import { BusinessConfigService } from '../business-config/business-config.service';
 import { handleException } from 'src/utils';
@@ -342,5 +342,33 @@ export class ClassScheduleService {
       startTime: classScheduleDB.startTime,
       typeClass: classScheduleDB.typeClass
     };
+  }
+
+  /**
+   * Mostrar los horarios de un tipo de clase
+   * @param typeClass Tipo de clase
+   * @returns Horarios de un tipo de clase
+   */
+  async findByTypeClass(typeClass: TypeClass): Promise<ClassScheduleData[]> {
+    const classScheduleDB = await this.prisma.classSchedule.findMany({
+      where: { typeClass },
+      select: {
+        id: true,
+        startTime: true,
+        typeClass: true
+      }
+    });
+
+    // Verificar si el class schedule existe y está activo
+    if (!classScheduleDB) {
+      throw new BadRequestException('This class schedule does not exist');
+    }
+
+    // Mapeo al tipo ClassScheduleData
+    return classScheduleDB.map((classSchedule) => ({
+      id: classSchedule.id,
+      startTime: classSchedule.startTime,
+      typeClass: classSchedule.typeClass
+    }));
   }
 }
