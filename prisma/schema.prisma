@@ -196,6 +196,7 @@ model ClassPriceConfig {
   // Clave foránea que referencia a BusinessConfig
   businessId String
   business   BusinessConfig @relation("businessId", fields: [businessId], references: [id])
+  typeClass  TypeClass      @default(NORMAL)
 
   classTypeUser ClassTypeUser
   price         Float
@@ -221,6 +222,8 @@ model ClassSchedule {
   // Clave foránea que referencia a BusinessConfig
   businessId String
   business   BusinessConfig @relation("businessId", fields: [businessId], references: [id])
+
+  typeClass TypeClass @default(NORMAL)
 
   startTime String   @unique
   createdAt DateTime @default(now()) @db.Timestamptz(6)
