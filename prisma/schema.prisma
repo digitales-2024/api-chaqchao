@@ -225,9 +225,11 @@ model ClassSchedule {
 
   typeClass TypeClass @default(NORMAL)
 
-  startTime String   @unique
+  startTime String
   createdAt DateTime @default(now()) @db.Timestamptz(6)
   updatedAt DateTime @updatedAt
+
+  @@unique([typeClass, startTime])
 }
 
 model ClassLanguage {
