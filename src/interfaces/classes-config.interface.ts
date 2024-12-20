@@ -7,7 +7,7 @@ import {
 
 export type ClassPriceConfigData = Pick<
   ClassPriceConfig,
-  'id' | 'classTypeUser' | 'price' | 'typeCurrency'
+  'id' | 'classTypeUser' | 'price' | 'typeCurrency' | 'typeClass'
 >;
 
 export type ClassScheduleData = Pick<ClassSchedule, 'id' | 'startTime' | 'typeClass'>;
