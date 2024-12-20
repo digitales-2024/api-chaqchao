@@ -493,6 +493,7 @@ enum NotificationType {
 
 model Classes {
   id                 String       @id @unique @default(uuid())
+  typeClass          TypeClass    @default(NORMAL)
   userName           String
   userEmail          String
   userPhone          String
@@ -519,6 +520,12 @@ model Classes {
   createdAt DateTime  @default(now()) @db.Timestamptz(6)
   updatedAt DateTime  @updatedAt
   expiresAt DateTime?
+}
+
+enum TypeClass {
+  NORMAL
+  PRIVATE
+  GROUP
 }
 
 enum ClassStatus {
