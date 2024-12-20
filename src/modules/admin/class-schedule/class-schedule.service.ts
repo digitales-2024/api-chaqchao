@@ -41,7 +41,7 @@ export class ClassScheduleService {
     createClassScheduleDto: CreateClassScheduleDto,
     user: UserData
   ): Promise<HttpResponse<ClassScheduleData>> {
-    const { startTime, businessId } = createClassScheduleDto;
+    const { startTime, businessId, typeClass } = createClassScheduleDto;
     this.validateTimeFormat(startTime);
     try {
       return await this.prisma.$transaction(async (prisma) => {
@@ -53,7 +53,7 @@ export class ClassScheduleService {
 
         // Validate if startTime already exists
         const existingSchedule = await prisma.classSchedule.findUnique({
-          where: { startTime }
+          where: { startTime, typeClass }
         });
         if (existingSchedule) {
           throw new BadRequestException('Start time already exists');
@@ -63,6 +63,7 @@ export class ClassScheduleService {
         const newClassSchedule = await prisma.classSchedule.create({
           data: {
             startTime,
+            typeClass,
             businessId
           }
         });
@@ -82,7 +83,8 @@ export class ClassScheduleService {
           message: 'Class Schedule created',
           data: {
             id: newClassSchedule.id,
-            startTime: newClassSchedule.startTime
+            startTime: newClassSchedule.startTime,
+            typeClass: newClassSchedule.typeClass
           }
         };
       });
@@ -101,20 +103,26 @@ export class ClassScheduleService {
    * Obtener todos los class schedule
    * @returns Todos los class schedule
    */
-  async findAll(): Promise<ClassScheduleData[]> {
+  async findAll(): Promise<any> {
     try {
       const classesSchedule = await this.prisma.classSchedule.findMany({
         select: {
           id: true,
-          startTime: true
+          startTime: true,
+          typeClass: true
         }
       });
 
-      // Mapea los resultados al tipo ClassScheduleData
-      return classesSchedule.map((classSchedule) => ({
-        id: classSchedule.id,
-        startTime: classSchedule.startTime
-      })) as ClassScheduleData[];
+      // Agrupar los resultados typeClass
+      const groupedClassesSchedule = classesSchedule.reduce((acc, classSchedule) => {
+        const typeClass = classSchedule.typeClass;
+        if (!acc[typeClass]) {
+          acc[typeClass] = [];
+        }
+        acc[typeClass].push(classSchedule);
+        return acc;
+      }, {});
+      return groupedClassesSchedule;
     } catch (error) {
       this.logger.error('Error getting all class schedules', error.stack);
       handleException(error, 'Error getting all class schedules');
@@ -148,7 +156,8 @@ export class ClassScheduleService {
       where: { id },
       select: {
         id: true,
-        startTime: true
+        startTime: true,
+        typeClass: true
       }
     });
 
@@ -160,7 +169,8 @@ export class ClassScheduleService {
     // Mapeo al tipo ClassScheduleData
     return {
       id: classScheduleDB.id,
-      startTime: classScheduleDB.startTime
+      startTime: classScheduleDB.startTime,
+      typeClass: classScheduleDB.typeClass
     };
   }
 
@@ -191,14 +201,18 @@ export class ClassScheduleService {
             message: 'Class Schedule updated',
             data: {
               id: existingClassSchedule.id,
-              startTime: existingClassSchedule.startTime
+              startTime: existingClassSchedule.startTime,
+              typeClass: existingClassSchedule.typeClass
             }
           };
         }
 
         // Validar si el startTime ya existe
         const existingSchedule = await prisma.classSchedule.findUnique({
-          where: { startTime }
+          where: {
+            startTime,
+            typeClass: existingClassSchedule.typeClass
+          }
         });
         if (existingSchedule) {
           throw new BadRequestException('Start time already exists');
@@ -208,7 +222,8 @@ export class ClassScheduleService {
         const updatedClassSchedule = await prisma.classSchedule.update({
           where: { id },
           data: {
-            startTime
+            startTime,
+            typeClass: existingClassSchedule.typeClass
           }
         });
 
@@ -227,7 +242,8 @@ export class ClassScheduleService {
           message: 'Class Schedule updated',
           data: {
             id: updatedClassSchedule.id,
-            startTime: updatedClassSchedule.startTime
+            startTime: updatedClassSchedule.startTime,
+            typeClass: updatedClassSchedule.typeClass
           }
         };
       });
@@ -271,7 +287,8 @@ export class ClassScheduleService {
           message: 'Class Schedule deleted',
           data: {
             id: classSchedule.id,
-            startTime: classSchedule.startTime
+            startTime: classSchedule.startTime,
+            typeClass: classSchedule.typeClass
           }
         };
       });
@@ -294,7 +311,8 @@ export class ClassScheduleService {
       where: { startTime },
       select: {
         id: true,
-        startTime: true
+        startTime: true,
+        typeClass: true
       }
     });
 
@@ -306,7 +324,8 @@ export class ClassScheduleService {
     // Mapeo al tipo ClassScheduleData
     return {
       id: classScheduleDB.id,
-      startTime: classScheduleDB.startTime
+      startTime: classScheduleDB.startTime,
+      typeClass: classScheduleDB.typeClass
     };
   }
 }

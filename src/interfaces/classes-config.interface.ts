@@ -10,7 +10,7 @@ export type ClassPriceConfigData = Pick<
   'id' | 'classTypeUser' | 'price' | 'typeCurrency'
 >;
 
-export type ClassScheduleData = Pick<ClassSchedule, 'id' | 'startTime'>;
+export type ClassScheduleData = Pick<ClassSchedule, 'id' | 'startTime' | 'typeClass'>;
 
 export type ClassLanguageData = Pick<ClassLanguage, 'id' | 'languageName'>;
 
