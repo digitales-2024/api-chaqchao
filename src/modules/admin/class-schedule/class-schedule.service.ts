@@ -53,7 +53,12 @@ export class ClassScheduleService {
 
         // Validate if startTime already exists
         const existingSchedule = await prisma.classSchedule.findUnique({
-          where: { startTime, typeClass }
+          where: {
+            typeClass_startTime: {
+              typeClass,
+              startTime
+            }
+          }
         });
         if (existingSchedule) {
           throw new BadRequestException('Start time already exists');
@@ -186,7 +191,7 @@ export class ClassScheduleService {
     updateClassScheduleDto: UpdateClassScheduleDto,
     user: UserData
   ): Promise<HttpResponse<ClassScheduleData>> {
-    const { startTime } = updateClassScheduleDto;
+    const { startTime, typeClass } = updateClassScheduleDto;
     if (startTime) {
       this.validateTimeFormat(startTime);
     }
@@ -195,7 +200,11 @@ export class ClassScheduleService {
         const existingClassSchedule = await this.findById(id);
 
         // Verificar si hay cambios
-        if (existingClassSchedule.startTime === startTime || !startTime) {
+        if (
+          (existingClassSchedule.startTime === startTime &&
+            existingClassSchedule.typeClass === typeClass) ||
+          !startTime
+        ) {
           return {
             statusCode: HttpStatus.OK,
             message: 'Class Schedule updated',
@@ -210,20 +219,26 @@ export class ClassScheduleService {
         // Validar si el startTime ya existe
         const existingSchedule = await prisma.classSchedule.findUnique({
           where: {
-            startTime,
-            typeClass: existingClassSchedule.typeClass
+            typeClass_startTime: {
+              typeClass,
+              startTime
+            }
           }
         });
         if (existingSchedule) {
           throw new BadRequestException('Start time already exists');
         }
+        console.log(
+          '🚀 ~ ClassScheduleService ~ returnawaitthis.prisma.$transaction ~ id:',
+          id,
+          startTime
+        );
 
         // Actualizar el class schedule
         const updatedClassSchedule = await prisma.classSchedule.update({
           where: { id },
           data: {
-            startTime,
-            typeClass: existingClassSchedule.typeClass
+            startTime
           }
         });
 
