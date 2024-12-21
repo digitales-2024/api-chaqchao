@@ -497,12 +497,13 @@ enum NotificationType {
 }
 
 model Classes {
-  id            String    @id @unique @default(uuid())
-  typeClass     TypeClass @default(NORMAL)
-  scheduleClass String
-  languageClass String
-  dateClass     DateTime
-  isClosed      Boolean   @default(false)
+  id                String    @id @unique @default(uuid())
+  typeClass         TypeClass @default(NORMAL)
+  scheduleClass     String
+  languageClass     String
+  dateClass         DateTime
+  totalParticipants Int       @default(0)
+  isClosed          Boolean   @default(false)
 
   // Relacion con ClassRegister
 
@@ -534,6 +535,7 @@ model ClassRegister {
   paypalAmount      String?
   paypalCurrency    String?
   paypalDate        String?
+  expiresAt         DateTime
 
   createdAt DateTime @default(now()) @db.Timestamptz(6)
   updatedAt DateTime @updatedAt
