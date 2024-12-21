@@ -276,7 +276,8 @@ export class ClassesService {
           scheduleClass: true,
           dateClass: true,
           comments: true,
-          status: true
+          status: true,
+          typeClass: true
         }
       });
 
@@ -321,7 +322,8 @@ export class ClassesService {
           scheduleClass: true,
           comments: true,
           status: true,
-          expiresAt: true
+          expiresAt: true,
+          typeClass: true
         }
       });
 
@@ -368,7 +370,8 @@ export class ClassesService {
           dateClass: true,
           scheduleClass: true,
           comments: true,
-          status: true
+          status: true,
+          typeClass: true
         }
       });
 

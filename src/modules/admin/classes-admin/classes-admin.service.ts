@@ -7,7 +7,7 @@ import * as ExcelJS from 'exceljs';
 import * as puppeteer from 'puppeteer';
 import * as fs from 'fs';
 import * as path from 'path';
-import { ClassStatus, TypeCurrency } from '@prisma/client';
+import { ClassStatus, TypeClass, TypeCurrency } from '@prisma/client';
 import { CreateClassAdminDto } from './dto/create-class-admin.dto';
 
 @Injectable()
@@ -29,6 +29,7 @@ export class ClassesAdminService {
         scheduleClass: string;
         totalParticipants: number;
         languageClass: string;
+        typeClass: TypeClass;
         classes: ClassesData[];
       };
     };
@@ -42,6 +43,7 @@ export class ClassesAdminService {
           scheduleClass: classItem.scheduleClass,
           totalParticipants: 0,
           languageClass: classItem.languageClass,
+          typeClass: classItem.typeClass,
           classes: []
         };
       }
@@ -56,6 +58,7 @@ export class ClassesAdminService {
       scheduleClass: group.scheduleClass,
       totalParticipants: group.totalParticipants,
       languageClass: group.languageClass,
+      typeClass: group.typeClass,
       classes: group.classes.map((classItem) => ({
         id: classItem.id,
         userName: classItem.userName,
@@ -72,7 +75,8 @@ export class ClassesAdminService {
         dateClass: classItem.dateClass,
         scheduleClass: classItem.scheduleClass,
         comments: classItem.comments,
-        status: classItem.status
+        status: classItem.status,
+        typeClass: classItem.typeClass
       }))
     }));
   }
@@ -86,6 +90,7 @@ export class ClassesAdminService {
     try {
       const classCreated = await this.prisma.classes.create({
         data: {
+          typeClass: data.typeClass,
           userName: data.userName,
           userEmail: data.userEmail,
           userPhone: data.userPhone,
@@ -146,7 +151,8 @@ export class ClassesAdminService {
           dateClass: true,
           scheduleClass: true,
           comments: true,
-          status: true
+          status: true,
+          typeClass: true
         },
         orderBy: {
           createdAt: 'asc'

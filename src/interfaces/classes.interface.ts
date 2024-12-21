@@ -18,6 +18,7 @@ export type ClassesData = Pick<
   | 'scheduleClass'
   | 'comments'
   | 'status'
+  | 'typeClass'
 >;
 
 export type ClassesDataWithExpires = ClassesData & { expiresAt: Date };
