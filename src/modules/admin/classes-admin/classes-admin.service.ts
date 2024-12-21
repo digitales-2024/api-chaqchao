@@ -7,13 +7,14 @@ import * as ExcelJS from 'exceljs';
 import * as puppeteer from 'puppeteer';
 import * as fs from 'fs';
 import * as path from 'path';
-import { ClassStatus } from '@prisma/client';
+import { ClassStatus, TypeCurrency } from '@prisma/client';
+import { CreateClassAdminDto } from './dto/create-class-admin.dto';
 
 @Injectable()
 export class ClassesAdminService {
   private readonly logger = new Logger(ClassesAdminService.name);
 
-  constructor(private readonly prisma: PrismaService) { }
+  constructor(private readonly prisma: PrismaService) {}
 
   /**
    * Agrupar los datos de las clases registradas
@@ -74,6 +75,39 @@ export class ClassesAdminService {
         status: classItem.status
       }))
     }));
+  }
+
+  /**
+   * Crear una clase desde el panel de administración
+   * @param data Datos de la clase a crear
+   * @returns Clase creada
+   */
+  async createClass(data: CreateClassAdminDto): Promise<ClassesData> {
+    try {
+      const classCreated = await this.prisma.classes.create({
+        data: {
+          userName: data.userName,
+          userEmail: data.userEmail,
+          userPhone: data.userPhone,
+          totalParticipants: data.totalAdults + data.totalChildren,
+          totalAdults: data.totalAdults,
+          totalChildren: data.totalChildren,
+          totalPrice: data.totalPrice,
+          totalPriceAdults: data.totalPriceAdults,
+          totalPriceChildren: data.totalPriceChildren,
+          languageClass: data.languageClass,
+          typeCurrency: TypeCurrency.DOLAR,
+          dateClass: data.dateClass,
+          scheduleClass: data.scheduleClass,
+          comments: data.comments,
+          status: ClassStatus.CONFIRMED
+        }
+      });
+      return classCreated;
+    } catch (error) {
+      this.logger.error('Error creating class');
+      handleException(error, 'Error creating class');
+    }
   }
 
   /**
@@ -269,10 +303,7 @@ export class ClassesAdminService {
 
     // Generar el PDF usando Puppeteer
     const browser = await puppeteer.launch({
-      args: [
-        '--no-sandbox',
-        '--disable-setuid-sandbox'
-      ]
+      args: ['--no-sandbox', '--disable-setuid-sandbox']
     });
     const page = await browser.newPage();
     await page.setContent(htmlContent);

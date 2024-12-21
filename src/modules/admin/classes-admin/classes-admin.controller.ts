@@ -2,7 +2,7 @@ import { Body, Controller, Get, Post, Query, Res } from '@nestjs/common';
 import { Response } from 'express';
 import { ClassesAdminService } from './classes-admin.service';
 import { Auth, Module, Permission } from '../auth/decorators';
-import { ClassesDataAdmin } from 'src/interfaces';
+import { ClassesData, ClassesDataAdmin } from 'src/interfaces';
 import {
   ApiBadRequestResponse,
   ApiBody,
@@ -12,6 +12,7 @@ import {
   ApiTags,
   ApiUnauthorizedResponse
 } from '@nestjs/swagger';
+import { CreateClassAdminDto } from './dto/create-class-admin.dto';
 
 @ApiTags('Admin Classes')
 @ApiBadRequestResponse({ description: 'Bad Request' })
@@ -21,6 +22,20 @@ import {
 @Controller({ path: '/class/admin', version: '1' })
 export class ClassesAdminController {
   constructor(private readonly classesAdminService: ClassesAdminService) {}
+
+  /**
+   * Crear una clase desde el panel de administración
+   * @param data Datos de la clase a crear
+   * @returns Datos de la clase creada
+   */
+  @Post()
+  @Permission(['CREATE'])
+  @ApiOperation({ summary: 'Crear una clase desde el panel de administración' })
+  @ApiOkResponse({ description: 'Clase creada' })
+  @ApiBody({ description: 'Datos de la clase a crear', type: CreateClassAdminDto })
+  create(@Body() data: CreateClassAdminDto): Promise<ClassesData> {
+    return this.classesAdminService.createClass(data);
+  }
 
   /**
    * Mostrar todos los registros de clases por fecha
