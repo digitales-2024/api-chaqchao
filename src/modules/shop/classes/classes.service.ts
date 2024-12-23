@@ -5,21 +5,27 @@ import {
   Logger,
   NotFoundException
 } from '@nestjs/common';
-import { CreateClassDto } from './dto/create-class.dto';
 import { PrismaService } from 'src/prisma/prisma.service';
 import { handleException } from 'src/utils';
 import { ClassScheduleService } from 'src/modules/admin/class-schedule/class-schedule.service';
 import { ClassRegistrationService } from 'src/modules/admin/class-registration/class-registration.service';
 import { ClassLanguageService } from 'src/modules/admin/class-language/class-language.service';
 import * as moment from 'moment-timezone';
-import { ClassesData, ClassesDataAdmin, ClientData, HttpResponse } from 'src/interfaces';
+import {
+  ClassesData,
+  ClassesDataAdmin,
+  ClassRegisterData,
+  ClientData,
+  HttpResponse
+} from 'src/interfaces';
 import { ClassPriceService } from 'src/modules/admin/class-price/class-price.service';
 import { TypedEventEmitter } from 'src/event-emitter/typed-event-emitter.class';
 import { AdminGateway } from 'src/modules/admin/admin.gateway';
-import { ClassStatus, TypeCurrency } from '@prisma/client';
+import { ClassStatus, TypeClass, TypeCurrency } from '@prisma/client';
 import { Cron } from '@nestjs/schedule';
 import { UpdateClassDto } from './dto/update-class.dto';
-import { isEqual } from 'date-fns';
+import { format, isEqual } from 'date-fns';
+import { CreateClassDto } from './dto/create-class.dto';
 
 @Injectable()
 export class ClassesService {
@@ -83,11 +89,13 @@ export class ClassesService {
    */
   private async calculatePrices(
     typeCurrency: string,
+    typeClass: TypeClass,
     totalAdults: number,
     totalChildren: number
   ): Promise<{ totalPriceAdults: number; totalPriceChildren: number; totalPrice: number }> {
     const pricesClassDB = await this.classPriceService.findClassPriceByTypeCurrency(
-      typeCurrency as TypeCurrency
+      typeCurrency as TypeCurrency,
+      typeClass
     );
 
     let priceAdults = 0;
@@ -165,7 +173,7 @@ export class ClassesService {
 
   // Validar que el idioma de la primera clase sea el mismo que el idioma de la clase a crear
   private validateFirstRegistrationLanguageClass(
-    classesScheduleCreated: ClassesData[],
+    classesScheduleCreated: ClassesDataAdmin,
     languageClass: string,
     noClassesYet: boolean
   ) {
@@ -181,8 +189,15 @@ export class ClassesService {
    * @param createClassDto Data para crear una clase
    */
   async create(createClassDto: CreateClassDto): Promise<HttpResponse<ClassesData>> {
-    const { scheduleClass, dateClass, languageClass, totalAdults, totalChildren, typeCurrency } =
-      createClassDto;
+    const {
+      scheduleClass,
+      dateClass,
+      languageClass,
+      totalAdults,
+      totalChildren,
+      typeCurrency,
+      typeClass
+    } = createClassDto;
 
     await Promise.all([
       this.classScheduleService.findStartTime(scheduleClass),
@@ -192,7 +207,10 @@ export class ClassesService {
     ]);
 
     const intervalsClassRegistration = await this.classRegistrationService.findAll();
-    const classPrices = await this.classPriceService.findClassPriceByTypeCurrency(typeCurrency);
+    const classPrices = await this.classPriceService.findClassPriceByTypeCurrency(
+      typeCurrency,
+      typeClass
+    );
 
     if (!classPrices.length) {
       throw new NotFoundException('No prices found for type currency');
@@ -211,26 +229,26 @@ export class ClassesService {
       finalRegistrationCloseInterval
     );
 
-    const { totalPriceAdults, totalPriceChildren, totalPrice } = await this.calculatePrices(
-      typeCurrency,
-      totalAdults,
-      totalChildren
-    );
     const currentTime = moment().tz('America/Lima-5').format('HH:mm');
     try {
       const classesScheduleCreated = await this.findClassesByscheduleClass(
         scheduleClass,
-        dateClass
+        dateClass,
+        typeClass
       );
-      const totalParticipantsInSchedule = classesScheduleCreated.reduce((sum, classItem) => {
-        if (
-          classItem.status === ClassStatus.PENDING ||
-          classItem.status === ClassStatus.CONFIRMED
-        ) {
-          return sum + classItem.totalParticipants;
-        }
-      }, 0);
-      const noClassesYet = classesScheduleCreated.length === 0;
+
+      const totalParticipantsInSchedule = classesScheduleCreated.registers.reduce(
+        (sum, classItem) => {
+          if (
+            classItem.status === ClassStatus.PENDING ||
+            classItem.status === ClassStatus.CONFIRMED
+          ) {
+            return sum + classItem.totalParticipants;
+          }
+        },
+        0
+      );
+      const noClassesYet = classesScheduleCreated.registers.length === 0;
 
       this.validateFirstRegistrationLanguageClass(
         classesScheduleCreated,
@@ -253,31 +271,11 @@ export class ClassesService {
       const classCreated = await this.prisma.classes.create({
         data: {
           ...createClassDto,
-          totalPrice,
-          totalPriceAdults,
-          totalPriceChildren,
           totalParticipants,
-          status: ClassStatus.PENDING,
           expiresAt: new Date(Date.now() + 5 * 60 * 1000) // 5 minutes
         },
-        select: {
-          id: true,
-          userName: true,
-          userEmail: true,
-          userPhone: true,
-          totalParticipants: true,
-          totalAdults: true,
-          totalChildren: true,
-          totalPrice: true,
-          totalPriceAdults: true,
-          totalPriceChildren: true,
-          languageClass: true,
-          typeCurrency: true,
-          scheduleClass: true,
-          dateClass: true,
-          comments: true,
-          status: true,
-          typeClass: true
+        include: {
+          ClassRegister: true
         }
       });
 
@@ -301,9 +299,9 @@ export class ClassesService {
    * @param client Data del cliente
    * @returns Clases encontradas
    */
-  async findByClient(client: ClientData): Promise<ClassesData[]> {
+  async findByClient(client: ClientData): Promise<ClassRegisterData[]> {
     try {
-      const classesDB = await this.prisma.classes.findMany({
+      const classesDB = await this.prisma.classRegister.findMany({
         where: { userEmail: client.email },
         select: {
           id: true,
@@ -316,14 +314,10 @@ export class ClassesService {
           totalPrice: true,
           totalPriceAdults: true,
           totalPriceChildren: true,
-          languageClass: true,
           typeCurrency: true,
-          dateClass: true,
-          scheduleClass: true,
           comments: true,
           status: true,
-          expiresAt: true,
-          typeClass: true
+          expiresAt: true
         }
       });
 
@@ -339,43 +333,77 @@ export class ClassesService {
    * @param scheduleClass Horario de inicio
    * @returns Clases encontradas
    */
-  async findClassesByscheduleClass(scheduleClass: string, dateClass: Date): Promise<ClassesData[]> {
+  async findClassesByscheduleClass(
+    scheduleClass: string,
+    dateClass: Date,
+    typeClass: TypeClass
+  ): Promise<ClassesDataAdmin> {
     const startOfDay = new Date(dateClass);
     startOfDay.setUTCHours(0, 0, 0, 0); // Inicio del día en UTC
     const endOfDay = new Date(dateClass);
     endOfDay.setUTCHours(23, 59, 59, 999); // Fin del día en UTC
     try {
-      const classesDB = await this.prisma.classes.findMany({
+      const claseDB = await this.prisma.classes.findFirst({
         where: {
           scheduleClass,
           dateClass: {
             gte: startOfDay,
             lte: endOfDay
           },
-          status: ClassStatus.CONFIRMED
+          typeClass
         },
         select: {
           id: true,
-          userName: true,
-          userEmail: true,
-          userPhone: true,
           totalParticipants: true,
-          totalAdults: true,
-          totalChildren: true,
-          totalPrice: true,
-          totalPriceAdults: true,
-          totalPriceChildren: true,
           languageClass: true,
-          typeCurrency: true,
           dateClass: true,
           scheduleClass: true,
-          comments: true,
-          status: true,
-          typeClass: true
+          typeClass: true,
+          ClassRegister: {
+            select: {
+              id: true,
+              userName: true,
+              userEmail: true,
+              userPhone: true,
+              totalParticipants: true,
+              totalAdults: true,
+              totalChildren: true,
+              totalPrice: true,
+              totalPriceAdults: true,
+              totalPriceChildren: true,
+              typeCurrency: true,
+              comments: true,
+              status: true
+            }
+          }
+        },
+        orderBy: {
+          dateClass: 'asc'
         }
       });
 
-      return classesDB;
+      return {
+        totalParticipants: claseDB.totalParticipants,
+        languageClass: claseDB.languageClass,
+        dateClass: claseDB.dateClass,
+        scheduleClass: claseDB.scheduleClass,
+        typeClass: claseDB.typeClass,
+        registers: claseDB.ClassRegister.map((registro) => ({
+          id: registro.id,
+          userName: registro.userName,
+          userEmail: registro.userEmail,
+          userPhone: registro.userPhone,
+          totalParticipants: registro.totalParticipants,
+          totalAdults: registro.totalAdults,
+          totalChildren: registro.totalChildren,
+          totalPrice: registro.totalPrice,
+          totalPriceAdults: registro.totalPriceAdults,
+          totalPriceChildren: registro.totalPriceChildren,
+          typeCurrency: registro.typeCurrency,
+          comments: registro.comments,
+          status: registro.status
+        }))
+      };
     } catch (error) {
       this.logger.error(`Error finding classes by start time: ${error.message}`, error.stack);
       handleException(error, 'Error finding classes by start time');
@@ -388,7 +416,7 @@ export class ClassesService {
   @Cron('*/1 * * * *')
   async cancelExpiredRegistrations() {
     const now = new Date();
-    const expiredRegistrations = await this.prisma.classes.findMany({
+    const expiredRegistrations = await this.prisma.classRegister.findMany({
       where: {
         expiresAt: { lte: now },
         status: ClassStatus.PENDING
@@ -396,7 +424,7 @@ export class ClassesService {
     });
 
     for (const registration of expiredRegistrations) {
-      await this.prisma.classes.update({
+      await this.prisma.classRegister.update({
         where: { id: registration.id },
         data: { status: ClassStatus.CANCELLED }
       });
@@ -410,7 +438,7 @@ export class ClassesService {
    * @returns Clase confirmada
    */
   async confirmClass(classId: string, classData: UpdateClassDto): Promise<HttpResponse<void>> {
-    const existingClass = await this.prisma.classes.findUnique({
+    const existingClass = await this.prisma.classRegister.findUnique({
       where: { id: classId }
     });
 
@@ -425,7 +453,7 @@ export class ClassesService {
       throw new BadRequestException('Class is already cancelled');
     }
 
-    const classConfirm = await this.prisma.classes.update({
+    const registerConfirm = await this.prisma.classRegister.update({
       where: { id: classId },
       data: {
         status: ClassStatus.CONFIRMED,
@@ -433,20 +461,23 @@ export class ClassesService {
       }
     });
 
+    const classConfirm = await this.prisma.classes.findFirst({
+      where: {
+        dateClass: classData.dateClass,
+        scheduleClass: classData.scheduleClass
+      }
+    });
+
     if (classConfirm) {
-      const normalizedDateClass = moment
-        .utc(classConfirm.dateClass)
-        .tz('America/Lima-5')
-        .format('Do [of] MMMM, dddd');
       await this.eventEmitter.emitAsync('class.new-class', {
-        name: classConfirm.userName.toUpperCase(),
-        email: classConfirm.userEmail,
-        dateClass: normalizedDateClass,
+        dateClass: format(classConfirm.dateClass, 'yyyy-MM-dd'),
         scheduleClass: classConfirm.scheduleClass,
         languageClass: classConfirm.languageClass,
-        totalParticipants: classConfirm.totalParticipants,
-        totalPrice: classConfirm.totalPrice,
-        typeCurrency: classConfirm.typeCurrency
+        name: registerConfirm.userName,
+        email: registerConfirm.userEmail,
+        totalParticipants: registerConfirm.totalParticipants,
+        totalPrice: registerConfirm.totalPrice,
+        typeCurrency: registerConfirm.typeCurrency
       });
     }
 
@@ -465,25 +496,35 @@ export class ClassesService {
    * @param dateClass Fecha de la clase
    * @returns Retorna si hay una clase en la fecha y hora especificada
    */
-  async checkClass(scheduleClass: string, dateClass: string): Promise<ClassesDataAdmin> {
+  async checkClass(
+    scheduleClass: string,
+    dateClass: string,
+    typeClass: TypeClass
+  ): Promise<ClassesDataAdmin> {
     const parsedDate = new Date(dateClass);
-    const classesDB = await this.findClassesByscheduleClass(scheduleClass, parsedDate);
+    const classDB = await this.findClassesByscheduleClass(scheduleClass, parsedDate, typeClass);
 
-    // Agrupamos el total de participantes
-    const totalParticipants = classesDB.reduce(
-      (sum, classItem) => sum + classItem.totalParticipants,
-      0
-    );
+    const { totalParticipants, languageClass, registers } = classDB;
 
-    // Sacamos el idioma de la primera clase
-    const languageClass = classesDB.length ? classesDB[0].languageClass : '';
+    // Verificamos si el total de participantes es igual al total de asistentes
+
+    const totalParticipantsInSchedule = registers.reduce((sum, classItem) => {
+      if (classItem.status === ClassStatus.PENDING || classItem.status === ClassStatus.CONFIRMED) {
+        return sum + classItem.totalParticipants;
+      }
+    }, 0);
+
+    if (totalParticipants !== totalParticipantsInSchedule) {
+      throw new BadRequestException('Invalid number of participants');
+    }
 
     return {
-      dateClass: dateClass,
+      dateClass: parsedDate,
+      typeClass: typeClass,
       scheduleClass: scheduleClass,
       totalParticipants: totalParticipants,
       languageClass: languageClass,
-      classes: classesDB
+      registers: classDB.registers
     };
   }
 }
