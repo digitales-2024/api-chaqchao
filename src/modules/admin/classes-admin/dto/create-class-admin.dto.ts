@@ -1,7 +1,7 @@
 import { ApiProperty } from '@nestjs/swagger';
-import { ClassStatus, TypeClass } from '@prisma/client';
+import { ClassStatus, TypeClass, TypeCurrency } from '@prisma/client';
 import { Transform } from 'class-transformer';
-import { IsEmail, IsNotEmpty, IsNumber, IsString } from 'class-validator';
+import { IsBoolean, IsEmail, IsNotEmpty, IsNumber, IsString } from 'class-validator';
 
 export class CreateClassAdminDto {
   @ApiProperty({
@@ -135,4 +135,22 @@ export class CreateClassAdminDto {
     required: true
   })
   expiresAt: Date;
+
+  @ApiProperty({
+    description: 'Si la clase está cerrada',
+    example: true,
+    required: true
+  })
+  @IsNotEmpty()
+  @IsBoolean()
+  isClosed: boolean;
+
+  @ApiProperty({
+    description: 'Tipo de moneda',
+    example: TypeCurrency.DOLAR,
+    required: true
+  })
+  @IsNotEmpty()
+  @IsString()
+  typeCurrency: TypeCurrency;
 }
