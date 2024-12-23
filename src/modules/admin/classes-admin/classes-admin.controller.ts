@@ -2,7 +2,7 @@ import { Body, Controller, Get, Post, Query, Res } from '@nestjs/common';
 import { Response } from 'express';
 import { ClassesAdminService } from './classes-admin.service';
 import { Auth, Module, Permission } from '../auth/decorators';
-import { ClassesData, ClassesDataAdmin } from 'src/interfaces';
+import { ClassesDataAdmin, ClassRegisterData } from 'src/interfaces';
 import {
   ApiBadRequestResponse,
   ApiBody,
@@ -33,7 +33,7 @@ export class ClassesAdminController {
   @ApiOperation({ summary: 'Crear una clase desde el panel de administración' })
   @ApiOkResponse({ description: 'Clase creada' })
   @ApiBody({ description: 'Datos de la clase a crear', type: CreateClassAdminDto })
-  create(@Body() data: CreateClassAdminDto): Promise<ClassesData> {
+  create(@Body() data: CreateClassAdminDto): Promise<ClassRegisterData> {
     return this.classesAdminService.createClass(data);
   }
 

@@ -1,14 +1,19 @@
-import { Injectable, Logger } from '@nestjs/common';
-import { ClassesData, ClassesDataAdmin } from 'src/interfaces';
+import {
+  BadRequestException,
+  Injectable,
+  InternalServerErrorException,
+  Logger
+} from '@nestjs/common';
+import { ClassesDataAdmin, ClassRegisterData } from 'src/interfaces';
 import { PrismaService } from 'src/prisma/prisma.service';
 import { handleException } from 'src/utils';
-import * as moment from 'moment-timezone';
 import * as ExcelJS from 'exceljs';
 import * as puppeteer from 'puppeteer';
 import * as fs from 'fs';
 import * as path from 'path';
-import { ClassStatus, TypeClass, TypeCurrency } from '@prisma/client';
+import { ClassStatus, TypeCurrency } from '@prisma/client';
 import { CreateClassAdminDto } from './dto/create-class-admin.dto';
+import { format } from 'date-fns';
 
 @Injectable()
 export class ClassesAdminService {
@@ -17,101 +22,79 @@ export class ClassesAdminService {
   constructor(private readonly prisma: PrismaService) {}
 
   /**
-   * Agrupar los datos de las clases registradas
-   * @param classesRegistrations Clases registradas
-   * @returns Clases agrupadas
-   */
-  private groupClassesData(classesRegistrations: ClassesData[]): ClassesDataAdmin[] {
-    // Definir el tipo del acumulador
-    type GroupedData = {
-      [key: string]: {
-        dateClass: string;
-        scheduleClass: string;
-        totalParticipants: number;
-        languageClass: string;
-        typeClass: TypeClass;
-        classes: ClassesData[];
-      };
-    };
-
-    // Agrupar los resultados por dateClass y scheduleClass
-    const groupedData = classesRegistrations.reduce((acc: GroupedData, classItem) => {
-      const key = `${classItem.dateClass}-${classItem.scheduleClass}`;
-      if (!acc[key]) {
-        acc[key] = {
-          dateClass: moment.utc(classItem.dateClass).tz('America/Lima-5').format('YYYY-MM-DD'),
-          scheduleClass: classItem.scheduleClass,
-          totalParticipants: 0,
-          languageClass: classItem.languageClass,
-          typeClass: classItem.typeClass,
-          classes: []
-        };
-      }
-      acc[key].totalParticipants += classItem.totalParticipants;
-      acc[key].classes.push(classItem);
-      return acc;
-    }, {});
-
-    // Convertir el objeto agrupado en un array
-    return Object.values(groupedData).map((group) => ({
-      dateClass: group.dateClass,
-      scheduleClass: group.scheduleClass,
-      totalParticipants: group.totalParticipants,
-      languageClass: group.languageClass,
-      typeClass: group.typeClass,
-      classes: group.classes.map((classItem) => ({
-        id: classItem.id,
-        userName: classItem.userName,
-        userEmail: classItem.userEmail,
-        userPhone: classItem.userPhone,
-        totalParticipants: classItem.totalParticipants,
-        totalAdults: classItem.totalAdults,
-        totalChildren: classItem.totalChildren,
-        totalPrice: classItem.totalPrice,
-        totalPriceAdults: classItem.totalPriceAdults,
-        totalPriceChildren: classItem.totalPriceChildren,
-        languageClass: classItem.languageClass,
-        typeCurrency: classItem.typeCurrency,
-        dateClass: classItem.dateClass,
-        scheduleClass: classItem.scheduleClass,
-        comments: classItem.comments,
-        status: classItem.status,
-        typeClass: classItem.typeClass
-      }))
-    }));
-  }
-
-  /**
    * Crear una clase desde el panel de administración
    * @param data Datos de la clase a crear
    * @returns Clase creada
    */
-  async createClass(data: CreateClassAdminDto): Promise<ClassesData> {
+  async createClass(data: CreateClassAdminDto): Promise<ClassRegisterData> {
+    const { dateClass, scheduleClass, typeClass } = data;
+
+    // Buscamos si ya hay una clase en la fecha y horario especificados
     try {
-      const classCreated = await this.prisma.classes.create({
-        data: {
-          typeClass: data.typeClass,
-          userName: data.userName,
-          userEmail: data.userEmail,
-          userPhone: data.userPhone,
-          totalParticipants: data.totalAdults + data.totalChildren,
-          totalAdults: data.totalAdults,
-          totalChildren: data.totalChildren,
-          totalPrice: data.totalPrice,
-          totalPriceAdults: data.totalPriceAdults,
-          totalPriceChildren: data.totalPriceChildren,
-          languageClass: data.languageClass,
-          typeCurrency: TypeCurrency.DOLAR,
-          dateClass: data.dateClass,
-          scheduleClass: data.scheduleClass,
-          comments: data.comments,
-          status: ClassStatus.CONFIRMED
+      // Iniciar la transacción
+      return await this.prisma.$transaction(async (prisma) => {
+        // Buscar una clase existente para la fecha y hora
+        let classEntity = await prisma.classes.findFirst({
+          where: { dateClass, scheduleClass, typeClass }
+        });
+
+        if (!classEntity) {
+          // Si no existe, crear una nueva clase
+          classEntity = await prisma.classes.create({
+            data: {
+              dateClass,
+              scheduleClass,
+              totalParticipants: 0,
+              typeClass: data.typeClass,
+              languageClass: data.languageClass
+            }
+          });
         }
+        const participants = 12;
+
+        // Verificar si el cupo está lleno
+        if (classEntity.totalParticipants > participants) {
+          throw new BadRequestException('There are no more spots available.');
+        }
+
+        // Crear el registro
+        const classRegister = await prisma.classRegister.create({
+          data: {
+            classesId: classEntity.id,
+            userName: data.userName,
+            userEmail: data.userEmail,
+            userPhone: data.userPhone,
+            totalParticipants: data.totalAdults + data.totalChildren,
+            totalAdults: data.totalAdults,
+            totalChildren: data.totalChildren,
+            totalPrice: data.totalPrice,
+            totalPriceAdults: data.totalPriceAdults,
+            totalPriceChildren: data.totalPriceChildren,
+            typeCurrency: TypeCurrency.DOLAR,
+            status: ClassStatus.CONFIRMED,
+            comments: data.comments,
+            expiresAt: new Date()
+          }
+        });
+
+        // Actualizar el total de participantes en la clase
+        await prisma.classes.update({
+          where: { id: classEntity.id },
+          data: {
+            totalParticipants: classEntity.totalParticipants + classRegister.totalParticipants
+          }
+        });
+
+        return classRegister;
       });
-      return classCreated;
     } catch (error) {
-      this.logger.error('Error creating class');
-      handleException(error, 'Error creating class');
+      // Manejo de errores específicos de Prisma
+      if (error instanceof BadRequestException) {
+        throw error; // Errores de validación
+      }
+      // Otros errores no controlados
+      console.error('Error al crear el registro:', error);
+      throw new InternalServerErrorException('Ocurrió un error al procesar la solicitud');
     }
   }
 
@@ -127,42 +110,66 @@ export class ClassesAdminService {
     endOfDay.setUTCHours(23, 59, 59, 999); // Fin del día en UTC
 
     try {
-      const classesRegistrations = await this.prisma.classes.findMany({
+      const classDB = await this.prisma.classes.findMany({
         where: {
           dateClass: {
             gte: startOfDay, // Mayor o igual al inicio del día
             lte: endOfDay // Menor o igual al fin del día
-          },
-          status: ClassStatus.CONFIRMED
+          }
         },
         select: {
           id: true,
-          userName: true,
-          userEmail: true,
-          userPhone: true,
           totalParticipants: true,
-          totalAdults: true,
-          totalChildren: true,
-          totalPrice: true,
-          totalPriceAdults: true,
-          totalPriceChildren: true,
           languageClass: true,
-          typeCurrency: true,
           dateClass: true,
           scheduleClass: true,
-          comments: true,
-          status: true,
-          typeClass: true
+          typeClass: true,
+          ClassRegister: {
+            select: {
+              id: true,
+              userName: true,
+              userEmail: true,
+              userPhone: true,
+              totalParticipants: true,
+              totalAdults: true,
+              totalChildren: true,
+              totalPrice: true,
+              totalPriceAdults: true,
+              totalPriceChildren: true,
+              typeCurrency: true,
+              comments: true,
+              status: true
+            }
+          }
         },
         orderBy: {
-          createdAt: 'asc'
+          dateClass: 'asc'
         }
       });
 
-      // Llamar a la función de agrupación
-      const result = this.groupClassesData(classesRegistrations);
-
-      return result as ClassesDataAdmin[];
+      return classDB.map((clase) => ({
+        id: clase.id,
+        totalParticipants: clase.totalParticipants,
+        languageClass: clase.languageClass,
+        dateClass: clase.dateClass,
+        scheduleClass: clase.scheduleClass,
+        typeClass: clase.typeClass,
+        registers: clase.ClassRegister.map((registro) => ({
+          id: registro.id,
+          userName: registro.userName,
+          userEmail: registro.userEmail,
+          userPhone: registro.userPhone,
+          totalParticipants: registro.totalParticipants,
+          totalAdults: registro.totalAdults,
+          totalChildren: registro.totalChildren,
+          totalPrice: registro.totalPrice,
+          totalPriceAdults: registro.totalPriceAdults,
+          totalPriceChildren: registro.totalPriceChildren,
+          typeCurrency: registro.typeCurrency,
+          comments: registro.comments,
+          status: registro.status
+        }))
+      }));
     } catch (error) {
       this.logger.error('Error getting all classes by date');
       handleException(error, 'Error getting all classes by date');
@@ -178,7 +185,23 @@ export class ClassesAdminService {
     const workbook = new ExcelJS.Workbook();
     const worksheet = workbook.addWorksheet('Registro de Clases');
 
-    // Definir las columnas para la tabla de detalles
+    // Configurar las columnas de la hoja de trabajo
+    this.configureWorksheetColumns(worksheet);
+
+    // Agrupar las clases por fecha y horario
+    const groupedClasses = this.groupClassesByDateAndSchedule(data);
+
+    // Agregar los datos agrupados al Excel
+    this.populateWorksheetWithGroupedClasses(worksheet, groupedClasses);
+
+    // Eliminar contenido de la fila 1
+    this.clearFirstRow(worksheet);
+
+    // Escribir el archivo en un buffer y devolverlo
+    return await workbook.xlsx.writeBuffer();
+  }
+
+  private configureWorksheetColumns(worksheet: ExcelJS.Worksheet) {
     worksheet.columns = [
       { header: 'Nombre de Usuario', key: 'userName', width: 20 },
       { header: 'Email de Usuario', key: 'userEmail', width: 30 },
@@ -190,38 +213,35 @@ export class ClassesAdminService {
       { header: 'Precio Adultos', key: 'totalPriceAdults', width: 15 },
       { header: 'Precio Niños', key: 'totalPriceChildren', width: 15 }
     ];
+  }
 
-    // Agrupar las clases por fecha y horario
-    const groupedClasses = this.groupClassesByDateAndSchedule(data);
-
-    // Iterar sobre los grupos y agregar las tablas
+  private populateWorksheetWithGroupedClasses(
+    worksheet: ExcelJS.Worksheet,
+    groupedClasses: Record<string, Record<string, ClassRegisterData[]>>
+  ) {
     for (const date in groupedClasses) {
       for (const schedule in groupedClasses[date]) {
         const classes = groupedClasses[date][schedule];
 
-        // Sumar los totales
-        let totalParticipants = 0;
-        let totalPrice = 0;
-        const typeCurrency = classes[0].typeCurrency; // Asumir que todos tienen el mismo tipo de moneda
-        const languageClass = classes[0].languageClass; // Asumir que todos tienen el mismo idioma de clase
+        // Calcular totales
+        const { totalParticipants, totalPrice } = classes.reduce(
+          (totals, clase) => {
+            totals.totalParticipants += clase.totalParticipants;
+            totals.totalPrice += clase.totalPrice;
+            return totals;
+          },
+          { totalParticipants: 0, totalPrice: 0 }
+        );
 
-        classes.forEach((clase) => {
-          totalParticipants += clase.totalParticipants;
-          totalPrice += clase.totalPrice;
-        });
-
-        // Agregar la tabla de resumen con 2 columnas y 6 filas
+        // Agregar resumen de clase
         worksheet.addRow(['Fecha de Clase', date]);
         worksheet.addRow(['Horario de Clase', schedule]);
-        worksheet.addRow(['Idioma de Clase', languageClass]);
-        worksheet.addRow(['Tipo de Moneda', typeCurrency]);
+        worksheet.addRow(['Idioma de Clase', 'languageClass']);
         worksheet.addRow(['Total Participantes', totalParticipants]);
         worksheet.addRow(['Total Precio', totalPrice.toFixed(2)]);
+        worksheet.addRow([]); // Espacio entre grupos
 
-        // Espacio entre las tablas
-        worksheet.addRow([]);
-
-        // Agregar los detalles de cada clase en la segunda tabla
+        // Agregar encabezados de la tabla de detalles
         worksheet.addRow({
           userName: 'Nombre de Usuario',
           userEmail: 'Email de Usuario',
@@ -249,146 +269,142 @@ export class ClassesAdminService {
           });
         });
 
-        // Agregar una fila vacía después de cada grupo
-        worksheet.addRow([]);
+        worksheet.addRow([]); // Fila vacía entre tablas
       }
     }
-
-    // Eliminar el contenido de las celdas de la fila 1 (A1 a I1)
-    for (let col = 1; col <= 9; col++) {
-      worksheet.getCell(1, col).value = null; // Limpia la celda en la fila 1, columna col
-    }
-
-    // Escribir el archivo a un buffer y devolverlo
-    const buffer = await workbook.xlsx.writeBuffer();
-    return buffer;
   }
 
-  /**
-   * Exportar un archivo PDF con los datos de las clases
-   * @param data Datos de las clases
-   * @returns Archivo PDF con los datos de las clases
-   */
-  async generatePDFClassReport(data: ClassesDataAdmin[]): Promise<Buffer> {
-    // Definir la ruta a la plantilla HTML
-    const templatePath = path.join(__dirname, '../../../../', 'templates', 'classesReport.html');
+  private clearFirstRow(worksheet: ExcelJS.Worksheet) {
+    for (let col = 1; col <= 9; col++) {
+      worksheet.getCell(1, col).value = null;
+    }
+  }
 
-    // Leer el contenido de la plantilla HTML
-    let templateHtml: string;
+  async generatePDFClassReport(data: ClassesDataAdmin[]): Promise<Buffer> {
     try {
-      templateHtml = fs.readFileSync(templatePath, 'utf8');
+      const templatePath = path.join(__dirname, '../../../../', 'templates', 'classesReport.html');
+
+      // Leer plantilla HTML
+      const templateHtml = this.loadHtmlTemplate(templatePath);
+
+      const infoBusiness = await this.getBusinessInfo();
+
+      // Crear contenido del informe
+      const htmlInfo = `<h2>${infoBusiness.businessName.toUpperCase()}</h2>
+      <p>Fecha de las clases: ${data.length ? data[0].dateClass : ''}</p>`;
+      const classesHtml = this.generateClassHtml(data);
+
+      // Reemplazar placeholders en la plantilla
+      const htmlContent = templateHtml
+        .replace('{{classess}}', classesHtml)
+        .replace('{{bussiness}}', htmlInfo)
+        .replace('{{dateReport}}', new Date().toLocaleDateString())
+        .replace(
+          '{{footerReport}}',
+          `© ${new Date().getFullYear()} ${infoBusiness.businessName.toUpperCase()}`
+        );
+
+      // Generar PDF con Puppeteer
+      return await this.generatePdfFromHtml(htmlContent);
+    } catch (error) {
+      console.error('Error generando el PDF:', error);
+      throw new Error('No se pudo generar el archivo PDF.');
+    }
+  }
+
+  private loadHtmlTemplate(templatePath: string): string {
+    try {
+      return fs.readFileSync(templatePath, 'utf8');
     } catch (error) {
       console.error('Error al leer la plantilla HTML:', error);
       throw new Error('No se pudo cargar la plantilla HTML.');
     }
+  }
 
-    const infoBussiness = await this.prisma.businessConfig.findFirst({
-      select: {
-        businessName: true
-      }
+  private async getBusinessInfo() {
+    return this.prisma.businessConfig.findFirst({
+      select: { businessName: true }
     });
+  }
 
-    const htmlInfo = `<h2>${infoBussiness.businessName.toUpperCase() || ''}</h2>
-    <p>Fecha de las clases: ${(data.length !== 0 ? data[0].dateClass : '') || ''} </p>
-    `;
-
-    // Generar el contenido HTML para las clases
-    const classesHtml = this.generateClassHtml(data);
-
-    // Reemplazar la plantilla con el contenido HTML de las clases
-    const htmlContent = templateHtml.replace('{{classess}}', classesHtml);
-    const htmlContentWithInfo = htmlContent.replace('{{bussiness}}', htmlInfo);
-    const htmlDateReport = htmlContentWithInfo.replace(
-      '{{dateReport}}',
-      new Date().toLocaleDateString()
-    );
-    const htmlFooterReport = htmlDateReport.replace(
-      '{{footerReport}}',
-      `© ${new Date().getFullYear()} ${infoBussiness.businessName.toUpperCase()}`
-    );
-
-    // Generar el PDF usando Puppeteer
+  private async generatePdfFromHtml(htmlContent: string): Promise<Buffer> {
     const browser = await puppeteer.launch({
       args: ['--no-sandbox', '--disable-setuid-sandbox']
     });
     const page = await browser.newPage();
     await page.setContent(htmlContent);
-    await page.setContent(htmlContentWithInfo);
-    await page.setContent(htmlDateReport);
-    await page.setContent(htmlFooterReport);
-    const pdfBufferUint8Array = await page.pdf({ format: 'A4' });
+    const pdfBuffer = await page.pdf({ format: 'A4' });
     await browser.close();
-
-    // Convertir Uint8Array a Buffer
-    const pdfBuffer = Buffer.from(pdfBufferUint8Array);
-
-    return pdfBuffer;
+    return Buffer.from(pdfBuffer);
   }
 
-  /**
-   * Generar el contenido HTML con los datos de las clases
-   * @param data Data de las clases
-   * @returns Generar HTML con los datos de las clases
-   */
   private generateClassHtml(data: ClassesDataAdmin[]): string {
+    if (!data || data.length === 0) {
+      return '<p>No hay clases disponibles para mostrar.</p>';
+    }
+
     let classesHtml = '';
 
     // Agrupar las clases por fecha y horario
     const groupedClasses = this.groupClassesByDateAndSchedule(data);
 
-    // Iterar sobre cada grupo y generar HTML
+    // Iterar sobre cada grupo de clases
     for (const date in groupedClasses) {
+      classesHtml += `<h2 style="text-align: center;">Fecha: ${date}</h2>`;
+
       for (const schedule in groupedClasses[date]) {
         classesHtml += `<h3 style="text-align: center;">Horario: ${schedule}</h3>`;
         classesHtml += '<div style="overflow-x:auto; margin: 0 20px;">';
-        classesHtml += '<table>';
+        classesHtml += '<table border="1" style="width: 100%; border-collapse: collapse;">';
         classesHtml += `
-                <thead>
-                    <tr>
-                    <th>Nombre</th>
-                    <th>Email</th>
-                    <th>Teléfono</th>
-                    <th>Idioma</th>
-                    <th>Total Adultos</th>
-                    <th>Total Niños</th>
-                    <th>Total Participantes</th>
-                    </tr>
-                </thead>
-                <tbody>
-            `;
+        <thead>
+          <tr>
+            <th>Nombre</th>
+            <th>Email</th>
+            <th>Teléfono</th>
+            <th>Idioma</th>
+            <th>Total Adultos</th>
+            <th>Total Niños</th>
+            <th>Total Participantes</th>
+          </tr>
+        </thead>
+        <tbody>
+      `;
 
         let totalParticipants = 0;
         let totalPrice = 0;
 
         groupedClasses[date][schedule].forEach((clase) => {
-          classesHtml += `<tr>
-          <td style="text-transform: capitalize;">${clase.userName}</td>
-          <td>${clase.userEmail}</td>
-          <td>${clase.userPhone}</td>
-          <td>${clase.languageClass}</td>
-          <td>${clase.totalAdults}</td>
-          <td>${clase.totalChildren}</td>
-          <td>${clase.totalParticipants}</td>
-                </tr>`;
+          classesHtml += `
+          <tr>
+            <td style="text-transform: capitalize;">${clase.userName}</td>
+            <td>${clase.userEmail}</td>
+            <td>${clase.userPhone}</td>
+            <td>clase.languageClass</td>
+            <td>${clase.totalAdults}</td>
+            <td>${clase.totalChildren}</td>
+            <td>${clase.totalParticipants}</td>
+          </tr>
+        `;
 
-          // Sumar los totales
+          // Sumar totales
           totalParticipants += clase.totalParticipants;
           totalPrice += clase.totalPrice;
         });
 
         classesHtml += '</tbody></table>';
 
-        // Determinar el símbolo de la moneda
+        // Determinar el símbolo de moneda
         const currencySymbol =
           groupedClasses[date][schedule][0].typeCurrency === 'SOL' ? 'S/.' : '$';
 
-        // Agregar el resumen después de la tabla
+        // Agregar resumen después de la tabla
         classesHtml += `
-                <div class="company-info">
-                    <p>Total de Participantes: ${totalParticipants}</p>
-                    <p>Total: ${currencySymbol} ${totalPrice.toFixed(2)}</p>
-                </div>
-            `;
+        <div style="margin-top: 10px; text-align: right;">
+          <p><strong>Total de Participantes:</strong> ${totalParticipants}</p>
+          <p><strong>Total Precio:</strong> ${currencySymbol} ${totalPrice.toFixed(2)}</p>
+        </div>
+      `;
 
         classesHtml += '</div>'; // Cerrar el contenedor
       }
@@ -404,26 +420,44 @@ export class ClassesAdminService {
    */
   private groupClassesByDateAndSchedule(
     data: ClassesDataAdmin[]
-  ): Record<string, Record<string, ClassesData[]>> {
-    const groupedClasses: Record<string, Record<string, ClassesData[]>> = {};
+  ): Record<string, Record<string, ClassRegisterData[]>> {
+    const groupedClasses: Record<string, Record<string, ClassRegisterData[]>> = {};
 
     data.forEach((classData) => {
-      const dateKey = classData.dateClass;
+      const dateKey = format(classData.dateClass, 'yyyy-MM-dd');
+      const scheduleKey = classData.scheduleClass;
 
+      // Asegurarse de que la fecha exista en el grupo
       if (!groupedClasses[dateKey]) {
         groupedClasses[dateKey] = {};
       }
 
-      const scheduleKey = classData.scheduleClass;
-
+      // Asegurarse de que el horario exista dentro de la fecha
       if (!groupedClasses[dateKey][scheduleKey]) {
         groupedClasses[dateKey][scheduleKey] = [];
       }
 
-      // Agregar las clases a su respectivo grupo
-      groupedClasses[dateKey][scheduleKey].push(...classData.classes);
+      // Agregar los registros al grupo correspondiente
+      groupedClasses[dateKey][scheduleKey].push(...classData.registers);
     });
 
     return groupedClasses;
+  }
+
+  /**
+   * Buscar si hay una clase creada en la fecha y horario especificados
+   * @param dateClass Fecha de la clase
+   * @param scheduleClass Horario de la clase
+   * @returns Si hay una clase en la fecha y horario especificados
+   */
+  async checkClassExists(dateClass: Date, scheduleClass: string): Promise<string> {
+    const classExists = await this.prisma.classes.findFirst({
+      where: {
+        dateClass,
+        scheduleClass
+      }
+    });
+
+    return classExists.id || undefined;
   }
 }
