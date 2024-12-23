@@ -378,13 +378,18 @@ export class ClassPriceService {
   /**
    * Encontrar precio de las clases por el tipo de moneda
    * @param typeCurrency Tipo de moneda
+   * @param typeClass Tipo de clase
    * @returns Precios de las clases
    */
-  async findClassPriceByTypeCurrency(typeCurrency: TypeCurrency): Promise<ClassPriceConfigData[]> {
+  async findClassPriceByTypeCurrency(
+    typeCurrency: TypeCurrency,
+    typeClass: TypeClass
+  ): Promise<ClassPriceConfigData[]> {
     try {
       const classPrices = await this.prisma.classPriceConfig.findMany({
         where: {
-          typeCurrency
+          typeCurrency,
+          typeClass
         },
         select: {
           id: true,
