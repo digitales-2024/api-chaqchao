@@ -59,7 +59,7 @@ export class PaymentService {
   }
 
   async savePaymentDetails(orderId: string, paymentData: any) {
-    return this.prisma.classes.updateMany({
+    return this.prisma.classRegister.updateMany({
       where: { paypalOrderId: orderId },
       data: {
         paypalOrderStatus: paymentData.status,
