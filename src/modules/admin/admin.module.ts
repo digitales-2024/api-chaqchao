@@ -23,6 +23,7 @@ import { ReportsModule } from './reports/report.module';
 import { ClassesAdminModule } from './classes-admin/classes-admin.module';
 import { OrdersModule } from './orders/orders.module';
 import { AdminGateway } from './admin.gateway';
+import { ClassCapacityModule } from './class-capacity/class-capacity.module';
 
 @Module({
   imports: [
@@ -46,7 +47,8 @@ import { AdminGateway } from './admin.gateway';
     ClientAdminModule,
     ReportsModule,
     ClassesAdminModule,
-    OrdersModule
+    OrdersModule,
+    ClassCapacityModule
   ],
   controllers: [AdminController],
   providers: [AdminService, AdminGateway],
