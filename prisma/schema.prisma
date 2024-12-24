@@ -160,6 +160,7 @@ model BusinessConfig {
   ClassSchedule           ClassSchedule[]           @relation("businessId")
   ClassLanguage           ClassLanguage[]           @relation("businessId")
   ClassRegistrationConfig ClassRegistrationConfig[] @relation("businessId")
+  ClassCapacity           ClassCapacity[]           @relation("businessId")
 
   @@unique([businessName, email])
 }
@@ -554,6 +555,20 @@ enum ClassStatus {
   PENDING
   CONFIRMED
   CANCELLED
+}
+
+model ClassCapacity {
+  id         String         @id @unique @default(uuid())
+  businessId String
+  business   BusinessConfig @relation("businessId", fields: [businessId], references: [id])
+
+  typeClass TypeClass @default(NORMAL)
+
+  minCapacity Int
+  maxCapacity Int
+
+  createdAt DateTime @default(now()) @db.Timestamptz(6)
+  updatedAt DateTime @updatedAt
 }
 
 model Claims {
