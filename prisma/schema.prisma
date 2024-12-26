@@ -510,7 +510,6 @@ model Classes {
 
   createdAt     DateTime        @default(now()) @db.Timestamptz(6)
   updatedAt     DateTime        @updatedAt
-  expiresAt     DateTime?
   ClassRegister ClassRegister[]
 }
 
@@ -528,7 +527,8 @@ model ClassRegister {
   totalPrice         Float
   typeCurrency       TypeCurrency
   comments           String?
-  status             ClassStatus  @default(PENDING)
+  status             ClassStatus    @default(PENDING)
+  methodPayment      MethodPayment?
 
   // Campos de Paypal
   paypalOrderId     String?
@@ -543,6 +543,11 @@ model ClassRegister {
 
   classesId String?
   Classes   Classes? @relation(fields: [classesId], references: [id])
+}
+
+enum MethodPayment {
+  PAYPAL
+  IZIPAY
 }
 
 enum TypeClass {
