@@ -99,28 +99,49 @@ export class ClassCapacityService {
    * Obtener todas las capacidades de clase
    * @returns Todas las capacidades de clase
    */
-  async findAll(): Promise<
-    {
-      typeClass: TypeClass;
-      minCapacity: number;
-      maxCapacity: number;
-    }[]
-  > {
+  async findAll(): Promise<any> {
     try {
       const classCapacities = await this.prisma.classCapacity.findMany({
         select: {
+          id: true,
           typeClass: true,
           minCapacity: true,
           maxCapacity: true
         }
       });
-      return classCapacities;
+
+      // Agrupar los resultados typeClass
+      const groupedClassesSchedule = classCapacities.reduce(
+        (acc, classSchedule) => {
+          const typeClass = classSchedule.typeClass;
+          acc[typeClass] = {
+            ...acc[typeClass],
+            id: classSchedule.id,
+            typeClass: classSchedule.typeClass,
+            minCapacity: classSchedule.minCapacity,
+            maxCapacity: classSchedule.maxCapacity
+          };
+          return acc;
+        },
+        {} as Record<
+          TypeClass,
+          { id: string; typeClass: TypeClass; minCapacity: number; maxCapacity: number }
+        >
+      );
+
+      return groupedClassesSchedule;
     } catch (error) {
       this.logger.error('Error al obtener todas las capacidades de clase', error);
       handleException(error, 'Error al obtener todas las capacidades de clase');
     }
   }
 
+  /**
+   * Obtener una capacidad de clase por su id
+   * @param id Id de la capacidad de clase
+   * @returns La capacidad de clase encontrada
+   * @throws {BadRequestException} Si la capacidad de clase no existe
+   */
   async findOne(id: string): Promise<{
     typeClass: TypeClass;
     minCapacity: number;
@@ -176,25 +197,6 @@ export class ClassCapacityService {
 
       if (!existingClassCapacity) {
         throw new BadRequestException('Capacidad de clase no encontrada');
-      }
-      const businessConfig = await this.prisma.businessConfig.findMany({
-        select: {
-          id: true
-        }
-      });
-
-      // Validar que no se haya creado ya una capacidad para el businessId y typeClass proporcionados
-      const existingCapacity = await this.prisma.classCapacity.findFirst({
-        where: {
-          businessId: businessConfig[0].id,
-          typeClass: updateClassCapacityDto.typeClass
-        }
-      });
-
-      if (existingCapacity) {
-        throw new BadRequestException(
-          'La configuracion de la capacidad para este tipo de clase ya existe'
-        );
       }
 
       // Verificar que la capacidad minima sea menor que la capacidad maxima
