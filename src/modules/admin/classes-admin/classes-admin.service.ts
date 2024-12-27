@@ -98,7 +98,8 @@ export class ClassesAdminService {
             typeCurrency: TypeCurrency.DOLAR,
             status: ClassStatus.CONFIRMED,
             comments: data.comments,
-            expiresAt: new Date(Date.now() + 5 * 60 * 1000) // 5 minutes
+            expiresAt: new Date(Date.now() + 5 * 60 * 1000), // 5 minutes
+            methodPayment: data.methodPayment
           }
         });
 

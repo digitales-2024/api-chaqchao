@@ -1,5 +1,5 @@
 import { ApiProperty } from '@nestjs/swagger';
-import { ClassStatus, TypeClass, TypeCurrency } from '@prisma/client';
+import { ClassStatus, MethodPayment, TypeClass, TypeCurrency } from '@prisma/client';
 import { Transform } from 'class-transformer';
 import { IsBoolean, IsEmail, IsNotEmpty, IsNumber, IsString } from 'class-validator';
 
@@ -153,4 +153,13 @@ export class CreateClassAdminDto {
   @IsNotEmpty()
   @IsString()
   typeCurrency: TypeCurrency;
+
+  @ApiProperty({
+    description: 'Método de pago',
+    example: MethodPayment.IZIPAY,
+    enum: MethodPayment
+  })
+  @IsNotEmpty()
+  @IsString()
+  methodPayment: MethodPayment;
 }
