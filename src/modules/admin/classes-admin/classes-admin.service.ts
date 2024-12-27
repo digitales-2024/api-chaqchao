@@ -4,16 +4,16 @@ import {
   InternalServerErrorException,
   Logger
 } from '@nestjs/common';
-import { ClassesDataAdmin, ClassRegisterData } from 'src/interfaces';
+import { ClassClosed, ClassesDataAdmin, ClassRegisterData } from 'src/interfaces';
 import { PrismaService } from 'src/prisma/prisma.service';
 import { handleException } from 'src/utils';
 import * as ExcelJS from 'exceljs';
 import * as puppeteer from 'puppeteer';
 import * as fs from 'fs';
 import * as path from 'path';
-import { ClassStatus, TypeCurrency } from '@prisma/client';
+import { ClassStatus, TypeClass, TypeCurrency } from '@prisma/client';
 import { CreateClassAdminDto } from './dto/create-class-admin.dto';
-import { format } from 'date-fns';
+import { format, parseISO } from 'date-fns';
 
 @Injectable()
 export class ClassesAdminService {
@@ -27,6 +27,7 @@ export class ClassesAdminService {
    * @returns Clase creada
    */
   async createClass(data: CreateClassAdminDto): Promise<ClassRegisterData> {
+    console.log('🚀 ~ ClassesAdminService ~ createClass ~ data:', data);
     const { dateClass, scheduleClass, typeClass } = data;
 
     // Buscamos si ya hay una clase en la fecha y horario especificados
@@ -46,15 +47,35 @@ export class ClassesAdminService {
               scheduleClass,
               totalParticipants: 0,
               typeClass: data.typeClass,
-              languageClass: data.languageClass
+              languageClass: data.languageClass,
+              isClosed: data.isClosed
             }
           });
         }
-        const participants = 12;
 
-        // Verificar si el cupo está lleno
-        if (classEntity.totalParticipants > participants) {
-          throw new BadRequestException('There are no more spots available.');
+        // Verificar si la capacidad de la clase ha sido alcanzada o no alcaza al minimo
+        const participants = await this.prisma.classCapacity.findFirst({
+          where: {
+            typeClass: data.typeClass
+          },
+          select: {
+            minCapacity: true,
+            maxCapacity: true
+          }
+        });
+
+        if (
+          data.totalAdults + data.totalChildren + classEntity.totalParticipants <
+          participants.minCapacity
+        ) {
+          throw new BadRequestException('La capacidad de la clase tiene que ser mayor a mínimo');
+        }
+
+        if (
+          data.totalAdults + data.totalChildren + classEntity.totalParticipants >=
+          participants.maxCapacity
+        ) {
+          throw new BadRequestException('La capacidad de la clase ha sido alcanzada');
         }
 
         // Crear el registro
@@ -73,7 +94,7 @@ export class ClassesAdminService {
             typeCurrency: TypeCurrency.DOLAR,
             status: ClassStatus.CONFIRMED,
             comments: data.comments,
-            expiresAt: new Date()
+            expiresAt: new Date(Date.now() + 5 * 60 * 1000) // 5 minutes
           }
         });
 
@@ -93,7 +114,6 @@ export class ClassesAdminService {
         throw error; // Errores de validación
       }
       // Otros errores no controlados
-      console.error('Error al crear el registro:', error);
       throw new InternalServerErrorException('Ocurrió un error al procesar la solicitud');
     }
   }
@@ -124,6 +144,7 @@ export class ClassesAdminService {
           dateClass: true,
           scheduleClass: true,
           typeClass: true,
+          isClosed: true,
           ClassRegister: {
             select: {
               id: true,
@@ -154,6 +175,7 @@ export class ClassesAdminService {
         dateClass: clase.dateClass,
         scheduleClass: clase.scheduleClass,
         typeClass: clase.typeClass,
+        isClosed: clase.isClosed,
         registers: clase.ClassRegister.map((registro) => ({
           id: registro.id,
           userName: registro.userName,
@@ -459,5 +481,82 @@ export class ClassesAdminService {
     });
 
     return classExists.id || undefined;
+  }
+
+  /**
+   * Buscar todas las clases futuras
+   * @param scheduleClass Horario de la clase
+   * @param typeClass Tipo de clase
+   * @returns Clases cerradas
+   */
+  async findAllFutureClasses(
+    scheduleClass?: string,
+    typeClass?: TypeClass
+  ): Promise<ClassClosed[]> {
+    // Calculamos la fecha de hoy
+    const today = new Date();
+    today.setUTCHours(0, 0, 0, 0);
+
+    // Buscamos todas las clases cerradas en el rango de fechas
+    const classesClosed = await this.prisma.classes.findMany({
+      where: {
+        scheduleClass,
+        typeClass,
+        dateClass: {
+          gte: today
+        }
+      },
+      select: {
+        id: true,
+        dateClass: true,
+        scheduleClass: true,
+        isClosed: true
+      }
+    });
+
+    // Creamos un array con las fechas de las clases cerradas
+    const classes: ClassClosed[] = classesClosed.map((classClosed) => ({
+      id: classClosed.id,
+      dateClass: classClosed.dateClass,
+      scheduleClass: classClosed.scheduleClass,
+      isClosed: classClosed.isClosed
+    }));
+
+    return classes;
+  }
+
+  /**
+   * Verificar si la clase existe en la fecha y horario especificados
+   * @param scheduleClass Horario de la clase
+   * @param dateClass Fecha de la clase
+   * @param typeClass Tipo de clase
+   * @returns Si la clase existe en la fecha y horario especificados
+   */
+  async checkClass(scheduleClass: string, dateClass: string, typeClass: TypeClass): Promise<any> {
+    try {
+      const parsedDate = parseISO(dateClass);
+
+      const classExists = await this.prisma.classes.findFirst({
+        where: {
+          dateClass: parsedDate,
+          scheduleClass,
+          typeClass
+        },
+        select: {
+          id: true,
+          languageClass: true,
+          dateClass: true,
+          scheduleClass: true,
+          typeClass: true,
+          isClosed: true,
+          totalParticipants: true
+        }
+      });
+
+      return classExists;
+    } catch (error) {
+      this.logger.error(`Error checking class: ${error.message}`, error.stack);
+      throw new BadRequestException('Error checking class');
+    }
   }
 }
