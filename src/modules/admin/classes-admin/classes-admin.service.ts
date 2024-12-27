@@ -14,6 +14,7 @@ import * as path from 'path';
 import { ClassStatus, TypeClass, TypeCurrency } from '@prisma/client';
 import { CreateClassAdminDto } from './dto/create-class-admin.dto';
 import { format, parseISO } from 'date-fns';
+import { es } from 'date-fns/locale';
 
 @Injectable()
 export class ClassesAdminService {
@@ -316,7 +317,7 @@ export class ClassesAdminService {
 
       // Crear contenido del informe
       const htmlInfo = `<h2>${infoBusiness.businessName.toUpperCase()}</h2>
-      <p>Fecha de las clases: ${data.length ? data[0].dateClass : ''}</p>`;
+      <p>Fecha de las clases: ${data.length ? format(data[0].dateClass, 'PPP', { locale: es }) : ''}</p>`;
       const classesHtml = this.generateClassHtml(data);
 
       // Reemplazar placeholders en la plantilla
@@ -387,7 +388,6 @@ export class ClassesAdminService {
             <th>Nombre</th>
             <th>Email</th>
             <th>Teléfono</th>
-            <th>Idioma</th>
             <th>Total Adultos</th>
             <th>Total Niños</th>
             <th>Total Participantes</th>
@@ -405,7 +405,6 @@ export class ClassesAdminService {
             <td style="text-transform: capitalize;">${clase.userName}</td>
             <td>${clase.userEmail}</td>
             <td>${clase.userPhone}</td>
-            <td>clase.languageClass</td>
             <td>${clase.totalAdults}</td>
             <td>${clase.totalChildren}</td>
             <td>${clase.totalParticipants}</td>
@@ -420,14 +419,12 @@ export class ClassesAdminService {
         classesHtml += '</tbody></table>';
 
         // Determinar el símbolo de moneda
-        const currencySymbol =
-          groupedClasses[date][schedule][0].typeCurrency === 'SOL' ? 'S/.' : '$';
 
         // Agregar resumen después de la tabla
         classesHtml += `
         <div style="margin-top: 10px; text-align: right;">
           <p><strong>Total de Participantes:</strong> ${totalParticipants}</p>
-          <p><strong>Total Precio:</strong> ${currencySymbol} ${totalPrice.toFixed(2)}</p>
+          <p><strong>Total Precio:</strong> ${totalPrice.toFixed(2)}</p>
         </div>
       `;
 
