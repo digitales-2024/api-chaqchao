@@ -30,5 +30,11 @@ export type ClassesDataAdmin = {
   totalParticipants: number;
   languageClass: string;
   typeClass: TypeClass;
+  isClosed: boolean;
   registers: ClassRegisterData[];
+};
+
+export type ClassClosed = {
+  dateClass: Date;
+  scheduleClass: string;
 };
