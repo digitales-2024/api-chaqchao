@@ -39,11 +39,11 @@ export class ClassesAdminService {
           where: { dateClass, scheduleClass, typeClass }
         });
 
-        if (!classEntity) {
-          if (classEntity.isClosed) {
-            throw new BadRequestException('La clase ya se encuentra cerrada');
-          }
+        if (classEntity && classEntity.isClosed) {
+          throw new BadRequestException('La clase ya se encuentra cerrada');
+        }
 
+        if (!classEntity) {
           // Si no existe, crear una nueva clase
           classEntity = await prisma.classes.create({
             data: {
