@@ -28,7 +28,6 @@ export class ClassesAdminService {
    * @returns Clase creada
    */
   async createClass(data: CreateClassAdminDto): Promise<ClassRegisterData> {
-    console.log('🚀 ~ ClassesAdminService ~ createClass ~ data:', data);
     const { dateClass, scheduleClass, typeClass } = data;
 
     // Buscamos si ya hay una clase en la fecha y horario especificados
@@ -41,6 +40,10 @@ export class ClassesAdminService {
         });
 
         if (!classEntity) {
+          if (classEntity.isClosed) {
+            throw new BadRequestException('La clase ya se encuentra cerrada');
+          }
+
           // Si no existe, crear una nueva clase
           classEntity = await prisma.classes.create({
             data: {
