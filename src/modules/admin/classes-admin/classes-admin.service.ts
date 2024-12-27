@@ -228,25 +228,28 @@ export class ClassesAdminService {
       { header: 'Nombre de Usuario', key: 'userName', width: 20 },
       { header: 'Email de Usuario', key: 'userEmail', width: 30 },
       { header: 'Teléfono de Usuario', key: 'userPhone', width: 20 },
-      { header: 'Total Participantes', key: 'totalParticipants', width: 18 },
       { header: 'Total Adultos', key: 'totalAdults', width: 12 },
       { header: 'Total Niños', key: 'totalChildren', width: 12 },
-      { header: 'Precio Total', key: 'totalPrice', width: 12 },
+      { header: 'Total Participantes', key: 'totalParticipants', width: 18 },
       { header: 'Precio Adultos', key: 'totalPriceAdults', width: 15 },
-      { header: 'Precio Niños', key: 'totalPriceChildren', width: 15 }
+      { header: 'Precio Niños', key: 'totalPriceChildren', width: 15 },
+      { header: 'Precio Total', key: 'totalPrice', width: 12 }
     ];
   }
 
   private populateWorksheetWithGroupedClasses(
     worksheet: ExcelJS.Worksheet,
-    groupedClasses: Record<string, Record<string, ClassRegisterData[]>>
+    groupedClasses: Record<
+      string,
+      Record<string, { language: string; registers: ClassRegisterData[] }>
+    >
   ) {
     for (const date in groupedClasses) {
       for (const schedule in groupedClasses[date]) {
         const classes = groupedClasses[date][schedule];
 
         // Calcular totales
-        const { totalParticipants, totalPrice } = classes.reduce(
+        const { totalParticipants, totalPrice } = classes.registers.reduce(
           (totals, clase) => {
             totals.totalParticipants += clase.totalParticipants;
             totals.totalPrice += clase.totalPrice;
@@ -258,7 +261,7 @@ export class ClassesAdminService {
         // Agregar resumen de clase
         worksheet.addRow(['Fecha de Clase', date]);
         worksheet.addRow(['Horario de Clase', schedule]);
-        worksheet.addRow(['Idioma de Clase', 'languageClass']);
+        worksheet.addRow(['Idioma de Clase', classes.language]);
         worksheet.addRow(['Total Participantes', totalParticipants]);
         worksheet.addRow(['Total Precio', totalPrice.toFixed(2)]);
         worksheet.addRow([]); // Espacio entre grupos
@@ -268,26 +271,26 @@ export class ClassesAdminService {
           userName: 'Nombre de Usuario',
           userEmail: 'Email de Usuario',
           userPhone: 'Teléfono de Usuario',
-          totalParticipants: 'Total Participantes',
           totalAdults: 'Total Adultos',
           totalChildren: 'Total Niños',
-          totalPrice: 'Precio Total',
+          totalParticipants: 'Total Participantes',
           totalPriceAdults: 'Precio Adultos',
-          totalPriceChildren: 'Precio Niños'
+          totalPriceChildren: 'Precio Niños',
+          totalPrice: 'Precio Total'
         });
 
         // Agregar los detalles de cada clase
-        classes.forEach((clase) => {
+        classes.registers.forEach((clase) => {
           worksheet.addRow({
             userName: clase.userName,
             userEmail: clase.userEmail,
             userPhone: clase.userPhone,
-            totalParticipants: clase.totalParticipants,
             totalAdults: clase.totalAdults,
             totalChildren: clase.totalChildren,
-            totalPrice: clase.totalPrice,
+            totalParticipants: clase.totalParticipants,
             totalPriceAdults: clase.totalPriceAdults,
-            totalPriceChildren: clase.totalPriceChildren
+            totalPriceChildren: clase.totalPriceChildren,
+            totalPrice: clase.totalPrice
           });
         });
 
@@ -396,7 +399,7 @@ export class ClassesAdminService {
         let totalParticipants = 0;
         let totalPrice = 0;
 
-        groupedClasses[date][schedule].forEach((clase) => {
+        groupedClasses[date][schedule].registers.forEach((clase) => {
           classesHtml += `
           <tr>
             <td style="text-transform: capitalize;">${clase.userName}</td>
@@ -442,8 +445,11 @@ export class ClassesAdminService {
    */
   private groupClassesByDateAndSchedule(
     data: ClassesDataAdmin[]
-  ): Record<string, Record<string, ClassRegisterData[]>> {
-    const groupedClasses: Record<string, Record<string, ClassRegisterData[]>> = {};
+  ): Record<string, Record<string, { language: string; registers: ClassRegisterData[] }>> {
+    const groupedClasses: Record<
+      string,
+      Record<string, { language: string; registers: ClassRegisterData[] }>
+    > = {};
 
     data.forEach((classData) => {
       const dateKey = format(classData.dateClass, 'yyyy-MM-dd');
@@ -456,11 +462,14 @@ export class ClassesAdminService {
 
       // Asegurarse de que el horario exista dentro de la fecha
       if (!groupedClasses[dateKey][scheduleKey]) {
-        groupedClasses[dateKey][scheduleKey] = [];
+        groupedClasses[dateKey][scheduleKey] = {
+          language: classData.languageClass,
+          registers: []
+        };
       }
 
       // Agregar los registros al grupo correspondiente
-      groupedClasses[dateKey][scheduleKey].push(...classData.registers);
+      groupedClasses[dateKey][scheduleKey].registers.push(...classData.registers);
     });
 
     return groupedClasses;
