@@ -568,4 +568,37 @@ export class ClassesAdminService {
       throw new BadRequestException('Error checking class');
     }
   }
+
+  /**
+   * Cerrar una clase por su id
+   * @param id Id de la clase a cerrar
+   * @returns La clase cerrada
+   */
+  async closeClass(id: string): Promise<ClassClosed> {
+    try {
+      const classClosed = await this.prisma.classes.update({
+        where: { id },
+        data: { isClosed: true },
+        select: {
+          id: true,
+          dateClass: true,
+          scheduleClass: true,
+          isClosed: true
+        }
+      });
+
+      if (!classClosed) {
+        throw new BadRequestException('La clase no existe');
+      }
+
+      return classClosed;
+    } catch (error) {
+      this.logger.error(`Error closing class: ${error.message}`, error.stack);
+      if (error instanceof BadRequestException) {
+        throw error;
+      }
+
+      throw new BadRequestException('Error closing class');
+    }
+  }
 }

@@ -1,4 +1,4 @@
-import { Body, Controller, Get, Post, Query, Res } from '@nestjs/common';
+import { Body, Controller, Get, Param, Patch, Post, Query, Res } from '@nestjs/common';
 import { Response } from 'express';
 import { ClassesAdminService } from './classes-admin.service';
 import { Auth, Module, Permission } from '../auth/decorators';
@@ -8,6 +8,7 @@ import {
   ApiBody,
   ApiOkResponse,
   ApiOperation,
+  ApiParam,
   ApiQuery,
   ApiTags,
   ApiUnauthorizedResponse
@@ -147,5 +148,19 @@ export class ClassesAdminController {
     @Query('typeClass') typeClass: TypeClass
   ) {
     return await this.classesAdminService.checkClass(scheduleClass, dateClass, typeClass);
+  }
+
+  /**
+   * Cerrar una clase por su ID
+   * @param classId - ID de la clase a cerrar
+   * @returns Clase cerrada
+   */
+  @Patch('close/:classId')
+  @Permission(['UPDATE'])
+  @ApiOperation({ summary: 'Cerrar una clase por su ID' })
+  @ApiOkResponse({ description: 'Clase cerrada' })
+  @ApiParam({ name: 'classId', description: 'ID de la clase a cerrar', required: true })
+  async closeClass(@Param('classId') classId: string) {
+    return await this.classesAdminService.closeClass(classId);
   }
 }
