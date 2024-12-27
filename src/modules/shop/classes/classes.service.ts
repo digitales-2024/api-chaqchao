@@ -271,8 +271,7 @@ export class ClassesService {
       const classCreated = await this.prisma.classes.create({
         data: {
           ...createClassDto,
-          totalParticipants,
-          expiresAt: new Date(Date.now() + 5 * 60 * 1000) // 5 minutes
+          totalParticipants
         },
         include: {
           ClassRegister: true
@@ -359,6 +358,7 @@ export class ClassesService {
           dateClass: true,
           scheduleClass: true,
           typeClass: true,
+          isClosed: true,
           ClassRegister: {
             select: {
               id: true,
@@ -388,6 +388,7 @@ export class ClassesService {
         dateClass: claseDB.dateClass,
         scheduleClass: claseDB.scheduleClass,
         typeClass: claseDB.typeClass,
+        isClosed: claseDB.isClosed,
         registers: claseDB.ClassRegister.map((registro) => ({
           id: registro.id,
           userName: registro.userName,
@@ -524,6 +525,7 @@ export class ClassesService {
       scheduleClass: scheduleClass,
       totalParticipants: totalParticipants,
       languageClass: languageClass,
+      isClosed: classDB.isClosed,
       registers: classDB.registers
     };
   }
