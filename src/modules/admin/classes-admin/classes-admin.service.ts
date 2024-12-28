@@ -164,7 +164,8 @@ export class ClassesAdminService {
               totalPriceChildren: true,
               typeCurrency: true,
               comments: true,
-              status: true
+              status: true,
+              methodPayment: true
             }
           }
         },
@@ -194,7 +195,8 @@ export class ClassesAdminService {
           totalPriceChildren: registro.totalPriceChildren,
           typeCurrency: registro.typeCurrency,
           comments: registro.comments,
-          status: registro.status
+          status: registro.status,
+          methodPayment: registro.methodPayment
         }))
       }));
     } catch (error) {
