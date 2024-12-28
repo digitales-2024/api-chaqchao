@@ -67,16 +67,14 @@ export class ClassesAdminService {
             maxCapacity: true
           }
         });
-
         if (
           data.totalAdults + data.totalChildren + classEntity.totalParticipants <
           participants.minCapacity
         ) {
           throw new BadRequestException('La capacidad de la clase tiene que ser mayor a mínimo');
         }
-
         if (
-          data.totalAdults + data.totalChildren + classEntity.totalParticipants >=
+          data.totalAdults + data.totalChildren + classEntity.totalParticipants >
           participants.maxCapacity
         ) {
           throw new BadRequestException('La capacidad de la clase ha sido alcanzada');
@@ -107,7 +105,10 @@ export class ClassesAdminService {
         await prisma.classes.update({
           where: { id: classEntity.id },
           data: {
-            totalParticipants: classEntity.totalParticipants + classRegister.totalParticipants
+            totalParticipants: classEntity.totalParticipants + classRegister.totalParticipants,
+            isClosed:
+              classEntity.totalParticipants + classRegister.totalParticipants ===
+              participants.maxCapacity
           }
         });
 
