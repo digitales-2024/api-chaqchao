@@ -2,9 +2,9 @@ import { ApiProperty } from '@nestjs/swagger';
 import { Transform } from 'class-transformer';
 import {
   IsBoolean,
-  IsDate,
   IsEmail,
   IsNotEmpty,
+  IsOptional,
   IsPhoneNumber,
   IsString,
   Matches,
@@ -15,7 +15,7 @@ import {
 export class CreateClientDto {
   @ApiProperty({
     name: 'name',
-    description: 'Client name'
+    description: 'Nombre del cliente'
   })
   @IsString()
   @IsNotEmpty()
@@ -24,7 +24,7 @@ export class CreateClientDto {
 
   @ApiProperty({
     name: 'email',
-    description: 'Client email'
+    description: 'Correo electrónico del cliente'
   })
   @IsString()
   @IsEmail()
@@ -34,7 +34,7 @@ export class CreateClientDto {
 
   @ApiProperty({
     name: 'password',
-    description: 'Client password'
+    description: 'Contraseña del cliente'
   })
   @IsString()
   @IsNotEmpty()
@@ -49,7 +49,7 @@ export class CreateClientDto {
 
   @ApiProperty({
     name: 'phone',
-    description: 'Client phone',
+    description: 'Teléfono del cliente',
     required: false
   })
   @IsPhoneNumber(null)
@@ -58,16 +58,16 @@ export class CreateClientDto {
 
   @ApiProperty({
     name: 'birthdate',
-    description: 'Client birthdate',
+    description: 'Fecha de nacimiento del cliente',
     required: false
   })
-  @IsDate()
-  @Transform(({ value }) => new Date(value))
+  @IsString()
+  @IsOptional()
   birthDate?: Date;
 
   @ApiProperty({
     name: 'term',
-    description: 'Client term and conditions'
+    description: 'Término y condiciones del cliente'
   })
   @IsBoolean()
   @IsNotEmpty()

@@ -7,12 +7,13 @@ import * as ExcelJS from 'exceljs';
 import * as puppeteer from 'puppeteer';
 import * as fs from 'fs';
 import * as path from 'path';
+import { ClassStatus } from '@prisma/client';
 
 @Injectable()
 export class ClassesAdminService {
   private readonly logger = new Logger(ClassesAdminService.name);
 
-  constructor(private readonly prisma: PrismaService) {}
+  constructor(private readonly prisma: PrismaService) { }
 
   /**
    * Agrupar los datos de las clases registradas
@@ -69,7 +70,8 @@ export class ClassesAdminService {
         typeCurrency: classItem.typeCurrency,
         dateClass: classItem.dateClass,
         scheduleClass: classItem.scheduleClass,
-        comments: classItem.comments
+        comments: classItem.comments,
+        status: classItem.status
       }))
     }));
   }
@@ -80,10 +82,19 @@ export class ClassesAdminService {
    * @returns Registros de clases por fecha
    */
   async findByDate(date: string): Promise<ClassesDataAdmin[]> {
+    const startOfDay = new Date(date);
+    startOfDay.setUTCHours(0, 0, 0, 0); // Inicio del día en UTC
+    const endOfDay = new Date(date);
+    endOfDay.setUTCHours(23, 59, 59, 999); // Fin del día en UTC
+
     try {
       const classesRegistrations = await this.prisma.classes.findMany({
         where: {
-          dateClass: new Date(date)
+          dateClass: {
+            gte: startOfDay, // Mayor o igual al inicio del día
+            lte: endOfDay // Menor o igual al fin del día
+          },
+          status: ClassStatus.CONFIRMED
         },
         select: {
           id: true,
@@ -100,7 +111,8 @@ export class ClassesAdminService {
           typeCurrency: true,
           dateClass: true,
           scheduleClass: true,
-          comments: true
+          comments: true,
+          status: true
         },
         orderBy: {
           createdAt: 'asc'
@@ -256,7 +268,12 @@ export class ClassesAdminService {
     );
 
     // Generar el PDF usando Puppeteer
-    const browser = await puppeteer.launch();
+    const browser = await puppeteer.launch({
+      args: [
+        '--no-sandbox',
+        '--disable-setuid-sandbox'
+      ]
+    });
     const page = await browser.newPage();
     await page.setContent(htmlContent);
     await page.setContent(htmlContentWithInfo);

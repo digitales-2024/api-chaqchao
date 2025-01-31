@@ -23,6 +23,7 @@ export class AdminService {
       roles: user.roles
     };
   }
+
   /**
    * Actualizar la contraseña del usuario
    * @param updatePassword Datos para actualizar la contraseña

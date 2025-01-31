@@ -4,22 +4,38 @@ import { IsEmail, IsPhoneNumber, IsString } from 'class-validator';
 import { Transform } from 'class-transformer';
 
 export class UpdateBusinessConfigDto extends PartialType(CreateBusinessConfigDto) {
-  @ApiProperty()
+  @ApiProperty({
+    description: 'RUC del negocio',
+    example: '12345678901',
+    required: false
+  })
   @IsString()
   @Transform(({ value }) => value.trim())
   businessName?: string;
 
-  @ApiProperty()
+  @ApiProperty({
+    description: 'Correo electrónica del negocio',
+    example: '8l2D3@example.com',
+    required: false
+  })
   @IsString()
   @IsEmail()
   @Transform(({ value }) => value.trim())
   email?: string;
 
-  @ApiProperty()
+  @ApiProperty({
+    description: 'Número de contacto del negocio',
+    example: '987654321',
+    required: false
+  })
   @IsPhoneNumber('PE')
   contactNumber?: string;
 
-  @ApiProperty()
+  @ApiProperty({
+    description: 'Dirección del negocio',
+    example: 'Av. Los Pinos 123, Lima, Perú',
+    required: false
+  })
   @IsString()
   @Transform(({ value }) => value.trim())
   address?: string;

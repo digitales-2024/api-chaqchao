@@ -4,17 +4,21 @@ import { CreateClassRegistrationDto } from './dto/create-class-registration.dto'
 import { UpdateClassRegistrationDto } from './dto/update-class-registration.dto';
 import {
   ApiBadRequestResponse,
+  ApiBody,
   ApiOkResponse,
+  ApiOperation,
+  ApiParam,
   ApiTags,
   ApiUnauthorizedResponse
 } from '@nestjs/swagger';
-import { Auth, GetUser } from '../auth/decorators';
+import { Auth, GetUser, Module, Permission } from '../auth/decorators';
 import { ClassRegistrationData, HttpResponse, UserData } from 'src/interfaces';
 
-@ApiTags('Class Registration')
+@ApiTags('Admin Settings')
 @ApiBadRequestResponse({ description: 'Bad Request' })
 @ApiUnauthorizedResponse({ description: 'Unauthorized' })
 @Auth()
+@Module('STG')
 @Controller({
   path: 'class-registration',
   version: '1'
@@ -22,8 +26,20 @@ import { ClassRegistrationData, HttpResponse, UserData } from 'src/interfaces';
 export class ClassRegistrationController {
   constructor(private readonly classRegistrationService: ClassRegistrationService) {}
 
-  @ApiOkResponse({ description: 'Class Registration created' })
+  /**
+   * Crear un registro de clase
+   * @param createClassRegistrationDto Datos para el registro de clase
+   * @param user Usuario que crea el registro de clase
+   * @returns Registro de clase creado
+   */
   @Post()
+  @Permission(['CREATE'])
+  @ApiOperation({ summary: 'Crear un registro de clase' })
+  @ApiOkResponse({ description: 'Registro de clase creado' })
+  @ApiBody({
+    type: CreateClassRegistrationDto,
+    description: 'Datos para crear un registro de clase'
+  })
   create(
     @Body() createClassRegistrationDto: CreateClassRegistrationDto,
     @GetUser() user: UserData
@@ -31,20 +47,48 @@ export class ClassRegistrationController {
     return this.classRegistrationService.create(createClassRegistrationDto, user);
   }
 
-  @ApiOkResponse({ description: 'Get all class registrations' })
+  /**
+   * Mostrar todos los registros de clase
+   * @returns Todos los registros de clase
+   */
   @Get()
+  @Permission(['READ'])
+  @ApiOperation({ summary: 'Mostrar todos los registros de clase' })
+  @ApiOkResponse({ description: 'Obtenga todos los registros de clase' })
   findAll(): Promise<ClassRegistrationData[]> {
     return this.classRegistrationService.findAll();
   }
 
-  @ApiOkResponse({ description: 'Get class registration by Id' })
+  /**
+   * Obtener un registro de clase por Id
+   * @param id Id del registro de clase
+   * @returns Registro de clase
+   */
   @Get(':id')
+  @Permission(['READ'])
+  @ApiOperation({ summary: 'Obtener un registro de clase por Id' })
+  @ApiOkResponse({ description: 'Obtener registro de clase' })
+  @ApiParam({ name: 'id', description: 'Id del registro de clase' })
   findOne(@Param('id') id: string): Promise<ClassRegistrationData> {
     return this.classRegistrationService.findOne(id);
   }
 
-  @ApiOkResponse({ description: 'Class Registration updated' })
+  /**
+   * Actualizar un registro de clase
+   * @param id Id del registro de clase a actualizar
+   * @param updateClassRegistrationDto Datos para actualizar el registro de clase
+   * @param user Usuario que realiza la actualización
+   * @returns Registro de clase actualizado
+   */
   @Patch(':id')
+  @Permission(['UPDATE'])
+  @ApiOperation({ summary: 'Actualizar un registro de clase' })
+  @ApiOkResponse({ description: 'Registro de clase actualizado' })
+  @ApiParam({ name: 'id', description: 'Id del registro de clase' })
+  @ApiBody({
+    type: UpdateClassRegistrationDto,
+    description: 'Datos para actualizar el registro de clase'
+  })
   update(
     @Param('id') id: string,
     @Body() updateClassRegistrationDto: UpdateClassRegistrationDto,
@@ -53,8 +97,17 @@ export class ClassRegistrationController {
     return this.classRegistrationService.update(id, updateClassRegistrationDto, user);
   }
 
-  @ApiOkResponse({ description: 'Class Registration deleted' })
+  /**
+   * Eliminar un registro de clase
+   * @param id Id del registro de clase a eliminar
+   * @param user Usuario que elimina el registro de clase
+   * @returns Registro de clase eliminado
+   */
   @Delete(':id')
+  @Permission(['DELETE'])
+  @ApiOperation({ summary: 'Eliminar un registro de clase' })
+  @ApiOkResponse({ description: 'Registro de clase eliminado' })
+  @ApiParam({ name: 'id', description: 'Id del registro de clase' })
   remove(
     @Param('id') id: string,
     @GetUser() user: UserData

@@ -67,7 +67,13 @@ export class BillingDocumentService {
       paymentStatus,
       issuedAt,
       orderId,
-      ruc
+      typeDocument,
+      address,
+      city,
+      state,
+      country,
+      postalCode,
+      businessName
     } = createBillingDocumentDto;
     let newBillingDocument;
 
@@ -77,11 +83,17 @@ export class BillingDocumentService {
           data: {
             billingDocumentType: billingDocumentType || 'RECEIPT',
             documentNumber,
+            typeDocument,
+            address,
+            city,
+            state,
+            country,
+            postalCode,
             totalAmount,
-            ruc,
-            paymentStatus: paymentStatus || 'PENDING',
+            paymentStatus: paymentStatus,
             issuedAt,
-            orderId
+            orderId,
+            businessName
           },
           select: {
             id: true,
@@ -90,7 +102,12 @@ export class BillingDocumentService {
             totalAmount: true,
             paymentStatus: true,
             issuedAt: true,
-            ruc: true,
+            address: true,
+            city: true,
+            state: true,
+            country: true,
+            postalCode: true,
+            businessName: true,
             order: {
               select: {
                 id: true
@@ -112,7 +129,14 @@ export class BillingDocumentService {
           totalAmount: newBillingDocument.totalAmount,
           paymentStatus: newBillingDocument.paymentStatus,
           orderId: newBillingDocument.orderId,
-          ruc: newBillingDocument.ruc,
+          issuedAt: newBillingDocument.issuedAt,
+          address: newBillingDocument.address,
+          city: newBillingDocument.city,
+          state: newBillingDocument.state,
+          country: newBillingDocument.country,
+          postalCode: newBillingDocument.postalCode,
+          typeDocument: newBillingDocument.typeDocument,
+          businessName: newBillingDocument.businessName,
           order: {
             id: newBillingDocument.order.id
           }
@@ -146,10 +170,16 @@ export class BillingDocumentService {
           billingDocumentType: true,
           documentNumber: true,
           totalAmount: true,
+          typeDocument: true,
           paymentStatus: true,
           issuedAt: true,
           orderId: true,
-          ruc: true,
+          address: true,
+          city: true,
+          state: true,
+          country: true,
+          postalCode: true,
+          businessName: true,
           order: {
             select: {
               id: true
@@ -161,7 +191,25 @@ export class BillingDocumentService {
       return {
         statusCode: HttpStatus.OK,
         message: 'Billing Document status updated successfully',
-        data: updatedBillingStatus
+        data: {
+          id: updatedBillingStatus.id,
+          billingDocumentType: updatedBillingStatus.billingDocumentType,
+          documentNumber: updatedBillingStatus.documentNumber,
+          totalAmount: updatedBillingStatus.totalAmount,
+          paymentStatus: updatedBillingStatus.paymentStatus,
+          issuedAt: updatedBillingStatus.issuedAt,
+          orderId: updatedBillingStatus.orderId,
+          address: updatedBillingStatus.address,
+          city: updatedBillingStatus.city,
+          state: updatedBillingStatus.state,
+          country: updatedBillingStatus.country,
+          typeDocument: updatedBillingStatus.typeDocument,
+          postalCode: updatedBillingStatus.postalCode,
+          businessName: updatedBillingStatus.businessName,
+          order: {
+            id: updatedBillingStatus.order.id
+          }
+        }
       };
     } catch (error) {
       this.logger.error(`Error updating Billing Document status: ${error.message}`, error.stack);

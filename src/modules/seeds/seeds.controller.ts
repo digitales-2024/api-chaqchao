@@ -1,8 +1,8 @@
 import { Controller, Post } from '@nestjs/common';
 import { SeedsService } from './seeds.service';
-import { ApiTags } from '@nestjs/swagger';
+import { ApiExcludeController } from '@nestjs/swagger';
 
-@ApiTags('Seeds')
+@ApiExcludeController()
 @Controller({
   path: 'seeds',
   version: '1'

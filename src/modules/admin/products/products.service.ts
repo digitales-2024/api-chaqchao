@@ -20,6 +20,7 @@ import { CreateProductVariationDto } from '../product-variation/dto/create-produ
 import { UpdateProductVariationDto } from '../product-variation/dto/update-product-variation.dto';
 import { DeleteProductsDto } from './dto/delete-product.dto';
 import { CloudflareService } from 'src/modules/cloudflare/cloudflare.service';
+import { AdminGateway } from '../admin.gateway';
 
 @Injectable()
 export class ProductsService {
@@ -30,7 +31,8 @@ export class ProductsService {
     private readonly categoryService: CategoryService,
     @Inject(forwardRef(() => ProductVariationService))
     private readonly productVariationService: ProductVariationService,
-    private readonly cloudflareService: CloudflareService
+    private readonly cloudflareService: CloudflareService,
+    private readonly adminGateway: AdminGateway
   ) {}
 
   /**
@@ -182,7 +184,8 @@ export class ProductsService {
           category: {
             select: {
               id: true,
-              name: true
+              name: true,
+              family: true
             }
           },
           productVariations: {
@@ -195,7 +198,7 @@ export class ProductsService {
           }
         },
         orderBy: {
-          createdAt: 'asc'
+          createdAt: 'desc'
         }
       });
 
@@ -741,6 +744,9 @@ export class ProductsService {
             isAvailable: newStatus
           }
         });
+
+        // Enviar notificación a los clientes mediante websockets
+        this.adminGateway.sendProductAvailabilityUpdated(id, newStatus);
 
         // Crear un registro de auditoría
         await prisma.audit.create({

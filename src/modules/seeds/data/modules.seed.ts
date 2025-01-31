@@ -7,14 +7,34 @@ export const modulesSeed: Module[] = [
     description: 'This is the products module'
   },
   {
+    name: 'Categories',
+    cod: 'CAT',
+    description: 'This is the categories module'
+  },
+  {
+    name: 'Orders',
+    cod: 'ORD',
+    description: 'This is the orders module'
+  },
+  {
     name: 'Customers',
     cod: 'CST',
     description: 'This is the customers module'
   },
   {
-    cod: 'ORD',
-    name: 'Orders',
-    description: 'This is the orders module'
+    name: 'Reports',
+    cod: 'RPT',
+    description: 'This is the reports module'
+  },
+  {
+    name: 'Classes',
+    cod: 'CLS',
+    description: 'This is the classes module'
+  },
+  {
+    name: 'Claims',
+    cod: 'CLM',
+    description: 'This is the claims module'
   },
   {
     cod: 'USR',
@@ -27,13 +47,18 @@ export const modulesSeed: Module[] = [
     description: 'This is the roles module'
   },
   {
-    cod: 'RPT',
-    name: 'Reports',
-    description: 'This is the reports module'
+    name: 'Permissions',
+    cod: 'PRM',
+    description: 'This is the permissions module'
   },
   {
-    cod: 'BNSS',
     name: 'Business',
+    cod: 'BNSS',
     description: 'This is the business module'
+  },
+  {
+    name: 'Settings',
+    cod: 'STG',
+    description: 'This is the settings module'
   }
 ];

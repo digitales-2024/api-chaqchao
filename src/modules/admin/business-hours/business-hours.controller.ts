@@ -2,21 +2,25 @@ import { Controller, Get, Post, Body, Patch, Param } from '@nestjs/common';
 import { BusinessHoursService } from './business-hours.service';
 import { CreateBusinessHourDto } from './dto/create-business-hour.dto';
 import { UpdateBusinessHourDto } from './dto/update-business-hour.dto';
-import { Auth, GetUser } from '../auth/decorators';
+import { Auth, GetUser, Module, Permission } from '../auth/decorators';
 import {
   ApiBadRequestResponse,
+  ApiBody,
   ApiInternalServerErrorResponse,
   ApiOkResponse,
+  ApiOperation,
+  ApiParam,
   ApiTags,
   ApiUnauthorizedResponse
 } from '@nestjs/swagger';
 import { AllBusinessHoursData, BusinessHoursData, HttpResponse, UserData } from 'src/interfaces';
 
-@ApiTags('BusinessHours')
+@ApiTags('Admin Business')
 @ApiUnauthorizedResponse({ description: 'Unauthorized' })
 @ApiInternalServerErrorResponse({ description: 'Internal server error' })
 @ApiBadRequestResponse({ description: 'Bad request' })
 @Auth()
+@Module('BNSS')
 @Controller({
   path: 'business-hours',
   version: '1'
@@ -24,8 +28,17 @@ import { AllBusinessHoursData, BusinessHoursData, HttpResponse, UserData } from 
 export class BusinessHoursController {
   constructor(private readonly businessHoursService: BusinessHoursService) {}
 
-  @ApiOkResponse({ description: 'Business Hour created' })
+  /**
+   * Crea el horario de atencion de un negocio
+   * @param createBusinessHourDto Data del horario de atencion a crear
+   * @param user Usuario que realiza la creaci n
+   * @returns Horario de atencion creado
+   */
   @Post()
+  @Permission(['CREATE'])
+  @ApiOperation({ summary: 'Crear un horario de atencion' })
+  @ApiOkResponse({ description: 'Horario de atencion creado' })
+  @ApiBody({ type: CreateBusinessHourDto, description: 'Datos del horario de atencion a crear' })
   create(
     @Body() createBusinessHourDto: CreateBusinessHourDto,
     @GetUser() user: UserData
@@ -33,20 +46,48 @@ export class BusinessHoursController {
     return this.businessHoursService.create(createBusinessHourDto, user);
   }
 
-  @ApiOkResponse({ description: 'Get all business hours' })
+  /**
+   * Mostrar todos los horarios de atencion de los negocios
+   * @returns Un objeto con una lista de horarios de atencion y la informacion del negocio
+   */
   @Get()
+  @Permission(['READ'])
+  @ApiOperation({ summary: 'Mostrar todos los horarios de atencion' })
+  @ApiOkResponse({ description: 'Lista de horarios de atencion' })
   findAll(): Promise<AllBusinessHoursData> {
     return this.businessHoursService.findAll();
   }
 
-  @ApiOkResponse({ description: 'Get business hour by id' })
+  /**
+   * Mostrar un horario de atencion por id
+   * @param id Id del horario de atencion
+   * @returns Horario de atencion encontrado
+   */
   @Get(':id')
+  @Permission(['READ'])
+  @ApiOperation({ summary: 'Mostrar un horario de atencion por id' })
+  @ApiOkResponse({ description: 'Horario de atencion encontrado' })
+  @ApiParam({ name: 'id', description: 'Id del horario de atencion' })
   findOne(@Param('id') id: string): Promise<BusinessHoursData> {
     return this.businessHoursService.findOne(id);
   }
 
-  @ApiOkResponse({ description: 'Business hours updated successfully' })
+  /**
+   * Actualizar un horario de atencion
+   * @param id Id del horario de atencion a actualizar
+   * @param updateBusinessHourDto Data del horario de atencion a actualizar
+   * @param user Usuario que realiza la actualizaci n
+   * @returns Horario de atencion actualizado
+   */
   @Patch(':id')
+  @Permission(['UPDATE'])
+  @ApiOperation({ summary: 'Actualizar un horario de atencion' })
+  @ApiOkResponse({ description: 'Horario de atencion actualizado' })
+  @ApiBody({
+    type: UpdateBusinessHourDto,
+    description: 'Datos del horario de atencion a actualizar'
+  })
+  @ApiParam({ name: 'id', description: 'Id del horario de atencion' })
   update(
     @Param('id') id: string,
     @Body() updateBusinessHourDto: UpdateBusinessHourDto,

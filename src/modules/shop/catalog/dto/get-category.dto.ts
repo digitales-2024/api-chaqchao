@@ -2,7 +2,11 @@ import { ApiProperty } from '@nestjs/swagger';
 import { IsOptional, IsString } from 'class-validator';
 
 export class GetCategoryDto {
-  @ApiProperty()
+  @ApiProperty({
+    description: 'Nombre de la categoría',
+    example: 'Café',
+    required: false
+  })
   @IsOptional()
   @IsString()
   name?: string;

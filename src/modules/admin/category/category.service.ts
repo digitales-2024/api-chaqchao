@@ -42,7 +42,7 @@ export class CategoryService {
 
       const newCategory = await this.prisma.category.create({
         data: createCategoryDto,
-        select: { id: true, name: true, description: true }
+        select: { id: true, name: true, description: true, family: true }
       });
 
       await this.prisma.audit.create({
@@ -76,8 +76,8 @@ export class CategoryService {
     try {
       return await this.prisma.category.findMany({
         where: { ...(user.isSuperAdmin ? {} : { isActive: true }) },
-        select: { id: true, name: true, description: true, isActive: true },
-        orderBy: { createdAt: 'asc' }
+        select: { id: true, name: true, description: true, isActive: true, family: true },
+        orderBy: { createdAt: 'desc' }
       });
     } catch (error) {
       this.logger.error('Error get all categories');
@@ -118,12 +118,12 @@ export class CategoryService {
       // Obtener la categoría actual desde la base de datos
       const categoryDB = await this.findById(id);
 
-      const { name, description } = updateCategoryDto;
-
+      const { name, description, family } = updateCategoryDto;
       // Verificar si hay cambios en los datos
       const hasChanges =
         (name && name !== categoryDB.name) ||
-        (description && description !== categoryDB.description);
+        (description && description !== categoryDB.description) ||
+        (family && family !== categoryDB.family);
 
       if (hasChanges) {
         const updatedCategory = await this.prisma.$transaction(async (prisma) => {
@@ -139,7 +139,8 @@ export class CategoryService {
             select: {
               id: true,
               name: true,
-              description: true
+              description: true,
+              family: true
             }
           });
 
@@ -162,7 +163,8 @@ export class CategoryService {
           data: {
             id: updatedCategory.id,
             name: updatedCategory.name,
-            description: updatedCategory.description
+            description: updatedCategory.description,
+            family: updatedCategory.family
           }
         };
       }
@@ -196,14 +198,12 @@ export class CategoryService {
 
       // Obtener todos los productos asociados a la categoría
       const productsDB = await this.productsService.findProductsByIdCategory(id);
-      console.log('🚀 ~ CategoryService ~ remove ~ productsDB:', productsDB);
-
       // Verificar si no hay productos asignados
       if (productsDB.length === 0) {
         // Eliminar la categoría si no tiene productos asignados
         const categoryDelete = await this.prisma.category.delete({
           where: { id },
-          select: { id: true, name: true, description: true }
+          select: { id: true, name: true, description: true, family: true }
         });
 
         // Registrar la auditoría de la eliminación
@@ -238,7 +238,7 @@ export class CategoryService {
         categoryUpdate = await this.prisma.category.update({
           where: { id },
           data: { isActive: false },
-          select: { id: true, name: true, description: true }
+          select: { id: true, name: true, description: true, family: true }
         });
       }
 
@@ -274,7 +274,7 @@ export class CategoryService {
   async findByName(name: string): Promise<CategoryData> {
     const categoryDB = await this.prisma.category.findFirst({
       where: { name },
-      select: { id: true, name: true, description: true, isActive: true }
+      select: { id: true, name: true, description: true, isActive: true, family: true }
     });
 
     if (!!categoryDB && !categoryDB.isActive) {
@@ -297,7 +297,7 @@ export class CategoryService {
   async findById(id: string): Promise<CategoryData> {
     const categoryDB = await this.prisma.category.findFirst({
       where: { id },
-      select: { id: true, name: true, description: true, isActive: true }
+      select: { id: true, name: true, description: true, isActive: true, family: true }
     });
     if (!categoryDB) {
       throw new BadRequestException('This category doesnt exist');
@@ -324,7 +324,8 @@ export class CategoryService {
             id: true,
             name: true,
             description: true,
-            isActive: true
+            isActive: true,
+            family: true
           }
         });
 
@@ -356,7 +357,8 @@ export class CategoryService {
         return {
           id: categoryDB.id,
           name: categoryDB.name,
-          description: categoryDB.description
+          description: categoryDB.description,
+          family: categoryDB.family
         };
       });
 
@@ -386,7 +388,8 @@ export class CategoryService {
             id: true,
             name: true,
             description: true,
-            isActive: true
+            isActive: true,
+            family: true
           }
         });
 
@@ -418,7 +421,9 @@ export class CategoryService {
         return {
           id: categoryDB.id,
           name: categoryDB.name,
-          description: categoryDB.description
+          description: categoryDB.description,
+          isActive: categoryDB.isActive,
+          family: categoryDB.family
         };
       });
 
