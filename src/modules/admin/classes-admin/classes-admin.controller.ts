@@ -1,17 +1,20 @@
-import { Body, Controller, Get, Post, Query, Res } from '@nestjs/common';
+import { Body, Controller, Get, Param, Patch, Post, Query, Res } from '@nestjs/common';
 import { Response } from 'express';
 import { ClassesAdminService } from './classes-admin.service';
 import { Auth, Module, Permission } from '../auth/decorators';
-import { ClassesDataAdmin } from 'src/interfaces';
+import { ClassesDataAdmin, ClassRegisterData } from 'src/interfaces';
 import {
   ApiBadRequestResponse,
   ApiBody,
   ApiOkResponse,
   ApiOperation,
+  ApiParam,
   ApiQuery,
   ApiTags,
   ApiUnauthorizedResponse
 } from '@nestjs/swagger';
+import { CreateClassAdminDto } from './dto/create-class-admin.dto';
+import { TypeClass } from '@prisma/client';
 
 @ApiTags('Admin Classes')
 @ApiBadRequestResponse({ description: 'Bad Request' })
@@ -21,6 +24,20 @@ import {
 @Controller({ path: '/class/admin', version: '1' })
 export class ClassesAdminController {
   constructor(private readonly classesAdminService: ClassesAdminService) {}
+
+  /**
+   * Crear una clase desde el panel de administración
+   * @param data Datos de la clase a crear
+   * @returns Datos de la clase creada
+   */
+  @Post()
+  @Permission(['CREATE'])
+  @ApiOperation({ summary: 'Crear una clase desde el panel de administración' })
+  @ApiOkResponse({ description: 'Clase creada' })
+  @ApiBody({ description: 'Datos de la clase a crear', type: CreateClassAdminDto })
+  create(@Body() data: CreateClassAdminDto): Promise<ClassRegisterData> {
+    return this.classesAdminService.createClass(data);
+  }
 
   /**
    * Mostrar todos los registros de clases por fecha
@@ -81,5 +98,69 @@ export class ClassesAdminController {
     res.setHeader('Content-Type', 'application/pdf');
     res.setHeader('Content-Disposition', 'attachment; filename="class_report.pdf"');
     res.send(pdfBuffer);
+  }
+
+  /**
+   * Obtener todos los registros de clases futuras para un horario y tipo de clase
+   * @param scheduleClass Horario de inicio de la clase
+   * @param typeClass Tipo de clase
+   * @returns Todos los registros de clases futuras
+   */
+  @Get('futures')
+  @Permission(['READ'])
+  @ApiOperation({ summary: 'Obtener todos los registros de clases futuras' })
+  @ApiOkResponse({ description: 'Registros de clases futuras' })
+  @ApiQuery({
+    name: 'schedule',
+    description: 'Horario de inicio de la clase para obtener las clases futuras',
+    required: true
+  })
+  @ApiQuery({
+    name: 'typeClass',
+    description: 'Tipo de clase para obtener las clases futuras',
+    required: false
+  })
+  async findAllFutureClasses(
+    @Query('schedule') scheduleClass: string,
+    @Query('typeClass') typeClass: TypeClass
+  ) {
+    return await this.classesAdminService.findAllFutureClasses(scheduleClass, typeClass);
+  }
+
+  /**
+   * Verificar si hay una clase en una fecha y hora específica para un tipo de clase
+   * @param scheduleClass - Horario de inicio de la clase
+   * @param dateClass - Fecha de la clase
+   * @param typeClass - Tipo de clase
+   */
+  @Get('check-class')
+  @Permission(['READ'])
+  @ApiOperation({
+    summary: 'Verificar si hay una clase en una fecha y hora específica para un tipo de clase'
+  })
+  @ApiOkResponse({ description: 'Clase encontrada' })
+  @ApiQuery({ name: 'schedule', description: 'Horario de inicio de la clase', required: true })
+  @ApiQuery({ name: 'date', description: 'Fecha de la clase', required: true })
+  @ApiQuery({ name: 'typeClass', description: 'Tipo de clase', required: true })
+  async checkClass(
+    @Query('schedule') scheduleClass: string,
+    @Query('date') dateClass: string,
+    @Query('typeClass') typeClass: TypeClass
+  ) {
+    return await this.classesAdminService.checkClass(scheduleClass, dateClass, typeClass);
+  }
+
+  /**
+   * Cerrar una clase por su ID
+   * @param classId - ID de la clase a cerrar
+   * @returns Clase cerrada
+   */
+  @Patch('close/:classId')
+  @Permission(['UPDATE'])
+  @ApiOperation({ summary: 'Cerrar una clase por su ID' })
+  @ApiOkResponse({ description: 'Clase cerrada' })
+  @ApiParam({ name: 'classId', description: 'ID de la clase a cerrar', required: true })
+  async closeClass(@Param('classId') classId: string) {
+    return await this.classesAdminService.closeClass(classId);
   }
 }

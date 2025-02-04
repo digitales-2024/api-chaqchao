@@ -13,6 +13,7 @@ import {
 } from '@nestjs/swagger';
 import { Auth, GetUser, Module, Permission } from '../auth/decorators';
 import { ClassScheduleData, HttpResponse, UserData } from 'src/interfaces';
+import { TypeClass } from '@prisma/client';
 
 @ApiTags('Admin Settings')
 @ApiBadRequestResponse({ description: 'Bad Request' })
@@ -113,5 +114,20 @@ export class ClassScheduleController {
     @GetUser() user: UserData
   ): Promise<HttpResponse<ClassScheduleData>> {
     return this.classScheduleService.remove(id, user);
+  }
+
+  /**
+   * Mostrar los horarios de un tipo de clase
+   * @summary Mostrar los horarios de un tipo de clase
+   * @param typeClass Tipo de clase
+   * @returns Todos los horarios de clases de un tipo de clase
+   */
+  @Get('type-class/:typeClass')
+  @Permission(['READ'])
+  @ApiOperation({ summary: 'Mostrar los horarios de un tipo de clase' })
+  @ApiOkResponse({ description: 'Todos los horarios de clases de un tipo de clase' })
+  @ApiParam({ name: 'typeClass', description: 'Tipo de clase' })
+  findByTypeClass(@Param('typeClass') typeClass: TypeClass): Promise<ClassScheduleData[]> {
+    return this.classScheduleService.findByTypeClass(typeClass);
   }
 }

@@ -13,6 +13,7 @@ import {
 } from '@nestjs/swagger';
 import { Auth, GetUser, Module, Permission } from '../auth/decorators';
 import { ClassPriceConfigData, HttpResponse, UserData } from 'src/interfaces';
+import { TypeClass } from '@prisma/client';
 
 @ApiTags('Admin Settings')
 @ApiBadRequestResponse({ description: 'Bad Request' })
@@ -104,5 +105,22 @@ export class ClassPriceController {
     @GetUser() user: UserData
   ): Promise<HttpResponse<ClassPriceConfigData>> {
     return this.classPriceService.remove(id, user);
+  }
+
+  /**
+   * Mostrar todos los precios de clase en dolares por tipo de clase
+   * @param typeClass Tipo de clase
+   * @returns Precios de clase en dolares por tipo de clase
+   *
+   */
+  @Get('/dolar/:typeClass')
+  @Permission(['READ'])
+  @ApiOperation({ summary: 'Mostrar todos los precios de clase en dolares por tipo de clase' })
+  @ApiOkResponse({ description: 'Precios de clase en dolares por tipo de clase' })
+  @ApiParam({ name: 'typeClass', description: 'Tipo de clase' })
+  findAllPricesDolarByTypeClass(
+    @Param('typeClass') typeClass: TypeClass
+  ): Promise<ClassPriceConfigData[]> {
+    return this.classPriceService.findClassPriceByTypeCurrencyAndTypeClass('DOLAR', typeClass);
   }
 }

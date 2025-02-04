@@ -1,9 +1,18 @@
 import { ApiProperty } from '@nestjs/swagger';
-import { TypeCurrency } from '@prisma/client';
+import { TypeClass, TypeCurrency } from '@prisma/client';
 import { Transform } from 'class-transformer';
-import { IsDate, IsEmail, IsNumber, IsPhoneNumber, IsString } from 'class-validator';
+import { IsDate, IsEmail, IsNotEmpty, IsNumber, IsPhoneNumber, IsString } from 'class-validator';
 
 export class CreateClassDto {
+  @ApiProperty({
+    description: 'Tipo de clase',
+    example: TypeClass.NORMAL,
+    enum: TypeClass
+  })
+  @IsString()
+  @IsNotEmpty()
+  typeClass: TypeClass;
+
   @ApiProperty({
     name: 'userName',
     description: 'Nombre de usuario',

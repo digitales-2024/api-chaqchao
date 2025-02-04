@@ -1,9 +1,18 @@
 import { ApiProperty } from '@nestjs/swagger';
-import { ClassTypeUser, TypeCurrency } from '@prisma/client';
+import { ClassTypeUser, TypeClass, TypeCurrency } from '@prisma/client';
 import { Transform } from 'class-transformer';
 import { IsNotEmpty, IsNumber, IsString, IsUUID } from 'class-validator';
 
 export class CreateClassPriceDto {
+  @ApiProperty({
+    description: 'Tipo de clase',
+    enum: TypeClass,
+    example: TypeClass.NORMAL
+  })
+  @IsString()
+  @IsNotEmpty()
+  typeClass: TypeClass;
+
   @ApiProperty({
     description: 'Tipo de usuario al que se le asignará el precio de la clase',
     enum: ClassTypeUser,

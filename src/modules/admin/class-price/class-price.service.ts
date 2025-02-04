@@ -10,7 +10,7 @@ import { UpdateClassPriceDto } from './dto/update-class-price.dto';
 import { ClassPriceConfigData, HttpResponse, UserData } from 'src/interfaces';
 import { PrismaService } from 'src/prisma/prisma.service';
 import { BusinessConfigService } from '../business-config/business-config.service';
-import { AuditActionType, ClassTypeUser, TypeCurrency } from '@prisma/client';
+import { AuditActionType, ClassTypeUser, TypeClass, TypeCurrency } from '@prisma/client';
 import { handleException } from 'src/utils';
 
 @Injectable()
@@ -55,7 +55,7 @@ export class ClassPriceService {
     createClassPriceDto: CreateClassPriceDto,
     user: UserData
   ): Promise<HttpResponse<ClassPriceConfigData>> {
-    const { businessId, classTypeUser, price, typeCurrency } = createClassPriceDto;
+    const { businessId, classTypeUser, price, typeCurrency, typeClass } = createClassPriceDto;
     this.validateClassTypeUser(classTypeUser);
     this.validateTypeCurrency(typeCurrency);
     try {
@@ -70,7 +70,8 @@ export class ClassPriceService {
         const existingPrices = await prisma.classPriceConfig.findMany({
           where: {
             businessId,
-            classTypeUser
+            classTypeUser,
+            typeClass
           }
         });
 
@@ -92,7 +93,8 @@ export class ClassPriceService {
             classTypeUser,
             price: priceFloat,
             typeCurrency,
-            businessId
+            businessId,
+            typeClass
           }
         });
 
@@ -113,7 +115,8 @@ export class ClassPriceService {
             id: newClassPrice.id,
             classTypeUser: newClassPrice.classTypeUser,
             price: newClassPrice.price,
-            typeCurrency: newClassPrice.typeCurrency
+            typeCurrency: newClassPrice.typeCurrency,
+            typeClass: newClassPrice.typeClass
           }
         };
       });
@@ -131,26 +134,31 @@ export class ClassPriceService {
    * Obtener todos los class prices
    * @returns Todos los class prices
    */
-  async findAll(): Promise<ClassPriceConfigData[]> {
+  async findAll(): Promise<any> {
     try {
       const classPrices = await this.prisma.classPriceConfig.findMany({
         select: {
           id: true,
           classTypeUser: true,
           price: true,
-          typeCurrency: true
+          typeCurrency: true,
+          typeClass: true
         },
         orderBy: {
           typeCurrency: 'asc'
         }
       });
+      // Agrupar los resultados typeClass
+      const groupedClassesSchedule = classPrices.reduce((acc, classSchedule) => {
+        const typeClass = classSchedule.typeClass;
+        if (!acc[typeClass]) {
+          acc[typeClass] = [];
+        }
+        acc[typeClass].push(classSchedule);
+        return acc;
+      }, {});
 
-      return classPrices.map((classPrice) => ({
-        id: classPrice.id,
-        classTypeUser: classPrice.classTypeUser,
-        price: classPrice.price,
-        typeCurrency: classPrice.typeCurrency
-      })) as ClassPriceConfigData[];
+      return groupedClassesSchedule;
     } catch (error) {
       this.logger.error(`Error fetching class prices: ${error.message}`, error.stack);
       throw new BadRequestException('Error fetching class prices');
@@ -188,7 +196,8 @@ export class ClassPriceService {
         id: true,
         classTypeUser: true,
         price: true,
-        typeCurrency: true
+        typeCurrency: true,
+        typeClass: true
       }
     });
 
@@ -201,7 +210,8 @@ export class ClassPriceService {
       id: classPrice.id,
       classTypeUser: classPrice.classTypeUser,
       price: classPrice.price,
-      typeCurrency: classPrice.typeCurrency
+      typeCurrency: classPrice.typeCurrency,
+      typeClass: classPrice.typeClass
     };
   }
   /**
@@ -216,7 +226,7 @@ export class ClassPriceService {
     updateClassPriceDto: UpdateClassPriceDto,
     user: UserData
   ): Promise<HttpResponse<ClassPriceConfigData>> {
-    const { classTypeUser, price, typeCurrency } = updateClassPriceDto;
+    const { classTypeUser, price, typeCurrency, typeClass } = updateClassPriceDto;
 
     // Validar si los datos están presentes
     if (classTypeUser) {
@@ -238,7 +248,8 @@ export class ClassPriceService {
         const hasChanges =
           (classTypeUser && classPriceDB.classTypeUser !== classTypeUser) ||
           (price && classPriceDB.price !== priceFloat) ||
-          (typeCurrency && classPriceDB.typeCurrency !== typeCurrency);
+          (typeCurrency && classPriceDB.typeCurrency !== typeCurrency) ||
+          (typeClass && classPriceDB.typeClass !== typeClass);
 
         if (!hasChanges) {
           return {
@@ -248,7 +259,8 @@ export class ClassPriceService {
               id: classPriceDB.id,
               classTypeUser: classPriceDB.classTypeUser,
               price: classPriceDB.price,
-              typeCurrency: classPriceDB.typeCurrency
+              typeCurrency: classPriceDB.typeCurrency,
+              typeClass: classPriceDB.typeClass
             }
           };
         }
@@ -256,12 +268,12 @@ export class ClassPriceService {
         // Validar que solo haya dos precios para adulto y dos para child
         const existingPrices = await prisma.classPriceConfig.findMany({
           where: {
+            typeClass: classPriceDB.typeClass,
             classTypeUser: classTypeUser || classPriceDB.classTypeUser,
             typeCurrency: typeCurrency || classPriceDB.typeCurrency,
-            NOT: { id } // Excluir el registro actual
+            NOT: { id, typeClass } // Excluir el registro actual
           }
         });
-
         const priceCount = existingPrices.length;
 
         if (priceCount >= 1) {
@@ -273,7 +285,8 @@ export class ClassPriceService {
         // Actualizar el registro de class price
         const updatedClassPrice = await prisma.classPriceConfig.update({
           where: {
-            id
+            id,
+            typeClass
           },
           data: {
             ...(classTypeUser && { classTypeUser }),
@@ -299,7 +312,8 @@ export class ClassPriceService {
             id: updatedClassPrice.id,
             classTypeUser: updatedClassPrice.classTypeUser,
             price: updatedClassPrice.price,
-            typeCurrency: updatedClassPrice.typeCurrency
+            typeCurrency: updatedClassPrice.typeCurrency,
+            typeClass: updatedClassPrice.typeClass
           }
         };
       });
@@ -347,7 +361,8 @@ export class ClassPriceService {
             id: classPrice.id,
             classTypeUser: classPrice.classTypeUser,
             price: classPrice.price,
-            typeCurrency: classPrice.typeCurrency
+            typeCurrency: classPrice.typeCurrency,
+            typeClass: classPrice.typeClass
           }
         };
       });
@@ -363,19 +378,25 @@ export class ClassPriceService {
   /**
    * Encontrar precio de las clases por el tipo de moneda
    * @param typeCurrency Tipo de moneda
+   * @param typeClass Tipo de clase
    * @returns Precios de las clases
    */
-  async findClassPriceByTypeCurrency(typeCurrency: TypeCurrency): Promise<ClassPriceConfigData[]> {
+  async findClassPriceByTypeCurrency(
+    typeCurrency: TypeCurrency,
+    typeClass: TypeClass
+  ): Promise<ClassPriceConfigData[]> {
     try {
       const classPrices = await this.prisma.classPriceConfig.findMany({
         where: {
-          typeCurrency
+          typeCurrency,
+          typeClass
         },
         select: {
           id: true,
           classTypeUser: true,
           price: true,
-          typeCurrency: true
+          typeCurrency: true,
+          typeClass: true
         }
       });
 
@@ -383,7 +404,46 @@ export class ClassPriceService {
         id: classPrice.id,
         classTypeUser: classPrice.classTypeUser,
         price: classPrice.price,
-        typeCurrency: classPrice.typeCurrency
+        typeCurrency: classPrice.typeCurrency,
+        typeClass: classPrice.typeClass
+      })) as ClassPriceConfigData[];
+    } catch (error) {
+      this.logger.error(`Error fetching class prices: ${error.message}`, error.stack);
+      throw new BadRequestException('Error fetching class prices');
+    }
+  }
+
+  /**
+   * Encontrar precio de las clases por el tipo de moneda y el tipo de clase
+   * @param typeCurrency Tipo de moneda
+   * @param typeClass Tipo de clase
+   * @returns Precios de las clases
+   */
+  async findClassPriceByTypeCurrencyAndTypeClass(
+    typeCurrency: TypeCurrency,
+    typeClass: TypeClass
+  ): Promise<ClassPriceConfigData[]> {
+    try {
+      const classPrices = await this.prisma.classPriceConfig.findMany({
+        where: {
+          typeCurrency,
+          typeClass
+        },
+        select: {
+          id: true,
+          classTypeUser: true,
+          price: true,
+          typeCurrency: true,
+          typeClass: true
+        }
+      });
+
+      return classPrices.map((classPrice) => ({
+        id: classPrice.id,
+        classTypeUser: classPrice.classTypeUser,
+        price: classPrice.price,
+        typeCurrency: classPrice.typeCurrency,
+        typeClass: classPrice.typeClass
       })) as ClassPriceConfigData[];
     } catch (error) {
       this.logger.error(`Error fetching class prices: ${error.message}`, error.stack);

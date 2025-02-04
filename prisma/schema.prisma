@@ -160,6 +160,7 @@ model BusinessConfig {
   ClassSchedule           ClassSchedule[]           @relation("businessId")
   ClassLanguage           ClassLanguage[]           @relation("businessId")
   ClassRegistrationConfig ClassRegistrationConfig[] @relation("businessId")
+  ClassCapacity           ClassCapacity[]           @relation("businessId")
 
   @@unique([businessName, email])
 }
@@ -196,6 +197,7 @@ model ClassPriceConfig {
   // Clave foránea que referencia a BusinessConfig
   businessId String
   business   BusinessConfig @relation("businessId", fields: [businessId], references: [id])
+  typeClass  TypeClass      @default(NORMAL)
 
   classTypeUser ClassTypeUser
   price         Float
@@ -222,9 +224,13 @@ model ClassSchedule {
   businessId String
   business   BusinessConfig @relation("businessId", fields: [businessId], references: [id])
 
-  startTime String   @unique
+  typeClass TypeClass @default(NORMAL)
+
+  startTime String
   createdAt DateTime @default(now()) @db.Timestamptz(6)
   updatedAt DateTime @updatedAt
+
+  @@unique([typeClass, startTime])
 }
 
 model ClassLanguage {
@@ -492,13 +498,27 @@ enum NotificationType {
 }
 
 model Classes {
-  id                 String       @id @unique @default(uuid())
+  id                String    @id @unique @default(uuid())
+  typeClass         TypeClass @default(NORMAL)
+  scheduleClass     String
+  languageClass     String
+  dateClass         DateTime
+  totalParticipants Int       @default(0)
+  isClosed          Boolean   @default(false)
+
+  // Relacion con ClassRegister
+
+  createdAt     DateTime        @default(now()) @db.Timestamptz(6)
+  updatedAt     DateTime        @updatedAt
+  ClassRegister ClassRegister[]
+}
+
+model ClassRegister {
+  id String @id @unique @default(uuid())
+
   userName           String
   userEmail          String
   userPhone          String
-  scheduleClass      String
-  languageClass      String
-  dateClass          DateTime
   totalParticipants  Int
   totalAdults        Int
   totalChildren      Int
@@ -507,7 +527,8 @@ model Classes {
   totalPrice         Float
   typeCurrency       TypeCurrency
   comments           String?
-  status             ClassStatus  @default(PENDING)
+  status             ClassStatus    @default(PENDING)
+  methodPayment      MethodPayment?
 
   // Campos de Paypal
   paypalOrderId     String?
@@ -515,10 +536,24 @@ model Classes {
   paypalAmount      String?
   paypalCurrency    String?
   paypalDate        String?
+  expiresAt         DateTime
 
-  createdAt DateTime  @default(now()) @db.Timestamptz(6)
-  updatedAt DateTime  @updatedAt
-  expiresAt DateTime?
+  createdAt DateTime @default(now()) @db.Timestamptz(6)
+  updatedAt DateTime @updatedAt
+
+  classesId String?
+  Classes   Classes? @relation(fields: [classesId], references: [id])
+}
+
+enum MethodPayment {
+  PAYPAL
+  IZIPAY
+}
+
+enum TypeClass {
+  NORMAL
+  PRIVATE
+  GROUP
 }
 
 enum ClassStatus {
@@ -527,19 +562,33 @@ enum ClassStatus {
   CANCELLED
 }
 
+model ClassCapacity {
+  id         String         @id @unique @default(uuid())
+  businessId String
+  business   BusinessConfig @relation("businessId", fields: [businessId], references: [id])
+
+  typeClass TypeClass @default(NORMAL)
+
+  minCapacity Int
+  maxCapacity Int
+
+  createdAt DateTime @default(now()) @db.Timestamptz(6)
+  updatedAt DateTime @updatedAt
+}
+
 model Claims {
-  id                        String        @id @unique @default(uuid())
-  claimantName              String
-  claimantAddress           String?
-  documentNumber            String
-  claimantEmail             String
-  claimantPhone             String
-  claimantRepresentative    String?
-  assetType                 AssetType
-  amountClaimed             String?
-  assetDescription          String
-  claimDescription          String
-  dateClaim                 DateTime
+  id                     String    @id @unique @default(uuid())
+  claimantName           String
+  claimantAddress        String?
+  documentNumber         String
+  claimantEmail          String
+  claimantPhone          String
+  claimantRepresentative String?
+  assetType              AssetType
+  amountClaimed          String?
+  assetDescription       String
+  claimDescription       String
+  dateClaim              DateTime
 }
 
 enum AssetType {

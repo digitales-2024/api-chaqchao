@@ -26,6 +26,7 @@ import {
   ClassesDataAdmin,
   ClassLanguageData,
   ClassPriceConfigData,
+  ClassRegisterData,
   ClassScheduleData,
   ClientData,
   HttpResponse
@@ -36,6 +37,8 @@ import { ClassPriceService } from 'src/modules/admin/class-price/class-price.ser
 import { GetClient } from '../auth/decorators/get-client.decorator';
 import { ClientAuth } from '../auth/decorators/client-auth.decorator';
 import { UpdateClassDto } from './dto/update-class.dto';
+import { GetPricesClassDto } from './dto/get-prices-class.dto';
+import { TypeClass } from '@prisma/client';
 
 @ApiTags('Shop Classes')
 @ApiInternalServerErrorResponse({ description: 'Internal server error' })
@@ -75,7 +78,7 @@ export class ClassesController {
   @ApiOkResponse({ description: 'Clase encontrada' })
   @ApiBadRequestResponse({ description: 'No se encuentra clase' })
   @ClientAuth()
-  findByClient(@GetClient() client: ClientData): Promise<ClassesData[]> {
+  findByClient(@GetClient() client: ClientData): Promise<ClassRegisterData[]> {
     return this.classesService.findByClient(client);
   }
 
@@ -111,8 +114,11 @@ export class ClassesController {
   @ApiOperation({ summary: 'Buscar todos los precios de dolares' })
   @ApiOkResponse({ description: 'Precios encontrados' })
   @ApiBadRequestResponse({ description: 'No clase de precios' })
-  findAllPricesDolar(): Promise<ClassPriceConfigData[]> {
-    return this.classPriceService.findClassPriceByTypeCurrency('DOLAR');
+  findAllPricesToClass(@Body() pricesToClass: GetPricesClassDto): Promise<ClassPriceConfigData[]> {
+    return this.classPriceService.findClassPriceByTypeCurrency(
+      pricesToClass.typeCurrency,
+      pricesToClass.typeClass
+    );
   }
 
   /**
@@ -149,7 +155,8 @@ export class ClassesController {
   @ApiQuery({ name: 'date', required: true, description: 'Fecha de la clase' })
   checkClass(
     @Query('schedule') scheduleClass: string,
-    @Query('date') dateClass: string
+    @Query('date') dateClass: string,
+    @Query('typeClass') typeClass: TypeClass
   ): Promise<ClassesDataAdmin> {
     try {
       if (!scheduleClass || !dateClass) {
@@ -161,7 +168,7 @@ export class ClassesController {
       if (isNaN(dateTime.getTime())) {
         throw new BadRequestException('Invalid date or time format');
       }
-      return this.classesService.checkClass(scheduleClass, dateClass);
+      return this.classesService.checkClass(scheduleClass, dateClass, typeClass);
     } catch (error) {
       throw new BadRequestException(error.message);
     }

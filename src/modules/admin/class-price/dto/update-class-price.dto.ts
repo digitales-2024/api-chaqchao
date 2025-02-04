@@ -1,10 +1,21 @@
 import { ApiProperty, PartialType } from '@nestjs/swagger';
 import { CreateClassPriceDto } from './create-class-price.dto';
-import { ClassTypeUser, TypeCurrency } from '@prisma/client';
+import { ClassTypeUser, TypeClass, TypeCurrency } from '@prisma/client';
 import { IsNotEmpty, IsNumber, IsString } from 'class-validator';
 import { Transform } from 'class-transformer';
 
 export class UpdateClassPriceDto extends PartialType(CreateClassPriceDto) {
+  @ApiProperty({
+    description: 'Tipo de clase',
+    type: TypeClass,
+    enum: TypeClass,
+    example: TypeClass.NORMAL,
+    required: false
+  })
+  @IsNotEmpty()
+  @IsString()
+  typeClass?: TypeClass;
+
   @ApiProperty({
     description: 'Tipo de usuario al que se le asignará el precio de la clase',
     type: ClassTypeUser,

@@ -1,7 +1,12 @@
-import { Classes } from '@prisma/client';
+import { Classes, ClassRegister, TypeClass } from '@prisma/client';
 
 export type ClassesData = Pick<
   Classes,
+  'id' | 'languageClass' | 'dateClass' | 'scheduleClass' | 'typeClass'
+>;
+
+export type ClassRegisterData = Pick<
+  ClassRegister,
   | 'id'
   | 'userName'
   | 'userEmail'
@@ -12,10 +17,7 @@ export type ClassesData = Pick<
   | 'totalPrice'
   | 'totalPriceAdults'
   | 'totalPriceChildren'
-  | 'languageClass'
   | 'typeCurrency'
-  | 'dateClass'
-  | 'scheduleClass'
   | 'comments'
   | 'status'
 >;
@@ -23,9 +25,16 @@ export type ClassesData = Pick<
 export type ClassesDataWithExpires = ClassesData & { expiresAt: Date };
 
 export type ClassesDataAdmin = {
-  dateClass: string;
+  dateClass: Date;
   scheduleClass: string;
   totalParticipants: number;
   languageClass: string;
-  classes: ClassesData[];
+  typeClass: TypeClass;
+  isClosed: boolean;
+  registers: ClassRegisterData[];
+};
+
+export type ClassClosed = {
+  dateClass: Date;
+  scheduleClass: string;
 };
