@@ -28,6 +28,7 @@ export class ClassesAdminService {
    * @returns Clase creada
    */
   async createClass(data: CreateClassAdminDto): Promise<ClassRegisterData> {
+    console.log(data);
     const { dateClass, scheduleClass, typeClass } = data;
 
     // Buscamos si ya hay una clase en la fecha y horario especificados
@@ -108,7 +109,7 @@ export class ClassesAdminService {
             totalParticipants: classEntity.totalParticipants + classRegister.totalParticipants,
             isClosed:
               classEntity.totalParticipants + classRegister.totalParticipants ===
-              participants.maxCapacity
+                participants.maxCapacity || data.isClosed
           }
         });
 
@@ -493,7 +494,7 @@ export class ClassesAdminService {
       }
     });
 
-    return classExists.id || undefined;
+    return classExists?.id || undefined;
   }
 
   /**
@@ -547,7 +548,18 @@ export class ClassesAdminService {
    */
   async checkClass(scheduleClass: string, dateClass: string, typeClass: TypeClass): Promise<any> {
     try {
-      const parsedDate = parseISO(dateClass);
+      // Validar el formato de la fecha
+      let parsedDate: Date;
+      try {
+        parsedDate = parseISO(dateClass);
+        if (!parsedDate || isNaN(parsedDate.getTime())) {
+          throw new Error('Fecha inválida');
+        }
+      } catch (error) {
+        throw new BadRequestException(
+          'El formato de la fecha es inválido. Use el formato ISO (YYYY-MM-DD)'
+        );
+      }
 
       const classExists = await this.prisma.classes.findFirst({
         where: {
