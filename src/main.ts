@@ -33,18 +33,32 @@ async function bootstrap() {
   const document = SwaggerModule.createDocument(app, config);
 
   document.tags = [
-    { name: 'Auth', description: 'Operations about authentication' },
-    { name: 'Admin', description: 'Operations about admin' },
-    { name: 'Users', description: 'Operations about users' },
-    { name: 'Rol', description: 'Operations about roles' },
-    { name: 'Modules', description: 'Operations about modules' },
-    { name: 'Permissions', description: 'Operations about permissions' },
-    { name: 'Products', description: 'Operations about products' },
-    { name: 'Category', description: 'Operations about categories' },
-    { name: 'Order', description: 'Operations about orders' },
-    { name: 'Audit', description: 'Operations about audit' },
-    { name: 'Cart', description: 'Operations about cart' },
-    { name: 'CartItem', description: 'Operations about cart items' }
+    { name: 'Admin Auth', description: 'Operaciones de autenticación y autorización' },
+    { name: 'Admin Account', description: 'Gestión de cuentas de administrador y configuraciones' },
+    { name: 'Admin Users', description: 'Gestión de usuarios administradores' },
+    { name: 'Admin Roles', description: 'Gestión de roles de administradores' },
+    { name: 'Admin Modules', description: 'Gestión de módulos' },
+    { name: 'Admin Permissions', description: 'Gestión de permisos' },
+    { name: 'Admin Products', description: 'Gestión de productos' },
+    { name: 'Admin Categories', description: 'Gestión de categorías' },
+    { name: 'Admin Orders', description: 'Gestión de pedidos' },
+    { name: 'Admin Reports', description: 'Gestión de reportes' },
+    { name: 'Admin Business', description: 'Gestión de negocios' },
+    { name: 'Admin Settings', description: 'Gestión de configuraciones' },
+    { name: 'Admin Classes', description: 'Gestión de clases' },
+    { name: 'Admin Clients', description: 'Gestión de clientes' },
+    { name: 'Admin Audit', description: 'Gestión de auditoría' },
+    { name: 'Admin Claims', description: 'Gestión de reclamos' },
+    // Shop
+    { name: 'Shop Auth', description: 'Operaciones sobre la autenticación de la tienda' },
+    { name: 'Shop Client', description: 'Operaciones sobre los clientes de la tienda' },
+    { name: 'Shop Catalog', description: 'Operaciones sobre los productos de la tienda' },
+    { name: 'Shop Cart', description: 'Operaciones sobre el carrito de la tienda' },
+    { name: 'Shop Order', description: 'Operaciones sobre las órdenes de la tienda' },
+    { name: 'Shop Billing', description: 'Operaciones sobre la facturación de la tienda' },
+    { name: 'Shop Classes', description: 'Operaciones sobre las clases de la tienda' },
+    { name: 'Shop Business', description: 'Operaciones sobre la información de la tienda' },
+    { name: 'Shop Claims', description: 'Operaciones sobre los reclamos de la tienda' }
   ];
 
   SwaggerModule.setup('api', app, document);

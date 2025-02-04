@@ -1,317 +1,150 @@
-import { Injectable, HttpException, HttpStatus, Logger } from '@nestjs/common';
+import {
+  BadRequestException,
+  Injectable,
+  InternalServerErrorException,
+  Logger
+} from '@nestjs/common';
 import { ConfigService } from '@nestjs/config';
+import { CreatePaymentDto } from './dto/create-payment.dto';
+import * as http from 'http';
 import * as https from 'https';
-import axios from 'axios';
+import * as crypto from 'crypto';
 
 @Injectable()
 export class PaymentService {
   private readonly logger = new Logger(PaymentService.name);
-  private credentials: string;
-  private base64Credentials: string;
-  private authorizationHeader: string;
-  constructor(private readonly config: ConfigService) {
-    // Inicializar las variables
-    this.credentials = `${this.config.get('IZIPAY_USERNAME')}:${this.config.get('IZIPAY_PASSWORD')}`;
-    this.base64Credentials = Buffer.from(this.credentials).toString('base64');
-    this.authorizationHeader = `Basic ${this.base64Credentials}`;
-  }
 
-  private readonly apiUrl = 'https://sandbox-api-pw.izipay.pe/security/v1/Token/Generate';
-  private readonly validateAccountUrl =
-    'https://sandbox-api-pw.izipay.pe/accountvalidate/v1/AccountControllers/Validate';
+  private authHeader: string;
+  private readonly hmacSecretKey: string;
+  private readonly password: string;
 
-  /**
-   * Método para crear el token de sesión en IZIPAY
-   * El transactionId se enviará en los headers
-   */
-  async createSessionToken(
-    transactionId: string,
-    {
-      requestSource = 'ECOMMERCE',
-      merchantCode = '',
-      orderNumber = '',
-      publicKey = '',
-      amount = ''
+  constructor(private configService: ConfigService) {
+    this.hmacSecretKey = this.configService.get<string>('IZIPAY_HMAC_KEY');
+    const username = this.configService.get<string>('IZIPAY_PAYMENT_USERNAME');
+    this.password = this.configService.get<string>('IZIPAY_PAYMENT_PASSWORD');
+
+    if (!username || !this.password) {
+      throw new Error('API_USERNAME and API_PASSWORD must be set in environment variables.');
     }
-  ) {
-    try {
-      this.logger.debug('Making POST request to IZIPAY Sandbox API with the following data:', {
-        url: this.apiUrl,
-        headers: {
-          Authorization: this.authorizationHeader,
-          transactionId
-        },
-        data: {
-          requestSource,
-          merchantCode,
-          orderNumber,
-          publicKey,
-          amount
-        }
-      });
 
-      // Solicitud HTTP a la API de IZIPAY Sandbox
-      const response = await axios.post(
-        this.apiUrl,
-        {
-          requestSource,
-          merchantCode,
-          orderNumber,
-          publicKey,
-          amount
-        },
-        {
-          headers: {
-            'Content-Type': 'application/json',
-            Authorization: this.authorizationHeader,
-            transactionId
-          },
-          timeout: 5000
-        }
-      );
-
-      // Registrar solo las partes clave de la respuesta
-      this.logger.debug('Response from IZIPAY API:', {
-        status: response.status,
-        headers: response.headers,
-        data: response.data
-      });
-
-      // Validar que la respuesta contenga el token en la ubicación correcta
-      const token = response.data?.response?.token;
-
-      if (!token) {
-        this.logger.error('No session token found in the response', response.data);
-        throw new HttpException('Failed to generate session token', HttpStatus.BAD_REQUEST);
-      }
-
-      this.logger.debug('Session token successfully generated:', token);
-      return { token };
-    } catch (error) {
-      // Registrar información completa del error
-      if (error.response) {
-        this.logger.error(`Response status: ${error.response.status}`);
-        this.logger.error(`Response data: ${JSON.stringify(error.response.data)}`);
-      } else {
-        this.logger.error('Error during the API request:', error.message);
-      }
-      throw new HttpException(error.message, HttpStatus.INTERNAL_SERVER_ERROR);
+    if (!this.hmacSecretKey) {
+      throw new Error('HMAC_SECRET_KEY must be defined in environment variables');
     }
+    // Generar el header de autenticación Basic
+    this.authHeader = 'Basic ' + Buffer.from(`${username}:${this.password}`).toString('base64');
   }
 
   /**
-   * Método para validar la cuenta usando el token
+   * Función para crear un pago
+   * @param createPaymentDto Datos del pago
+   * @returns Promesa con el formToken o lanza excepción
    */
-  async validateAccount(
-    transactionId: string,
-    token: string, // El token Bearer generado
-    accountData: any
-  ) {
-    if (!token || token === 'undefined') {
-      throw new HttpException('Token is missing or invalid', HttpStatus.BAD_REQUEST);
-    }
+  createPayment(createPaymentDto: CreatePaymentDto): Promise<string> {
+    return new Promise((resolve, reject) => {
+      const endpoint = this.configService.get<string>('IZIPAY_PAYMENT_ENDPOINT');
+      if (!endpoint) {
+        reject(new Error('API_ENDPOINT must be set in environment variables.'));
+        return;
+      }
 
-    try {
-      this.logger.debug(
-        'Making POST request to IZIPAY Account Validation API with the following data:',
-        {
-          url: this.validateAccountUrl,
-          headers: {
-            Authorization: token, // Solo un Bearer
-            transactionId
-          },
-          data: accountData
-        }
+      const postData = JSON.stringify(
+        Object.keys(createPaymentDto).length === 0
+          ? {
+              amount: 200,
+              currency: 'PEN',
+              orderId: 'myOrderId-999999',
+              customer: {
+                email: 'sample@example.com'
+              }
+            }
+          : createPaymentDto
       );
 
-      // Solicitud HTTP a la API de Validación de IZIPAY
-      const response = await axios.post(this.validateAccountUrl, accountData, {
+      const url = new URL(`${endpoint}/api-payment/V4/Charge/CreatePayment`);
+      const options: http.RequestOptions | https.RequestOptions = {
+        hostname: url.hostname,
+        port: url.port || (url.protocol === 'https:' ? 443 : 80),
+        path: url.pathname + url.search,
+        method: 'POST',
         headers: {
+          Authorization: this.authHeader,
           'Content-Type': 'application/json',
-          Authorization: token, // Token Bearer
-          transactionId // TransactionId en los headers
-        },
-        timeout: 5000 // Timeout de 5 segundos
+          'Content-Length': Buffer.byteLength(postData)
+        }
+      };
+
+      const protocol = url.protocol === 'https:' ? https : http;
+
+      const req = protocol.request(options, (res) => {
+        let data = '';
+
+        res.setEncoding('utf8');
+        res.on('data', (chunk) => {
+          data += chunk;
+        });
+
+        res.on('end', () => {
+          try {
+            const body = JSON.parse(data);
+
+            if (body.status === 'SUCCESS') {
+              const formToken = body.answer.formToken;
+              resolve(formToken);
+            } else {
+              console.error('Error en la respuesta de la API:', body);
+              reject(new InternalServerErrorException('Error en la creación del pago.'));
+            }
+          } catch (e) {
+            console.error('Error al parsear la respuesta:', e);
+            reject(new InternalServerErrorException('Error al procesar la respuesta de la API.'));
+          }
+        });
       });
 
-      this.logger.debug('Response from IZIPAY Account Validation API:', response.data);
+      req.on('error', (e) => {
+        console.error('Error en la solicitud:', e);
+        reject(new InternalServerErrorException('Error al comunicarse con la API externa.'));
+      });
 
-      if (response.data?.code !== '00') {
-        this.logger.error('Account validation failed:', response.data);
-        throw new HttpException('Failed to validate account', HttpStatus.BAD_REQUEST);
-      }
-
-      return response.data;
-    } catch (error) {
-      if (error.response) {
-        this.logger.error(`Response status: ${error.response.status}`);
-        this.logger.error(`Response data: ${JSON.stringify(error.response.data)}`);
-      } else {
-        this.logger.error('Error during the API request:', error.message);
-      }
-      throw new HttpException(error.message, HttpStatus.INTERNAL_SERVER_ERROR);
-    }
+      // Escribir los datos del POST
+      req.write(postData);
+      req.end();
+    });
   }
 
   /**
-   * se completara
+   * Valida el hash del pago
+   * @param validatePaymentDto Datos de pago y hash
+   * @returns Mensaje de validación
    */
-  async postSDKTest(body: any) {
-    try {
-      return new Promise((resolve, reject) => {
-        const options = {
-          host: this.config.get('IZIPAY_URL'),
-          port: 443,
-          path: '/api-payment/V4/Charge/SDKTest',
-          method: 'POST',
-          headers: {
-            Authorization: this.authorizationHeader,
-            'Content-Type': 'application/json'
-          }
-        };
+  validatePayment(validatePaymentDto): boolean {
+    const { hashKey, hash, rawClientAnswer } = validatePaymentDto;
+    let generatedHash = '';
 
-        const req = https.request(options, (res) => {
-          let data = '';
+    // Convertir el objeto a JSON
+    const message = JSON.stringify(rawClientAnswer);
 
-          res.on('data', (chunk) => {
-            data += chunk;
-          });
+    // Generar el hash del clientAnswer
 
-          res.on('end', () => {
-            try {
-              const parsedData = JSON.parse(data);
-              resolve(parsedData);
-            } catch (error) {
-              reject(
-                new HttpException('Error parsing token response', HttpStatus.INTERNAL_SERVER_ERROR)
-              );
-            }
-          });
-        });
+    if (!hashKey) {
+      throw new BadRequestException('Payment hash is required');
+    }
 
-        req.on('error', (error) => {
-          reject(
-            new HttpException(`Request error: ${error.message}`, HttpStatus.INTERNAL_SERVER_ERROR)
-          );
-        });
-
-        // Envía el cuerpo de la solicitud (el "value")
-        if (body) req.write(JSON.stringify(body));
-        req.end();
-      });
-    } catch (error) {
-      this.logger.error(`Internal Server Error: ${error.message}`, error.stack);
+    if (hashKey === 'sha256_hmac') {
+      generatedHash = this.generateHmacSha256(JSON.parse(message), this.hmacSecretKey);
+    } else if (hashKey === 'password') {
+      generatedHash = this.generateHmacSha256(message, this.password);
+    } else {
+      return false;
+    }
+    if (hash === generatedHash) {
+      return true;
+    } else {
+      throw new BadRequestException('Payment hash mismatch');
     }
   }
 
-  /**
-   * se completara
-   */
-  async postCreatePayment(body: any) {
-    try {
-      return new Promise((resolve, reject) => {
-        const options = {
-          host: this.config.get('IZIPAY_URL'),
-          port: 443,
-          path: '/api-payment/V4/Charge/CreatePayment',
-          method: 'POST',
-          headers: {
-            Authorization: this.authorizationHeader,
-            'Content-Type': 'application/json'
-          }
-        };
-
-        const req = https.request(options, (res) => {
-          let data = '';
-
-          res.on('data', (chunk) => {
-            data += chunk;
-          });
-
-          res.on('end', () => {
-            try {
-              const parsedData = JSON.parse(data);
-              resolve(parsedData);
-            } catch (error) {
-              reject(
-                new HttpException('Error parsing token response', HttpStatus.INTERNAL_SERVER_ERROR)
-              );
-            }
-          });
-        });
-
-        req.on('error', (error) => {
-          reject(
-            new HttpException(`Request error: ${error.message}`, HttpStatus.INTERNAL_SERVER_ERROR)
-          );
-        });
-
-        // Envía el cuerpo de la solicitud (el "value")
-        if (body) req.write(JSON.stringify(body));
-        req.end();
-      });
-    } catch (error) {
-      this.logger.error(`Internal Server Error: ${error.message}`, error.stack);
-    }
-  }
-
-  /**
-   * se completara
-   */
-  async postCreateToken(body: any) {
-    try {
-      return new Promise((resolve, reject) => {
-        const options = {
-          host: this.config.get('IZIPAY_URL'),
-          port: 443,
-          path: '/api-payment/V4/Charge/CreateToken',
-          method: 'POST',
-          headers: {
-            Authorization: this.authorizationHeader,
-            'Content-Type': 'application/json'
-          }
-        };
-
-        // Definir el cuerpo de la solicitud con valores predefinidos
-        body = {
-          currency: 'PEN',
-          customer: {
-            email: 'sample@example.com'
-          },
-          orderId: 'myOrderId-849227'
-        };
-
-        const req = https.request(options, (res) => {
-          let data = '';
-
-          res.on('data', (chunk) => {
-            data += chunk;
-          });
-
-          res.on('end', () => {
-            try {
-              const parsedData = JSON.parse(data);
-              resolve(parsedData);
-            } catch (error) {
-              reject(
-                new HttpException('Error parsing token response', HttpStatus.INTERNAL_SERVER_ERROR)
-              );
-            }
-          });
-        });
-
-        req.on('error', (error) => {
-          reject(
-            new HttpException(`Request error: ${error.message}`, HttpStatus.INTERNAL_SERVER_ERROR)
-          );
-        });
-
-        // Envía el cuerpo de la solicitud (el "value")
-        if (body) req.write(JSON.stringify(body));
-        req.end();
-      });
-    } catch (error) {
-      this.logger.error(`Internal Server Error: ${error.message}`, error.stack);
-    }
+  generateHmacSha256(message: string, secretKey: string): string {
+    return crypto.createHmac('sha256', secretKey).update(message).digest('hex');
   }
 }

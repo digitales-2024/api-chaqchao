@@ -145,6 +145,7 @@ enum AuditActionType {
 
 model BusinessConfig {
   id            String @id @unique @default(uuid())
+  ruc           String @default("00000000000")
   businessName  String
   contactNumber String
   email         String
@@ -159,6 +160,7 @@ model BusinessConfig {
   ClassSchedule           ClassSchedule[]           @relation("businessId")
   ClassLanguage           ClassLanguage[]           @relation("businessId")
   ClassRegistrationConfig ClassRegistrationConfig[] @relation("businessId")
+  ClassCapacity           ClassCapacity[]           @relation("businessId")
 
   @@unique([businessName, email])
 }
@@ -195,6 +197,7 @@ model ClassPriceConfig {
   // Clave foránea que referencia a BusinessConfig
   businessId String
   business   BusinessConfig @relation("businessId", fields: [businessId], references: [id])
+  typeClass  TypeClass      @default(NORMAL)
 
   classTypeUser ClassTypeUser
   price         Float
@@ -221,9 +224,13 @@ model ClassSchedule {
   businessId String
   business   BusinessConfig @relation("businessId", fields: [businessId], references: [id])
 
-  startTime String   @unique
+  typeClass TypeClass @default(NORMAL)
+
+  startTime String
   createdAt DateTime @default(now()) @db.Timestamptz(6)
   updatedAt DateTime @updatedAt
+
+  @@unique([typeClass, startTime])
 }
 
 model ClassLanguage {
@@ -278,6 +285,7 @@ model Category {
   id String @id @unique @default(uuid())
 
   name        String  @unique
+  family      Family  @default(CHOCOLAT)
   description String?
   isActive    Boolean @default(true)
 
@@ -286,6 +294,15 @@ model Category {
 
   // Relación con Product
   products Product[] @relation("categoryId")
+}
+
+enum Family {
+  CHOCOLAT // Chocolate
+  DRINK // Drink
+  SPICES // Spices
+  PERSONAL_CARE // Personal Care
+  MERCH // Merchandise
+  OTHER // Other
 }
 
 model ProductVariation {
@@ -306,44 +323,44 @@ model ProductVariation {
 model Client {
   id           String    @id @unique @default(uuid())
   name         String
+  lastName     String?
   email        String    @unique
   phone        String?
+  image        String?
   password     String?
   birthDate    DateTime?
   isGoogleAuth Boolean?
   token        String?
   lastLogin    DateTime  @default(now()) @db.Timestamptz(6)
   isActive     Boolean   @default(true)
-  terms         Boolean   @default(true)
-
-  carts Cart[] @relation("ClientToCart")
+  terms        Boolean   @default(true)
 
   // Relación con Notification
   notifications Notification[] @relation("ClientToNotificationRelation")
 
   createdAt DateTime @default(now()) @db.Timestamptz(6)
   updatedAt DateTime @updatedAt
+  carts     Cart[]   @relation("ClientToCart")
 }
 
 model Cart {
-  id String @id @unique @default(uuid())
+  id           String     @id @unique @default(uuid())
+  tempId       String?    @unique
+  clientId     String? // Asociado a un usuario autenticado
+  client       Client?    @relation("ClientToCart", fields: [clientId], references: [id], onDelete: Cascade)
+  cartItems    CartItem[] @relation("CartToCartItem")
+  order        Order?     @relation("CartToOrder")
+  orderId      String? // FK a Order
+  cartStatus   CartStatus @default(PENDING)
+  createdAt    DateTime   @default(now())
+  updatedAt    DateTime   @updatedAt
+  lastAccessed DateTime   @default(now())
 
-  // Relación con Client
-  clientId String
-  client   Client @relation(fields: [clientId], references: [id], name: "ClientToCart", map: "FK_Cart_Client")
-
-  cartItems CartItem[] @relation("CartToCartItem")
-
-  // Relación opuesta con Order
-  order Order? @relation(name: "CartToOrder")
-
-  cartStatus CartStatus
-  createdAt  DateTime   @default(now()) @db.Timestamptz(6)
-  updatedAt  DateTime   @updatedAt
+  @@index([clientId])
+  @@index([lastAccessed])
 }
 
 enum CartStatus {
-  ACTIVE
   PENDING
   COMPLETED
 }
@@ -352,8 +369,8 @@ model CartItem {
   id String @id @unique @default(uuid())
 
   // Relación con Cart
-  cartId String
   cart   Cart   @relation(fields: [cartId], references: [id], name: "CartToCartItem")
+  cartId String
 
   // Relación con Product
   productId String
@@ -363,14 +380,21 @@ model CartItem {
   price     Float
   createdAt DateTime @default(now()) @db.Timestamptz(6)
   updatedAt DateTime @updatedAt
+
+  @@index([cartId])
+  @@index([productId])
 }
 
 model Order {
-  id String @id @unique @default(uuid())
-
+  id     String @id @unique @default(uuid())
   // Relación con Cart
-  cartId String @unique
   cart   Cart   @relation(fields: [cartId], references: [id], name: "CartToOrder")
+  cartId String @unique
+
+  customerName     String
+  customerLastName String
+  customerEmail    String
+  customerPhone    String
 
   pickupCode    String?     @unique
   totalAmount   Float?
@@ -388,33 +412,44 @@ model Order {
   notifications Notification[] @relation("OrderToNotificationRelation")
 
   // Relación con BillingDocument
-  billingDocuments BillingDocument[] @relation("OrderToBilling")
+  billingDocument BillingDocument? @relation("OrderToBilling")
+
+  @@index([cartId])
 }
 
 enum OrderStatus {
-  PENDING
-  CONFIRMED
-  READY
-  COMPLETED
-  CANCELLED
+  PENDING // Pendiente
+  CONFIRMED // Confirmado
+  PROCESSING // Procesando
+  COMPLETED // Completado
+  CANCELLED // Cancelado
 }
 
 model BillingDocument {
   id String @id @unique @default(uuid())
 
   // Relación con Order
-  orderId String
+  orderId String @unique
   order   Order  @relation(fields: [orderId], references: [id], name: "OrderToBilling")
 
   billingDocumentType BillingDocumentType
+  typeDocument        String
   documentNumber      String
-  ruc                 String?
-  issuedAt            DateTime
-  totalAmount         Float
-  paymentStatus       PaymentStatus
-  isActive            Boolean             @default(true)
-  createdAt           DateTime            @default(now()) @db.Timestamptz(6)
-  updatedAt           DateTime            @updatedAt
+  address             String
+  city                String
+  state               String
+  country             String
+  postalCode          String
+
+  // Datos de la empresa
+  businessName String?
+
+  issuedAt      DateTime
+  totalAmount   Float
+  paymentStatus PaymentStatus
+  isActive      Boolean       @default(true)
+  createdAt     DateTime      @default(now()) @db.Timestamptz(6)
+  updatedAt     DateTime      @updatedAt
 }
 
 enum BillingDocumentType {
@@ -424,8 +459,14 @@ enum BillingDocumentType {
 
 enum PaymentStatus {
   PAID
-  PENDING
-  FAILED
+  RUNNING
+  UNPAID
+  ABANDONED
+}
+
+model PickupCodeSequence {
+  id         Int @id @default(1)
+  currentSeq Int @default(0)
 }
 
 model Notification {
@@ -457,13 +498,27 @@ enum NotificationType {
 }
 
 model Classes {
-  id                 String       @id @unique @default(uuid())
+  id                String    @id @unique @default(uuid())
+  typeClass         TypeClass @default(NORMAL)
+  scheduleClass     String
+  languageClass     String
+  dateClass         DateTime
+  totalParticipants Int       @default(0)
+  isClosed          Boolean   @default(false)
+
+  // Relacion con ClassRegister
+
+  createdAt     DateTime        @default(now()) @db.Timestamptz(6)
+  updatedAt     DateTime        @updatedAt
+  ClassRegister ClassRegister[]
+}
+
+model ClassRegister {
+  id String @id @unique @default(uuid())
+
   userName           String
   userEmail          String
   userPhone          String
-  scheduleClass      String
-  languageClass      String
-  dateClass          DateTime
   totalParticipants  Int
   totalAdults        Int
   totalChildren      Int
@@ -472,7 +527,71 @@ model Classes {
   totalPrice         Float
   typeCurrency       TypeCurrency
   comments           String?
+  status             ClassStatus    @default(PENDING)
+  methodPayment      MethodPayment?
+
+  // Campos de Paypal
+  paypalOrderId     String?
+  paypalOrderStatus String?
+  paypalAmount      String?
+  paypalCurrency    String?
+  paypalDate        String?
+  expiresAt         DateTime
 
   createdAt DateTime @default(now()) @db.Timestamptz(6)
   updatedAt DateTime @updatedAt
+
+  classesId String?
+  Classes   Classes? @relation(fields: [classesId], references: [id])
+}
+
+enum MethodPayment {
+  PAYPAL
+  IZIPAY
+}
+
+enum TypeClass {
+  NORMAL
+  PRIVATE
+  GROUP
+}
+
+enum ClassStatus {
+  PENDING
+  CONFIRMED
+  CANCELLED
+}
+
+model ClassCapacity {
+  id         String         @id @unique @default(uuid())
+  businessId String
+  business   BusinessConfig @relation("businessId", fields: [businessId], references: [id])
+
+  typeClass TypeClass @default(NORMAL)
+
+  minCapacity Int
+  maxCapacity Int
+
+  createdAt DateTime @default(now()) @db.Timestamptz(6)
+  updatedAt DateTime @updatedAt
+}
+
+model Claims {
+  id                     String    @id @unique @default(uuid())
+  claimantName           String
+  claimantAddress        String?
+  documentNumber         String
+  claimantEmail          String
+  claimantPhone          String
+  claimantRepresentative String?
+  assetType              AssetType
+  amountClaimed          String?
+  assetDescription       String
+  claimDescription       String
+  dateClaim              DateTime
+}
+
+enum AssetType {
+  PRODUCT
+  SERVICE
 }

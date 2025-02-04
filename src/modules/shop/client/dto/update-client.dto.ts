@@ -8,7 +8,7 @@ export class UpdateClientDto extends PartialType(
 ) {
   @ApiProperty({
     name: 'name',
-    description: 'Client name',
+    description: 'Nombre del cliente',
     required: false
   })
   @IsString()
@@ -18,7 +18,7 @@ export class UpdateClientDto extends PartialType(
 
   @ApiProperty({
     name: 'phone',
-    description: 'Client phone',
+    description: 'Teléfono del cliente',
     required: false
   })
   @Transform(({ value }) => value.trim())
@@ -27,7 +27,7 @@ export class UpdateClientDto extends PartialType(
 
   @ApiProperty({
     name: 'birthDate',
-    description: 'Client birth date',
+    description: 'Fecha de nacimiento del cliente',
     required: false
   })
   @IsDate()

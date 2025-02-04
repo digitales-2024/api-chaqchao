@@ -1,12 +1,22 @@
 import { ApiProperty } from '@nestjs/swagger';
-import { TypeCurrency } from '@prisma/client';
+import { TypeClass, TypeCurrency } from '@prisma/client';
 import { Transform } from 'class-transformer';
-import { IsDate, IsEmail, IsNumber, IsPhoneNumber, IsString } from 'class-validator';
+import { IsDate, IsEmail, IsNotEmpty, IsNumber, IsPhoneNumber, IsString } from 'class-validator';
 
 export class CreateClassDto {
   @ApiProperty({
+    description: 'Tipo de clase',
+    example: TypeClass.NORMAL,
+    enum: TypeClass
+  })
+  @IsString()
+  @IsNotEmpty()
+  typeClass: TypeClass;
+
+  @ApiProperty({
     name: 'userName',
-    description: 'User name'
+    description: 'Nombre de usuario',
+    example: 'John Doe'
   })
   @IsString()
   @Transform(({ value }) => value.trim().toLowerCase())
@@ -14,7 +24,8 @@ export class CreateClassDto {
 
   @ApiProperty({
     name: 'userEmail',
-    description: 'User email'
+    description: 'Correo electrónico de usuario',
+    example: 'pDx5G@example.com'
   })
   @IsEmail()
   @Transform(({ value }) => value.trim())
@@ -22,7 +33,8 @@ export class CreateClassDto {
 
   @ApiProperty({
     name: 'userPhone',
-    description: 'User phone'
+    description: 'Teléfono de usuario',
+    example: '+1234567890'
   })
   @IsPhoneNumber(null)
   @Transform(({ value }) => value.trim())
@@ -30,7 +42,8 @@ export class CreateClassDto {
 
   @ApiProperty({
     name: 'scheduleClass',
-    description: 'Class schedule'
+    description: 'Horario de clases',
+    example: '2022-12-31T23:59:59Z'
   })
   @IsString()
   @Transform(({ value }) => value.trim())
@@ -38,7 +51,8 @@ export class CreateClassDto {
 
   @ApiProperty({
     name: 'languageClass',
-    description: 'Class language'
+    description: 'Lenguaje de clase',
+    example: 'español'
   })
   @IsString()
   @Transform(({ value }) => value.trim().toLowerCase())
@@ -46,7 +60,8 @@ export class CreateClassDto {
 
   @ApiProperty({
     name: 'dateClass',
-    description: 'Class date'
+    description: 'Fecha de clase',
+    example: '2022-12-31'
   })
   @IsDate()
   @Transform(({ value }) => new Date(value))
@@ -54,21 +69,25 @@ export class CreateClassDto {
 
   @ApiProperty({
     name: 'totalAdults',
-    description: 'Total adults'
+    description: 'Total de adultos',
+    example: 2
   })
   @IsNumber()
   totalAdults: number;
 
   @ApiProperty({
     name: 'totalChildren',
-    description: 'Total children'
+    description: 'Total de niños',
+    example: 1
   })
   @IsNumber()
   totalChildren: number;
 
   @ApiProperty({
     name: 'typeCurrency',
-    description: 'Type currency'
+    description: 'Tipo moneda',
+    example: 'DOLAR',
+    enum: TypeCurrency
   })
   @IsString()
   @Transform(({ value }) => value.trim().toUpperCase())
@@ -76,9 +95,61 @@ export class CreateClassDto {
 
   @ApiProperty({
     name: 'comments',
-    description: 'Comments'
+    description: 'Comentario',
+    example: 'Comentario de la clase'
   })
   @IsString()
   @Transform(({ value }) => value.trim())
   comments?: string;
+
+  // Campos de PayPal
+  @ApiProperty({
+    name: 'paypalOrderId',
+    description: 'PayPal Order ID',
+    required: false,
+    example: '1234567890'
+  })
+  @IsString()
+  @Transform(({ value }) => value.trim())
+  paypalOrderId?: string;
+
+  @ApiProperty({
+    name: 'paypalOrderStatus',
+    description: 'PayPal Order Status',
+    required: false,
+    example: 'COMPLETED'
+  })
+  @IsString()
+  @Transform(({ value }) => value.trim())
+  paypalOrderStatus?: string;
+
+  @ApiProperty({
+    name: 'paypalAmount',
+    description: 'PayPal Amount',
+    required: false,
+    example: '100.00'
+  })
+  @IsString()
+  @Transform(({ value }) => value.trim())
+  paypalAmount?: string;
+
+  @ApiProperty({
+    name: 'paypalCurrency',
+    description: 'PayPal Currency',
+    required: false,
+    example: 'USD'
+  })
+  @IsString()
+  @Transform(({ value }) => value.trim())
+  paypalCurrency?: string;
+
+  @ApiProperty({
+    name: 'paypalDate',
+    description: 'PayPal Date',
+    required: false,
+    example: '2022-12-31T23:59:59Z'
+  })
+  @IsString()
+  @Transform(({ value }) => value.trim())
+  paypalDate?: string;
 }

@@ -164,4 +164,73 @@ export class EmailService {
       return false; // Retorna false indicando fallo
     }
   }
+
+  @OnEvent('order.new-order')
+  async newOrder(data: EventPayloads['order.new-order']): Promise<boolean> {
+    const { name, email, orderNumber, totalOrder, pickupDate } = data;
+    const subject = `Pedido realizado: ${infoBusiness.business}`;
+
+    try {
+      const sendingEmail = await this.mailerService.sendMail({
+        to: email,
+        subject,
+        template: 'new-order',
+        context: {
+          name,
+          email,
+          orderNumber,
+          totalOrder,
+          pickupDate,
+          business: infoBusiness.business,
+          url: infoBusiness.url,
+          phone: infoBusiness.phone,
+          address: infoBusiness.address,
+          contact: infoBusiness.contact
+        }
+      });
+
+      if (sendingEmail) {
+        return true; // Retorna true indicando éxito
+      } else {
+        return false; // Retorna false indicando fallo
+      }
+    } catch (error) {
+      this.logger.error(error);
+      return false; // Retorna false indicando fallo
+    }
+  }
+
+  @OnEvent('order.order-completed')
+  async orderCompleted(data: EventPayloads['order.order-completed']): Promise<boolean> {
+    const { name, email, orderNumber, totalOrder, products, pickupDate } = data;
+    const subject = `Pedido completado: ${infoBusiness.business}`;
+
+    try {
+      const sendingEmail = await this.mailerService.sendMail({
+        to: email,
+        subject,
+        template: 'order-completed',
+        context: {
+          name,
+          email,
+          orderNumber,
+          totalOrder,
+          products,
+          pickupDate,
+          business: infoBusiness.business,
+          url: infoBusiness.url,
+          phone: infoBusiness.phone,
+          address: infoBusiness.address,
+          contact: infoBusiness.contact
+        }
+      });
+
+      if (sendingEmail) {
+        return true; // Retorna true indicando éxito
+      }
+    } catch (error) {
+      this.logger.error(error);
+      return false; // Retorna false indicando fallo
+    }
+  }
 }

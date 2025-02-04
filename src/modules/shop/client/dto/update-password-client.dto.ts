@@ -5,7 +5,7 @@ import { IsNotEmpty, IsString, Matches, MaxLength, MinLength } from 'class-valid
 export class UpdatePasswordClientDto {
   @ApiProperty({
     name: 'password',
-    description: 'Client password',
+    description: 'Contraseña del cliente',
     required: true
   })
   @IsString()
@@ -21,7 +21,7 @@ export class UpdatePasswordClientDto {
 
   @ApiProperty({
     name: 'newPassword',
-    description: 'Client new password',
+    description: 'NUEVA contraseña del cliente',
     required: true
   })
   @IsString()
@@ -37,7 +37,7 @@ export class UpdatePasswordClientDto {
 
   @ApiProperty({
     name: 'confirmPassword',
-    description: 'Client confirm password',
+    description: 'Cliente Confirmar contraseña',
     required: true
   })
   @IsString()

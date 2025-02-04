@@ -64,6 +64,7 @@ export class AuthService {
         sameSite: 'strict',
         path: '/',
         maxAge: this.configService.get('COOKIE_EXPIRES_IN'),
+        domain: this.configService.get('ADMIN_DOMAIN'),
         expires: new Date(Date.now() + this.configService.get('COOKIE_EXPIRES_IN'))
       });
 
@@ -72,6 +73,7 @@ export class AuthService {
         secure: process.env.NODE_ENV === 'production',
         sameSite: 'strict',
         maxAge: this.configService.get('COOKIE_EXPIRES_IN'),
+        domain: this.configService.get('ADMIN_DOMAIN'),
         expires: new Date(Date.now() + this.configService.get('COOKIE_EXPIRES_IN'))
       });
 
@@ -85,6 +87,7 @@ export class AuthService {
         sameSite: 'strict',
         path: '/',
         maxAge: this.configService.get('COOKIE_REFRESH_EXPIRES_IN'), // Asegúrate de que esta configuración exista
+        domain: this.configService.get('ADMIN_DOMAIN'),
         expires: new Date(Date.now() + this.configService.get('COOKIE_REFRESH_EXPIRES_IN'))
       });
 
@@ -118,18 +121,21 @@ export class AuthService {
     // Borra la cookie que contiene el token JWT
     res.cookie('access_token', '', {
       httpOnly: true,
+      domain: this.configService.get('ADMIN_DOMAIN'),
       expires: new Date(0) // Establece la fecha de expiración a una fecha pasada para eliminar la cookie
     });
 
     // Borra la cookie que contiene el refresh token
     res.cookie('refresh_token', '', {
       httpOnly: true,
+      domain: this.configService.get('ADMIN_DOMAIN'),
       expires: new Date(0) // Establece la fecha de expiración a una fecha pasada para eliminar la cookie
     });
 
     // Borra la cookie que indica que el usuario está logueado
     res.cookie('logged_in', '', {
       httpOnly: false,
+      domain: this.configService.get('ADMIN_DOMAIN'),
       expires: new Date(0) // Establece la fecha de expiración a una fecha pasada para eliminar la cookie
     });
 
@@ -178,6 +184,7 @@ export class AuthService {
         sameSite: 'strict',
         path: '/',
         maxAge: this.configService.get('COOKIE_EXPIRES_IN'),
+        domain: this.configService.get('ADMIN_DOMAIN'),
         expires: new Date(Date.now() + this.configService.get('COOKIE_EXPIRES_IN'))
       });
 
@@ -191,6 +198,7 @@ export class AuthService {
         sameSite: 'strict',
         path: '/',
         maxAge: this.configService.get('COOKIE_REFRESH_EXPIRES_IN'),
+        domain: this.configService.get('ADMIN_DOMAIN'),
         expires: new Date(Date.now() + this.configService.get('COOKIE_REFRESH_EXPIRES_IN'))
       });
 
@@ -288,6 +296,7 @@ export class AuthService {
         sameSite: 'strict',
         path: '/',
         maxAge: this.configService.get<number>('COOKIE_EXPIRES_IN'), // tiempo corto para el access_token
+        domain: this.configService.get('ADMIN_DOMAIN'),
         expires: new Date(Date.now() + this.configService.get('COOKIE_EXPIRES_IN'))
       });
 
@@ -299,6 +308,7 @@ export class AuthService {
         sameSite: 'strict',
         path: '/',
         maxAge: this.configService.get<number>('COOKIE_REFRESH_EXPIRES_IN'), // tiempo largo para el refresh_token
+        domain: this.configService.get('ADMIN_DOMAIN'),
         expires: new Date(Date.now() + this.configService.get('COOKIE_REFRESH_EXPIRES_IN'))
       });
 
@@ -307,6 +317,7 @@ export class AuthService {
         secure: process.env.NODE_ENV === 'production',
         sameSite: 'strict',
         maxAge: this.configService.get('COOKIE_EXPIRES_IN'),
+        domain: this.configService.get('ADMIN_DOMAIN'),
         expires: new Date(Date.now() + this.configService.get('COOKIE_EXPIRES_IN'))
       });
 

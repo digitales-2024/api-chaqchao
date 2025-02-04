@@ -39,7 +39,7 @@ export class ClientJwtStrategy extends PassportStrategy(Strategy, 'client-jwt') 
       throw new UnauthorizedException('Client is not active or does not exist');
     }
 
-    const { id: clientId, name, email } = client;
-    return { id: clientId, name, email };
+    const { id: clientId, name, lastName, phone, image, email } = client;
+    return { id: clientId, name, email, lastName, phone, image };
   }
 }

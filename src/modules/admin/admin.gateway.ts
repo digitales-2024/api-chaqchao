@@ -5,10 +5,14 @@ import {
   OnGatewayConnection,
   OnGatewayDisconnect
 } from '@nestjs/websockets';
+import { Order } from '@prisma/client';
 import { Socket, Server } from 'socket.io';
-import { OrderInfo } from 'src/interfaces';
 
-@WebSocketGateway(Number(process.env.WEBSOCKET_PORT) || 5000, { cors: true })
+@WebSocketGateway(Number(process.env.WEBSOCKET_PORT) || 5000, {
+  cors: {
+    origin: '*'
+  },
+})
 export class AdminGateway implements OnGatewayConnection, OnGatewayDisconnect {
   @WebSocketServer()
   server: Server;
@@ -25,7 +29,7 @@ export class AdminGateway implements OnGatewayConnection, OnGatewayDisconnect {
 
   // Pedidos
   // Emitir la creación de un nuevo pedido a los clientes
-  sendOrderCreated(order: OrderInfo) {
+  sendOrderCreated(order: Order) {
     this.server.emit('new-order', order);
   }
   // Actualizar el estado de un pedido
@@ -36,5 +40,14 @@ export class AdminGateway implements OnGatewayConnection, OnGatewayDisconnect {
   // Emitir la creación de una nueva clase a los clientes
   sendNewClassRegister(classId: string) {
     this.server.emit('new-class-register', { classId });
+  }
+
+  sendBusinessStatusUpdated(businessId: string, isOpen: boolean) {
+    this.server.emit('business-schedule-updated', { businessId, isOpen });
+  }
+
+  // Activar o desactivar la disponibilidad de un producto
+  sendProductAvailabilityUpdated(productId: string, isAvailable: boolean) {
+    this.server.emit('product-availability-updated', { productId, isAvailable });
   }
 }

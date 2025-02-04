@@ -3,7 +3,11 @@ import { Transform } from 'class-transformer';
 import { IsNotEmpty, IsString, Matches, MaxLength, MinLength } from 'class-validator';
 
 export class ResetPasswordClientDto {
-  @ApiProperty()
+  @ApiProperty({
+    description: 'Contraseña del cliente',
+    maxLength: 50,
+    minLength: 6
+  })
   @IsString()
   @IsNotEmpty()
   @MinLength(6)
@@ -15,7 +19,11 @@ export class ResetPasswordClientDto {
   @Transform(({ value }) => value.trim())
   password: string;
 
-  @ApiProperty()
+  @ApiProperty({
+    description: 'Confirmación de la contraseña del cliente',
+    maxLength: 50,
+    minLength: 6
+  })
   @IsString()
   @IsNotEmpty()
   @MinLength(6)

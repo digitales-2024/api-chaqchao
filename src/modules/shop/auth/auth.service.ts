@@ -69,7 +69,7 @@ export class AuthService {
   async validateUserGoogle(client: ClientGoogleData, res: Response): Promise<any> {
     try {
       // Buscar cliente en la base de datos por correo electrónico
-      let clientDB = await this.prisma.client.findUnique({
+      const clientDB = await this.prisma.client.findUnique({
         where: {
           email: client.email,
           isGoogleAuth: true
@@ -87,20 +87,27 @@ export class AuthService {
           }
         });
       }
-      // Genera el refresh token
-      const refreshToken = this.getJwtRefreshToken({ id: clientDB.id });
+
+      let refreshToken: string;
+
       // Si no existe, crear un nuevo cliente
       if (!clientDB) {
         this.logger.log(`Creando nuevo cliente: ${client.name} (${client.email})`);
-        clientDB = await this.prisma.client.create({
+        const newClient = await this.prisma.client.create({
           data: {
             name: client.name,
             email: client.email,
-            isGoogleAuth: true,
-            token: refreshToken
+            image: client.image,
+            isGoogleAuth: true
           }
         });
+
+        // Genera el refresh token
+        refreshToken = this.getJwtRefreshToken({ id: newClient.id });
+        await this.clientService.updateToken(newClient.id, refreshToken);
       } else {
+        // Genera el refresh token
+        refreshToken = this.getJwtRefreshToken({ id: clientDB.id });
         await this.clientService.updateLastLogin(clientDB.id);
         if (clientDB.token !== client.token) {
           await this.clientService.updateToken(clientDB.id, refreshToken);
@@ -117,6 +124,7 @@ export class AuthService {
         sameSite: 'strict',
         path: '/',
         maxAge: 1000 * 60 * 60 * 24 * 30, // 30 días
+        domain: this.configService.get('WEB_DOMAIN'),
         expires: new Date(Date.now() + 1000 * 60 * 60 * 24 * 30) // 30 días
       });
 
@@ -125,6 +133,7 @@ export class AuthService {
         secure: process.env.NODE_ENV === 'production',
         sameSite: 'strict',
         maxAge: this.configService.get('COOKIE_EXPIRES_IN'),
+        domain: this.configService.get('WEB_DOMAIN'),
         expires: new Date(Date.now() + this.configService.get('COOKIE_EXPIRES_IN'))
       });
 
@@ -135,6 +144,7 @@ export class AuthService {
         sameSite: 'strict',
         path: '/',
         maxAge: this.configService.get('COOKIE_REFRESH_EXPIRES_IN'), // Asegúrate de que esta configuración exista
+        domain: this.configService.get('WEB_DOMAIN'),
         expires: new Date(Date.now() + this.configService.get('COOKIE_REFRESH_EXPIRES_IN'))
       });
       const webUrlShop = this.configService.get<string>('WEB_URL_SHOP');
@@ -196,6 +206,7 @@ export class AuthService {
         secure: process.env.NODE_ENV === 'production',
         sameSite: 'strict',
         path: '/',
+        domain: this.configService.get('WEB_DOMAIN'),
         maxAge: 1000 * 60 * 60 * 24 * 30, // 30 días
         expires: new Date(Date.now() + 1000 * 60 * 60 * 24 * 30) // 30 días
       });
@@ -205,6 +216,7 @@ export class AuthService {
         secure: process.env.NODE_ENV === 'production',
         sameSite: 'strict',
         maxAge: this.configService.get('COOKIE_EXPIRES_IN'),
+        domain: this.configService.get('WEB_DOMAIN'),
         expires: new Date(Date.now() + this.configService.get('COOKIE_EXPIRES_IN'))
       });
 
@@ -217,6 +229,7 @@ export class AuthService {
         secure: process.env.NODE_ENV === 'production',
         sameSite: 'strict',
         path: '/',
+        domain: this.configService.get('WEB_DOMAIN'),
         maxAge: this.configService.get('COOKIE_REFRESH_EXPIRES_IN'), // Asegúrate de que esta configuración exista
         expires: new Date(Date.now() + this.configService.get('COOKIE_REFRESH_EXPIRES_IN'))
       });
@@ -258,7 +271,7 @@ export class AuthService {
 
         const existEmail = await this.clientService.checkEmailExist(email);
         if (existEmail) {
-          throw new BadRequestException('Email already exists');
+          throw new BadRequestException('email');
         }
 
         const inactiveEmail = await this.clientService.checkEmailInactive(email);
@@ -301,6 +314,7 @@ export class AuthService {
           sameSite: 'strict',
           path: '/',
           maxAge: 1000 * 60 * 60 * 24 * 30, // 30 días
+          domain: this.configService.get('WEB_DOMAIN'),
           expires: new Date(Date.now() + 1000 * 60 * 60 * 24 * 30) // 30 días
         });
 
@@ -309,6 +323,7 @@ export class AuthService {
           secure: process.env.NODE_ENV === 'production',
           sameSite: 'strict',
           maxAge: this.configService.get('COOKIE_EXPIRES_IN'),
+          domain: this.configService.get('WEB_DOMAIN'),
           expires: new Date(Date.now() + this.configService.get('COOKIE_EXPIRES_IN'))
         });
 
@@ -319,6 +334,7 @@ export class AuthService {
           secure: process.env.NODE_ENV === 'production',
           sameSite: 'strict',
           path: '/',
+          domain: this.configService.get('WEB_DOMAIN'),
           maxAge: this.configService.get('COOKIE_REFRESH_EXPIRES_IN'), // Asegúrate de que esta configuración exista
           expires: new Date(Date.now() + this.configService.get('COOKIE_REFRESH_EXPIRES_IN'))
         });
@@ -357,7 +373,7 @@ export class AuthService {
       const payload = { id: clientDB.id };
       const token = this.jwtService.sign(payload, {
         secret: this.configService.get<string>('JWT_SECRET'),
-        expiresIn: this.configService.get<string>('JWT_RESET_PASSWORD_EXPIRES_IN')
+        expiresIn: this.configService.get<string>('JWT_RESET_PASSWORD_EXPIRES_IN') || '5m'
       });
 
       const link = `${this.configService.get<string>('WEB_URL_SHOP')}/reset-password?token=${token}`;
@@ -452,18 +468,21 @@ export class AuthService {
     // Borra la cookie que contiene el token JWT
     res.cookie('client_access_token', '', {
       httpOnly: true,
+      domain: this.configService.get('WEB_DOMAIN'),
       expires: new Date(0) // Establece la fecha de expiración a una fecha pasada para eliminar la cookie
     });
 
     // Borra la cookie que contiene el refresh token
     res.cookie('client_refresh_token', '', {
       httpOnly: true,
+      domain: this.configService.get('WEB_DOMAIN'),
       expires: new Date(0) // Establece la fecha de expiración a una fecha pasada para eliminar la cookie
     });
 
     // Borra la cookie que indica que el usuario está logueado
     res.cookie('client_logged_in', '', {
       httpOnly: false,
+      domain: this.configService.get('WEB_DOMAIN'),
       expires: new Date(0) // Establece la fecha de expiración a una fecha pasada para eliminar la cookie
     });
 
@@ -507,6 +526,7 @@ export class AuthService {
         secure: process.env.NODE_ENV === 'production',
         sameSite: 'strict',
         path: '/',
+        domain: this.configService.get('WEB_DOMAIN'),
         maxAge: this.configService.get<number>('COOKIE_EXPIRES_IN'), // tiempo corto para el access_token
         expires: new Date(Date.now() + this.configService.get('COOKIE_EXPIRES_IN'))
       });
@@ -518,6 +538,7 @@ export class AuthService {
         secure: process.env.NODE_ENV === 'production',
         sameSite: 'strict',
         path: '/',
+        domain: this.configService.get('WEB_DOMAIN'),
         maxAge: this.configService.get<number>('COOKIE_REFRESH_EXPIRES_IN'), // tiempo largo para el refresh_token
         expires: new Date(Date.now() + this.configService.get('COOKIE_REFRESH_EXPIRES_IN'))
       });
@@ -526,6 +547,7 @@ export class AuthService {
         httpOnly: false,
         secure: process.env.NODE_ENV === 'production',
         sameSite: 'strict',
+        domain: this.configService.get('WEB_DOMAIN'),
         maxAge: this.configService.get('COOKIE_EXPIRES_IN'),
         expires: new Date(Date.now() + this.configService.get('COOKIE_EXPIRES_IN'))
       });

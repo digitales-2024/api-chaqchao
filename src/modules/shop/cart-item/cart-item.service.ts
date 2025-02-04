@@ -14,6 +14,7 @@ import { HttpResponse } from 'src/interfaces';
 import { ProductsService } from 'src/modules/admin/products/products.service';
 import { CartService } from '../cart/cart.service';
 import { handleException } from 'src/utils';
+import { CartStatus } from '@prisma/client';
 
 @Injectable()
 export class CartItemService {
@@ -137,8 +138,6 @@ export class CartItemService {
           age--;
         }
 
-        console.log(`La edad del cliente es: ${age}`);
-
         // Verificar si el producto está restringido por edad y el cliente es menor de edad
         if (product.isRestricted && age < 18) {
           throw new BadRequestException('El cliente es menor de edad para comprar este producto');
@@ -178,10 +177,10 @@ export class CartItemService {
         });
 
         // Actualizar el estado del carrito a 'ACTIVE' si está en 'PENDING'
-        if (cartItem.cart.cartStatus === 'PENDING') {
+        if (cartItem.cart.cartStatus === CartStatus.PENDING) {
           await this.prisma.cart.update({
             where: { id: cartId },
-            data: { cartStatus: 'ACTIVE' }
+            data: { cartStatus: CartStatus.PENDING }
           });
         }
 

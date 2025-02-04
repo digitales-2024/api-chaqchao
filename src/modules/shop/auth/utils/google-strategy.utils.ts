@@ -37,10 +37,11 @@ export class GoogleStrategy extends PassportStrategy(Strategy) {
   ): Promise<any> {
     const email = profile.emails[0].value;
     const name = profile.displayName;
+    const image = profile.photos[0].value;
     const token = refreshToken;
 
     // Crear la data del cliente incluyendo el refreshToken
-    const clientData: ClientGoogleData = { name, email, token };
+    const clientData: ClientGoogleData = { name, email, image, token };
 
     // Validar el usuario usando AuthService y retornar el cliente
     return await this.authService.validateUserGoogle(clientData, req.res);

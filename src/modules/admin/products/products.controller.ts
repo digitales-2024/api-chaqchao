@@ -12,22 +12,26 @@ import {
 import { ProductsService } from './products.service';
 import { CreateProductDto } from './dto/create-product.dto';
 import { UpdateProductDto } from './dto/update-product.dto';
-import { Auth, GetUser } from '../auth/decorators';
+import { Auth, GetUser, Module, Permission } from '../auth/decorators';
 import { HttpResponse, ProductData, UserData, UserPayload } from 'src/interfaces';
 import {
   ApiBadRequestResponse,
+  ApiBody,
   ApiCreatedResponse,
   ApiOkResponse,
+  ApiOperation,
+  ApiParam,
   ApiTags,
   ApiUnauthorizedResponse
 } from '@nestjs/swagger';
 import { DeleteProductsDto } from './dto/delete-product.dto';
 import { FileInterceptor } from '@nestjs/platform-express';
 
-@ApiTags('Products')
+@ApiTags('Admin Products')
 @ApiBadRequestResponse({ description: 'Bad Request' })
 @ApiUnauthorizedResponse({ description: 'Unauthorized' })
 @Auth()
+@Module('PRD')
 @Controller({
   path: 'products',
   version: '1'
@@ -35,8 +39,17 @@ import { FileInterceptor } from '@nestjs/platform-express';
 export class ProductsController {
   constructor(private readonly productsService: ProductsService) {}
 
-  @ApiCreatedResponse({ description: 'Product created' })
+  /**
+   * Crear un nuevo producto
+   * @param createProductDto Informacion del producto a crear
+   * @param user Usuario que crea el producto
+   * @returns Informacion del producto creado
+   */
   @Post()
+  @Permission(['CREATE'])
+  @ApiOperation({ summary: 'Crear un nuevo producto' })
+  @ApiCreatedResponse({ description: 'Producto creado' })
+  @ApiBody({ type: CreateProductDto, description: 'Informacion del producto a crear' })
   create(
     @Body() createProductDto: CreateProductDto,
     @GetUser() user: UserData
@@ -44,15 +57,43 @@ export class ProductsController {
     return this.productsService.create(createProductDto, user);
   }
 
-  @ApiCreatedResponse({ description: 'Image uploaded' })
+  /**
+   * Mostrar todos los productos
+   * @param user Usuario que lista los productos
+   * @returns Todos los productos
+   */
+  @Get()
+  @Permission(['READ'])
+  @ApiOperation({ summary: 'Mostrar todos los productos' })
+  @ApiOkResponse({ description: 'Obtener todos los productos' })
+  findAll(@GetUser() user: UserPayload): Promise<ProductData[]> {
+    return this.productsService.findAll(user);
+  }
+
+  /**
+   * Subir una imagen
+   * @param image Imagen a subir
+   * @returns URL de la imagen
+   */
   @Post('upload/image')
-  @UseInterceptors(FileInterceptor('image')) // Interceptor para manejar la subida de archivos
+  @Permission(['CREATE'])
+  @ApiOperation({ summary: 'Subir una imagen' })
+  @ApiCreatedResponse({ description: 'Imagen cargado' })
+  @UseInterceptors(FileInterceptor('image'))
   async uploadImage(@UploadedFile() image: Express.Multer.File): Promise<HttpResponse<string>> {
     return this.productsService.uploadImage(image);
   }
 
-  @ApiCreatedResponse({ description: 'Image updated' })
+  /**
+   * Actualizar una imagen existente
+   * @param image Imagen nueva para reemplazar la existente
+   * @param existingFileName Nombre del archivo existente a actualizar
+   * @returns URL de la imagen actualizada
+   */
   @Patch('update/image/:existingFileName')
+  @Permission(['UPDATE'])
+  @ApiOperation({ summary: 'Actualizar imagen' })
+  @ApiCreatedResponse({ description: 'Image updated' })
   @UseInterceptors(FileInterceptor('image'))
   async updateImage(
     @UploadedFile() image: Express.Multer.File,
@@ -61,20 +102,33 @@ export class ProductsController {
     return this.productsService.updateImage(image, existingFileName);
   }
 
-  @ApiOkResponse({ description: 'Get all products' })
-  @Get()
-  findAll(@GetUser() user: UserPayload): Promise<ProductData[]> {
-    return this.productsService.findAll(user);
-  }
-
-  @ApiOkResponse({ description: 'Get product by id' })
+  /**
+   * Mostrar producto por id
+   * @param id Id del producto
+   * @returns Informacion del producto
+   */
   @Get(':id')
+  @Permission(['READ'])
+  @ApiOperation({ summary: 'Mostrar producto por id' })
+  @ApiParam({ name: 'id', description: 'Id del producto' })
+  @ApiOkResponse({ description: 'Obtener producto por identificación' })
   findOne(@Param('id') id: string): Promise<ProductData> {
     return this.productsService.findOne(id);
   }
 
-  @ApiOkResponse({ description: 'Product updated' })
+  /**
+   * Actualizar el producto por id
+   * @param id Id del producto
+   * @param UpdateProductDto Datos del producto a actualizar
+   * @param user Usuario que actualiza el producto
+   * @returns Información del producto actualizado
+   */
   @Patch(':id')
+  @Permission(['UPDATE'])
+  @ApiOperation({ summary: 'Actualizar el producto por id' })
+  @ApiParam({ name: 'id', description: 'Id del producto' })
+  @ApiBody({ type: UpdateProductDto, description: 'Datos del producto a actualizar' })
+  @ApiOkResponse({ description: 'Producto actualizado' })
   update(
     @Param('id') id: string,
     @Body() UpdateProductDto: UpdateProductDto,
@@ -83,14 +137,35 @@ export class ProductsController {
     return this.productsService.update(id, UpdateProductDto, user);
   }
 
-  @ApiOkResponse({ description: 'Product deleted' })
+  /**
+   * Eliminar un producto
+   * @param id Id del producto
+   * @param user Usuario que elimina el producto
+   * @returns Información del producto eliminado
+   */
   @Delete(':id')
+  @Permission(['DELETE'])
+  @ApiOperation({ summary: 'Eliminar un producto' })
+  @ApiParam({ name: 'id', description: 'Id del producto' })
+  @ApiOkResponse({ description: 'Producto eliminado' })
   remove(@Param('id') id: string, @GetUser() user: UserData): Promise<HttpResponse<ProductData>> {
     return this.productsService.remove(id, user);
   }
 
-  @ApiOkResponse({ description: 'Users deactivated' })
+  /**
+   * Desactivar varios productos
+   * @param products Arreglo de identificadores de los productos a desactivar
+   * @param user Usuario que desactiva los productos
+   * @returns Mensaje de desactivación correcta
+   */
   @Delete('remove/all')
+  @Permission(['DELETE'])
+  @ApiOperation({ summary: 'Desactivar varios productos' })
+  @ApiBody({
+    type: DeleteProductsDto,
+    description: 'Arreglo de identificadores de los productos a desactivar'
+  })
+  @ApiOkResponse({ description: 'Productos desactivados' })
   deactivate(
     @Body() products: DeleteProductsDto,
     @GetUser() user: UserData
@@ -98,23 +173,52 @@ export class ProductsController {
     return this.productsService.removeAll(products, user);
   }
 
-  @ApiOkResponse({ description: 'Product toggle activation' })
+  /**
+   * Alternar el estado de activación de un producto por identificación
+   * @param id ID del producto
+   * @param user Usuario que realiza la activación alternativa
+   * @returns Datos de producto actualizados con estado de activación alternado
+   */
   @Patch('toggleactivation/:id')
+  @Permission(['UPDATE'])
+  @ApiOperation({ summary: 'Alternar el estado de activación de un producto' })
+  @ApiParam({ name: 'id', description: 'ID del producto' })
+  @ApiOkResponse({ description: 'Producto actualizado' })
   toggleActivation(
     @Param('id') id: string,
     @GetUser() user: UserData
   ): Promise<HttpResponse<ProductData>> {
     return this.productsService.toggleActivation(id, user);
   }
-
-  @ApiOkResponse({ description: 'Products reactivated' })
+  /**
+   * Reactivate multiple products
+   * @param user User performing the reactivation
+   * @param products List of product identifiers to reactivate
+   * @returns Confirmation message of successful reactivation
+   */
   @Patch('reactivate/all')
+  @Permission(['UPDATE'])
+  @ApiOperation({ summary: 'Reactivar varios productos' })
+  @ApiBody({
+    type: DeleteProductsDto,
+    description: 'Lista de identificadores de productos a reactivar'
+  })
+  @ApiOkResponse({ description: 'Productos reactivados' })
   reactivateAll(@GetUser() user: UserData, @Body() products: DeleteProductsDto) {
     return this.productsService.reactivateAll(user, products);
   }
 
-  @ApiOkResponse({ description: 'Product reactivated' })
+  /**
+   * Reactivar un producto por identificación
+   * @param id ID del producto
+   * @param user Usuario que reactiva el producto
+   * @returns Datos de producto actualizados con estado de activación reactivado
+   */
   @Patch('reactivate/:id')
+  @Permission(['UPDATE'])
+  @ApiOperation({ summary: 'Reactivar un producto por id' })
+  @ApiParam({ name: 'id', description: 'ID del producto' })
+  @ApiOkResponse({ description: 'Producto reactivado' })
   reactivate(
     @Param('id') id: string,
     @GetUser() user: UserData
