@@ -37,8 +37,8 @@ import { ClassPriceService } from 'src/modules/admin/class-price/class-price.ser
 import { GetClient } from '../auth/decorators/get-client.decorator';
 import { ClientAuth } from '../auth/decorators/client-auth.decorator';
 import { UpdateClassDto } from './dto/update-class.dto';
-import { GetPricesClassDto } from './dto/get-prices-class.dto';
-import { TypeClass } from '@prisma/client';
+import { TypeClass, TypeCurrency } from '@prisma/client';
+import { ClassesAdminService } from 'src/modules/admin/classes-admin/classes-admin.service';
 
 @ApiTags('Shop Classes')
 @ApiInternalServerErrorResponse({ description: 'Internal server error' })
@@ -52,7 +52,8 @@ export class ClassesController {
     private readonly classesService: ClassesService,
     private readonly classScheduleService: ClassScheduleService,
     private readonly classLanguageService: ClassLanguageService,
-    private readonly classPriceService: ClassPriceService
+    private readonly classPriceService: ClassPriceService,
+    private readonly classesAdminService: ClassesAdminService
   ) {}
 
   /**
@@ -110,15 +111,37 @@ export class ClassesController {
    * Buscar todos los precios de las clases en dolares
    * @returns Promesa que se resuelve con los precios de las clases en dolares encontrados
    */
-  @Get('/prices/dolar')
-  @ApiOperation({ summary: 'Buscar todos los precios de dolares' })
+  @Get('/prices')
+  @ApiOperation({ summary: 'Buscar precios por tipo de moneda y tipo de clase' })
   @ApiOkResponse({ description: 'Precios encontrados' })
-  @ApiBadRequestResponse({ description: 'No clase de precios' })
-  findAllPricesToClass(@Body() pricesToClass: GetPricesClassDto): Promise<ClassPriceConfigData[]> {
-    return this.classPriceService.findClassPriceByTypeCurrency(
-      pricesToClass.typeCurrency,
-      pricesToClass.typeClass
-    );
+  @ApiBadRequestResponse({ description: 'No hay precios disponibles' })
+  @ApiQuery({
+    name: 'typeCurrency',
+    required: true,
+    description: 'Tipo de moneda (SOLES/DOLARES)',
+    enum: TypeCurrency
+  })
+  @ApiQuery({
+    name: 'typeClass',
+    required: true,
+    description: 'Tipo de clase',
+    enum: TypeClass
+  })
+  async findAllPricesToClass(
+    @Query('typeCurrency') typeCurrency: TypeCurrency,
+    @Query('typeClass') typeClass: TypeClass
+  ): Promise<ClassPriceConfigData[]> {
+    // Validar el tipo de moneda
+    this.classPriceService.validateTypeCurrency(typeCurrency);
+
+    // Validar que typeClass sea válido
+    if (!Object.values(TypeClass).includes(typeClass)) {
+      throw new BadRequestException(
+        `Invalid typeClass value. Use one of: ${Object.values(TypeClass).join(', ')}`
+      );
+    }
+
+    return this.classPriceService.findClassPriceByTypeCurrencyAndTypeClass(typeCurrency, typeClass);
   }
 
   /**
@@ -172,5 +195,43 @@ export class ClassesController {
     } catch (error) {
       throw new BadRequestException(error.message);
     }
+  }
+
+  /**
+   * Mostrar todos los horarios de clases
+   * @summary Mostrar todos los horarios de clases
+   * @returns Todos los horarios de clases
+   */
+  @Get('/schedule')
+  @ApiOperation({ summary: 'Mostrar todos los horarios de clases' })
+  @ApiOkResponse({ description: 'Todos los horarios de clases' })
+  findAllSchedule(): Promise<ClassScheduleData[]> {
+    return this.classScheduleService.findAll();
+  }
+
+  /**
+   * Obtener todos los registros de clases futuras para un horario y tipo de clase
+   * @param scheduleClass Horario de inicio de la clase
+   * @param typeClass Tipo de clase
+   * @returns Todos los registros de clases futuras
+   */
+  @Get('futures')
+  @ApiOperation({ summary: 'Obtener todos los registros de clases futuras' })
+  @ApiOkResponse({ description: 'Registros de clases futuras' })
+  @ApiQuery({
+    name: 'schedule',
+    description: 'Horario de inicio de la clase para obtener las clases futuras',
+    required: true
+  })
+  @ApiQuery({
+    name: 'typeClass',
+    description: 'Tipo de clase para obtener las clases futuras',
+    required: false
+  })
+  async findAllFutureClasses(
+    @Query('schedule') scheduleClass: string,
+    @Query('typeClass') typeClass: TypeClass
+  ) {
+    return await this.classesAdminService.findAllFutureClasses(scheduleClass, typeClass);
   }
 }

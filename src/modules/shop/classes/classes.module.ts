@@ -7,16 +7,19 @@ import { ClassRegistrationModule } from 'src/modules/admin/class-registration/cl
 import { ClassLanguageModule } from 'src/modules/admin/class-language/class-language.module';
 import { ClassPriceModule } from 'src/modules/admin/class-price/class-price.module';
 import { AdminGateway } from 'src/modules/admin/admin.gateway';
+import { ClassesAdminModule } from 'src/modules/admin/classes-admin/classes-admin.module';
+import { ClassesAdminService } from 'src/modules/admin/classes-admin/classes-admin.service';
 
 @Module({
   controllers: [ClassesController],
-  providers: [ClassesService, AdminGateway],
+  providers: [ClassesService, ClassesAdminService, AdminGateway],
   imports: [
     PrismaModule,
     ClassScheduleModule,
     ClassRegistrationModule,
     ClassLanguageModule,
-    ClassPriceModule
+    ClassPriceModule,
+    ClassesAdminModule
   ]
 })
 export class ClassesModule {}

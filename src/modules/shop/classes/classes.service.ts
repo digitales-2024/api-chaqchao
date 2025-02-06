@@ -93,7 +93,7 @@ export class ClassesService {
     totalAdults: number,
     totalChildren: number
   ): Promise<{ totalPriceAdults: number; totalPriceChildren: number; totalPrice: number }> {
-    const pricesClassDB = await this.classPriceService.findClassPriceByTypeCurrency(
+    const pricesClassDB = await this.classPriceService.findClassPriceByTypeCurrencyAndTypeClass(
       typeCurrency as TypeCurrency,
       typeClass
     );
@@ -207,7 +207,7 @@ export class ClassesService {
     ]);
 
     const intervalsClassRegistration = await this.classRegistrationService.findAll();
-    const classPrices = await this.classPriceService.findClassPriceByTypeCurrency(
+    const classPrices = await this.classPriceService.findClassPriceByTypeCurrencyAndTypeClass(
       typeCurrency,
       typeClass
     );
