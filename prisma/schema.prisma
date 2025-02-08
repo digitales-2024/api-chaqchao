@@ -213,8 +213,8 @@ enum ClassTypeUser {
 }
 
 enum TypeCurrency {
-  SOL
-  DOLAR
+  PEN
+  USD
 }
 
 model ClassSchedule {
@@ -536,7 +536,14 @@ model ClassRegister {
   paypalAmount      String?
   paypalCurrency    String?
   paypalDate        String?
-  expiresAt         DateTime
+
+  // Campos de Izipay
+  izipayTransactionId  String?
+  izipayAuthCode       String?
+  izipayCardBrand      String?
+  izipayLastFourDigits String?
+
+  expiresAt DateTime
 
   createdAt DateTime @default(now()) @db.Timestamptz(6)
   updatedAt DateTime @updatedAt
