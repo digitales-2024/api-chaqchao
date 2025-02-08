@@ -4,17 +4,17 @@ import {
   InternalServerErrorException,
   Logger
 } from '@nestjs/common';
+import { ClassStatus, TypeClass, TypeCurrency } from '@prisma/client';
+import { format, parseISO } from 'date-fns';
+import { es } from 'date-fns/locale';
+import * as ExcelJS from 'exceljs';
+import * as fs from 'fs';
+import * as path from 'path';
+import * as puppeteer from 'puppeteer';
 import { ClassClosed, ClassesDataAdmin, ClassRegisterData } from 'src/interfaces';
 import { PrismaService } from 'src/prisma/prisma.service';
 import { handleException } from 'src/utils';
-import * as ExcelJS from 'exceljs';
-import * as puppeteer from 'puppeteer';
-import * as fs from 'fs';
-import * as path from 'path';
-import { ClassStatus, TypeClass, TypeCurrency } from '@prisma/client';
 import { CreateClassAdminDto } from './dto/create-class-admin.dto';
-import { format, parseISO } from 'date-fns';
-import { es } from 'date-fns/locale';
 
 @Injectable()
 export class ClassesAdminService {
@@ -28,7 +28,6 @@ export class ClassesAdminService {
    * @returns Clase creada
    */
   async createClass(data: CreateClassAdminDto): Promise<ClassRegisterData> {
-    console.log(data);
     const { dateClass, scheduleClass, typeClass } = data;
 
     // Buscamos si ya hay una clase en la fecha y horario especificados
@@ -94,7 +93,7 @@ export class ClassesAdminService {
             totalPrice: data.totalPrice,
             totalPriceAdults: data.totalPriceAdults,
             totalPriceChildren: data.totalPriceChildren,
-            typeCurrency: TypeCurrency.DOLAR,
+            typeCurrency: TypeCurrency.USD,
             status: ClassStatus.CONFIRMED,
             comments: data.comments,
             expiresAt: new Date(Date.now() + 5 * 60 * 1000), // 5 minutes

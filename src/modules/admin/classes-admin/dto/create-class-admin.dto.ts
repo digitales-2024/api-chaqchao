@@ -147,7 +147,7 @@ export class CreateClassAdminDto {
 
   @ApiProperty({
     description: 'Tipo de moneda',
-    example: TypeCurrency.DOLAR,
+    example: TypeCurrency.USD,
     required: true
   })
   @IsNotEmpty()

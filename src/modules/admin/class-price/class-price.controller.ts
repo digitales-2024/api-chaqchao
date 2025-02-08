@@ -1,7 +1,4 @@
-import { Controller, Get, Post, Body, Patch, Param, Delete } from '@nestjs/common';
-import { ClassPriceService } from './class-price.service';
-import { CreateClassPriceDto } from './dto/create-class-price.dto';
-import { UpdateClassPriceDto } from './dto/update-class-price.dto';
+import { Body, Controller, Delete, Get, Param, Patch, Post } from '@nestjs/common';
 import {
   ApiBadRequestResponse,
   ApiBody,
@@ -11,9 +8,12 @@ import {
   ApiTags,
   ApiUnauthorizedResponse
 } from '@nestjs/swagger';
-import { Auth, GetUser, Module, Permission } from '../auth/decorators';
-import { ClassPriceConfigData, HttpResponse, UserData } from 'src/interfaces';
 import { TypeClass } from '@prisma/client';
+import { ClassPriceConfigData, HttpResponse, UserData } from 'src/interfaces';
+import { Auth, GetUser, Module, Permission } from '../auth/decorators';
+import { ClassPriceService } from './class-price.service';
+import { CreateClassPriceDto } from './dto/create-class-price.dto';
+import { UpdateClassPriceDto } from './dto/update-class-price.dto';
 
 @ApiTags('Admin Settings')
 @ApiBadRequestResponse({ description: 'Bad Request' })
@@ -121,6 +121,6 @@ export class ClassPriceController {
   findAllPricesDolarByTypeClass(
     @Param('typeClass') typeClass: TypeClass
   ): Promise<ClassPriceConfigData[]> {
-    return this.classPriceService.findClassPriceByTypeCurrencyAndTypeClass('DOLAR', typeClass);
+    return this.classPriceService.findClassPriceByTypeCurrencyAndTypeClass('USD', typeClass);
   }
 }

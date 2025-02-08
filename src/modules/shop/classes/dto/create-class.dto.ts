@@ -86,7 +86,7 @@ export class CreateClassDto {
   @ApiProperty({
     name: 'typeCurrency',
     description: 'Tipo moneda',
-    example: 'DOLAR',
+    example: 'USD',
     enum: TypeCurrency
   })
   @IsString()

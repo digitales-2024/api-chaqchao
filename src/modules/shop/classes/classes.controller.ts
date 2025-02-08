@@ -1,19 +1,16 @@
 import {
-  Controller,
-  Post,
+  BadRequestException,
   Body,
+  Controller,
   Get,
-  Patch,
   Param,
-  Query,
-  BadRequestException
+  Patch,
+  Post,
+  Query
 } from '@nestjs/common';
-import { ClassesService } from './classes.service';
-import { CreateClassDto } from './dto/create-class.dto';
 import {
   ApiBadRequestResponse,
   ApiBody,
-  ApiCreatedResponse,
   ApiInternalServerErrorResponse,
   ApiOkResponse,
   ApiOperation,
@@ -21,8 +18,8 @@ import {
   ApiQuery,
   ApiTags
 } from '@nestjs/swagger';
+import { TypeClass, TypeCurrency } from '@prisma/client';
 import {
-  ClassesData,
   ClassesDataAdmin,
   ClassLanguageData,
   ClassPriceConfigData,
@@ -31,14 +28,15 @@ import {
   ClientData,
   HttpResponse
 } from 'src/interfaces';
-import { ClassScheduleService } from 'src/modules/admin/class-schedule/class-schedule.service';
 import { ClassLanguageService } from 'src/modules/admin/class-language/class-language.service';
 import { ClassPriceService } from 'src/modules/admin/class-price/class-price.service';
-import { GetClient } from '../auth/decorators/get-client.decorator';
-import { ClientAuth } from '../auth/decorators/client-auth.decorator';
-import { UpdateClassDto } from './dto/update-class.dto';
-import { TypeClass, TypeCurrency } from '@prisma/client';
+import { ClassScheduleService } from 'src/modules/admin/class-schedule/class-schedule.service';
 import { ClassesAdminService } from 'src/modules/admin/classes-admin/classes-admin.service';
+import { CreateClassAdminDto } from 'src/modules/admin/classes-admin/dto/create-class-admin.dto';
+import { ClientAuth } from '../auth/decorators/client-auth.decorator';
+import { GetClient } from '../auth/decorators/get-client.decorator';
+import { ClassesService } from './classes.service';
+import { UpdateClassDto } from './dto/update-class.dto';
 
 @ApiTags('Shop Classes')
 @ApiInternalServerErrorResponse({ description: 'Internal server error' })
@@ -57,16 +55,16 @@ export class ClassesController {
   ) {}
 
   /**
-   * Create a new class record.
-   * @param createClassDto - Data transfer object containing information to create a class.
-   * @returns A promise that resolves to the HTTP response containing the created class data.
+   * Crear una clase desde el panel de administración
+   * @param data Datos de la clase a crear
+   * @returns Datos de la clase creada
    */
   @Post()
-  @ApiOperation({ summary: 'Crear un registro para una clases' })
-  @ApiCreatedResponse({ description: 'Registro creado' })
-  @ApiBody({ type: CreateClassDto, description: 'Información de la clase' })
-  create(@Body() createClassDto: CreateClassDto): Promise<HttpResponse<ClassesData>> {
-    return this.classesService.create(createClassDto);
+  @ApiOperation({ summary: 'Crear una clase desde el panel de administración' })
+  @ApiOkResponse({ description: 'Clase creada' })
+  @ApiBody({ description: 'Datos de la clase a crear', type: CreateClassAdminDto })
+  create(@Body() data: CreateClassAdminDto): Promise<ClassRegisterData> {
+    return this.classesAdminService.createClass(data);
   }
 
   /**
