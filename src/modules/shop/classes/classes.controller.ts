@@ -219,17 +219,14 @@ export class ClassesController {
   @ApiQuery({
     name: 'schedule',
     description: 'Horario de inicio de la clase para obtener las clases futuras',
-    required: true
+    required: false
   })
   @ApiQuery({
     name: 'typeClass',
     description: 'Tipo de clase para obtener las clases futuras',
     required: false
   })
-  async findAllFutureClasses(
-    @Query('schedule') scheduleClass: string,
-    @Query('typeClass') typeClass: TypeClass
-  ) {
-    return await this.classesAdminService.findAllFutureClasses(scheduleClass, typeClass);
+  async findAllFutureClasses(@Query('typeClass') typeClass: TypeClass) {
+    return await this.classesAdminService.findAllFutureClasses('', typeClass);
   }
 }

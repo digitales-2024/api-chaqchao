@@ -28,7 +28,6 @@ export class ClassesAdminService {
    * @returns Clase creada
    */
   async createClass(data: CreateClassAdminDto): Promise<ClassRegisterData> {
-    console.log('🚀 ~ ClassesAdminService ~ createClass ~ data:', data);
     const { dateClass, scheduleClass, typeClass } = data;
 
     // Buscamos si ya hay una clase en la fecha y horario especificados
@@ -517,8 +516,8 @@ export class ClassesAdminService {
     // Buscamos todas las clases cerradas en el rango de fechas
     const classesClosed = await this.prisma.classes.findMany({
       where: {
-        scheduleClass,
-        typeClass,
+        scheduleClass: scheduleClass || undefined,
+        typeClass: typeClass || 'NORMAL',
         dateClass: {
           gte: today
         }
