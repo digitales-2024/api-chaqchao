@@ -4,7 +4,7 @@ import {
   InternalServerErrorException,
   Logger
 } from '@nestjs/common';
-import { ClassStatus, TypeClass, TypeCurrency } from '@prisma/client';
+import { ClassStatus, TypeClass } from '@prisma/client';
 import { format, parseISO } from 'date-fns';
 import { es } from 'date-fns/locale';
 import * as ExcelJS from 'exceljs';
@@ -28,6 +28,7 @@ export class ClassesAdminService {
    * @returns Clase creada
    */
   async createClass(data: CreateClassAdminDto): Promise<ClassRegisterData> {
+    console.log('🚀 ~ ClassesAdminService ~ createClass ~ data:', data);
     const { dateClass, scheduleClass, typeClass } = data;
 
     // Buscamos si ya hay una clase en la fecha y horario especificados
@@ -93,8 +94,10 @@ export class ClassesAdminService {
             totalPrice: data.totalPrice,
             totalPriceAdults: data.totalPriceAdults,
             totalPriceChildren: data.totalPriceChildren,
-            typeCurrency: TypeCurrency.USD,
-            status: ClassStatus.CONFIRMED,
+            allergies: data.allergies,
+            occasion: data.occasion,
+            typeCurrency: data.typeCurrency,
+            status: (data.status as ClassStatus) || ClassStatus.PENDING,
             comments: data.comments,
             expiresAt: new Date(Date.now() + 5 * 60 * 1000), // 5 minutes
             methodPayment: data.methodPayment
@@ -115,6 +118,7 @@ export class ClassesAdminService {
         return classRegister;
       });
     } catch (error) {
+      this.logger.error(`Error creating class: ${error.message}`, error.stack);
       // Manejo de errores específicos de Prisma
       if (error instanceof BadRequestException) {
         throw error; // Errores de validación

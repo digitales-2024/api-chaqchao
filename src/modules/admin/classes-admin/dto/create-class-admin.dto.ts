@@ -60,6 +60,15 @@ export class CreateClassAdminDto {
   totalChildren: number;
 
   @ApiProperty({
+    example: 3,
+    description: 'Número total de personas',
+    required: true
+  })
+  @IsNotEmpty()
+  @IsNumber()
+  totalParticipants: number;
+
+  @ApiProperty({
     example: 20.0,
     description: 'Precio total de la clase',
     required: true
@@ -102,7 +111,7 @@ export class CreateClassAdminDto {
   })
   @IsNotEmpty()
   @IsString()
-  dateClass: Date;
+  dateClass: string;
 
   @ApiProperty({
     example: '10:00 AM',
@@ -123,28 +132,46 @@ export class CreateClassAdminDto {
   comments?: string;
 
   @ApiProperty({
+    example: 'Si tiene alguna alergia, por favor indicar',
+    description: 'Requerimientos especiales de la clase',
+    required: false
+  })
+  @IsString()
+  @IsOptional()
+  allergies?: string;
+
+  @ApiProperty({
+    example: 'Si es alguna ocasión especial, por favor indicar',
+    description: 'Ocasión especial',
+    required: false
+  })
+  @IsString()
+  @IsOptional()
+  occasion?: string;
+
+  @ApiProperty({
     example: ClassStatus.CONFIRMED,
     description: 'Estado de la clase',
-    required: true,
+    required: false,
     enum: ClassStatus
   })
-  status: string;
+  status?: string;
 
   @ApiProperty({
     example: '2022-01-01T00:00:00.000Z',
     description: 'Fecha de expiración de la clase',
-    required: true
+    required: false
   })
   expiresAt: Date;
 
   @ApiProperty({
     description: 'Si la clase está cerrada',
     example: true,
-    required: true
+    required: false
   })
-  @IsNotEmpty()
+  @IsOptional()
   @IsBoolean()
-  isClosed: boolean;
+  isClosed?: boolean;
 
   @ApiProperty({
     description: 'Tipo de moneda',

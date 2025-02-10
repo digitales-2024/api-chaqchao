@@ -526,6 +526,8 @@ model ClassRegister {
   totalPriceChildren Float
   totalPrice         Float
   typeCurrency       TypeCurrency
+  allergies          String?
+  occasion           String?
   comments           String?
   status             ClassStatus    @default(PENDING)
   methodPayment      MethodPayment?
