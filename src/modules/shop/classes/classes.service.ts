@@ -559,4 +559,18 @@ export class ClassesService {
       registers: classDB.registers
     };
   }
+
+  /**
+   * Obtener todos las capacidades de los tipos de clases
+   * @returns Todas las capacidades de los tipos de clases
+   */
+  async findAllCapacities(): Promise<number[]> {
+    const capacities = await this.prisma.classes.findMany({
+      select: {
+        totalParticipants: true
+      }
+    });
+
+    return capacities.map((capacity) => capacity.totalParticipants);
+  }
 }

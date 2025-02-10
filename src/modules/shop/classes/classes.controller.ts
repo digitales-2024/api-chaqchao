@@ -28,6 +28,7 @@ import {
   ClientData,
   HttpResponse
 } from 'src/interfaces';
+import { ClassCapacityService } from 'src/modules/admin/class-capacity/class-capacity.service';
 import { ClassLanguageService } from 'src/modules/admin/class-language/class-language.service';
 import { ClassPriceService } from 'src/modules/admin/class-price/class-price.service';
 import { ClassScheduleService } from 'src/modules/admin/class-schedule/class-schedule.service';
@@ -51,7 +52,8 @@ export class ClassesController {
     private readonly classScheduleService: ClassScheduleService,
     private readonly classLanguageService: ClassLanguageService,
     private readonly classPriceService: ClassPriceService,
-    private readonly classesAdminService: ClassesAdminService
+    private readonly classesAdminService: ClassesAdminService,
+    private readonly classCapacityService: ClassCapacityService
   ) {}
 
   /**
@@ -228,5 +230,22 @@ export class ClassesController {
   })
   async findAllFutureClasses(@Query('typeClass') typeClass: TypeClass) {
     return await this.classesAdminService.findAllFutureClasses('', typeClass);
+  }
+
+  /**
+   * Obtener todos las capacidades de los tipos de clases
+   * @returns Todas las capacidades de los tipos de clases
+   */
+  @Get('capacity')
+  @ApiOperation({ summary: 'Obtener todas las capacidades de los tipos de clases' })
+  @ApiOkResponse({ description: 'Capacidades de los tipos de clases' })
+  @ApiQuery({
+    name: 'typeClass',
+    description: 'Tipo de clase para obtener las capacidades',
+    enum: TypeClass,
+    required: false
+  })
+  async findAllCapacities(@Query('typeClass') typeClass?: TypeClass) {
+    return await this.classCapacityService.findAll(typeClass);
   }
 }
