@@ -2,6 +2,7 @@ import {
   BadRequestException,
   Body,
   Controller,
+  Delete,
   Get,
   Param,
   Patch,
@@ -242,5 +243,19 @@ export class ClassesController {
   })
   async findAllCapacities(@Query('typeClass') typeClass?: TypeClass) {
     return await this.classCapacityService.findAll(typeClass);
+  }
+
+  /**
+   * Eliminar un registro de una clase
+   * @param id Id del registro de la clase
+   *
+   */
+  @Delete(':id/delete')
+  @ApiOperation({ summary: 'Eliminar un registro de una clase' })
+  @ApiOkResponse({ description: 'Registro de clase eliminado' })
+  @ApiBadRequestResponse({ description: 'No se puede eliminar el registro de la clase' })
+  @ApiParam({ name: 'id', required: true, description: 'Id del registro de la clase' })
+  async deleteClass(@Param('id') id: string) {
+    return await this.classesService.deleteClass(id);
   }
 }

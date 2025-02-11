@@ -447,9 +447,8 @@ export class ClassesService {
     });
 
     for (const registration of expiredRegistrations) {
-      const registeCanceled = await this.prisma.classRegister.update({
-        where: { id: registration.id },
-        data: { status: ClassStatus.CANCELLED }
+      const registeCanceled = await this.prisma.classRegister.delete({
+        where: { id: registration.id }
       });
 
       await this.prisma.classes.update({
@@ -459,7 +458,8 @@ export class ClassesService {
         data: {
           totalParticipants: {
             decrement: registeCanceled.totalParticipants
-          }
+          },
+          isClosed: false
         }
       });
     }
@@ -575,5 +575,32 @@ export class ClassesService {
     });
 
     return capacities.map((capacity) => capacity.totalParticipants);
+  }
+
+  /**
+   * Eliminar un registro de una clase
+   * @param classId ID de la clase
+   */
+  async deleteClass(registerId: string): Promise<void> {
+    const register = await this.prisma.classRegister.findUnique({
+      where: { id: registerId }
+    });
+
+    if (!register) {
+      throw new NotFoundException('Class not found');
+    }
+
+    await this.prisma.classRegister.delete({
+      where: { id: registerId }
+    });
+
+    await this.prisma.classes.update({
+      where: { id: register.classesId },
+      data: {
+        totalParticipants: {
+          decrement: register.totalParticipants
+        }
+      }
+    });
   }
 }
