@@ -7,7 +7,7 @@ import {
 } from '@nestjs/common';
 import { Cron } from '@nestjs/schedule';
 import { ClassStatus, TypeClass, TypeCurrency } from '@prisma/client';
-import { format, isEqual } from 'date-fns';
+import { format, isEqual, parse } from 'date-fns';
 import * as moment from 'moment-timezone';
 import { TypedEventEmitter } from 'src/event-emitter/typed-event-emitter.class';
 import {
@@ -342,14 +342,13 @@ export class ClassesService {
   ): Promise<ClassesDataAdmin> {
     try {
       // Configurar el rango de búsqueda en UTC
-      const searchDate = new Date(format(dateClass, 'dd-MM-yyyy'));
 
       // Inicio del día en Lima (UTC+5)
-      const startOfDay = new Date(searchDate);
+      const startOfDay = new Date(dateClass);
       startOfDay.setUTCHours(5, 0, 0, 0);
 
       // Fin del día en Lima (UTC+5)
-      const endOfDay = new Date(searchDate);
+      const endOfDay = new Date(dateClass);
       endOfDay.setUTCHours(28, 59, 59, 999);
 
       const startOfDayDate = startOfDay;
@@ -534,7 +533,17 @@ export class ClassesService {
     dateClass: string,
     typeClass: TypeClass
   ): Promise<ClassesDataAdmin> {
-    const parsedDate = new Date(dateClass);
+    // Parse de la fecha considerando formato dd-MM-yyyy o ISO 8601
+    let parsedDate: Date;
+    const ddMMyyyyRegex = /^\d{2}-\d{2}-\d{4}$/;
+    if (ddMMyyyyRegex.test(dateClass)) {
+      parsedDate = parse(dateClass, 'dd-MM-yyyy', new Date());
+    } else {
+      parsedDate = new Date(dateClass);
+    }
+    if (isNaN(parsedDate.getTime())) {
+      throw new BadRequestException('Invalid date format');
+    }
     const classDB = await this.findClassesByscheduleClass(scheduleClass, parsedDate, typeClass);
     const { totalParticipants, languageClass, registers } = classDB;
     // Verificamos si el total de participantes es igual al total de asistentes

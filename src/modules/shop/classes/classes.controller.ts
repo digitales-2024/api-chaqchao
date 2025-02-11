@@ -183,14 +183,9 @@ export class ClassesController {
   ): Promise<ClassesDataAdmin> {
     try {
       if (!scheduleClass || !dateClass) {
-        throw new BadRequestException('Date and time are required');
+        throw new BadRequestException('Date and schedule are required');
       }
 
-      const dateTime = new Date(dateClass);
-
-      if (isNaN(dateTime.getTime())) {
-        throw new BadRequestException('Invalid date or time format');
-      }
       return this.classesService.checkClass(scheduleClass, dateClass, typeClass);
     } catch (error) {
       throw new BadRequestException(error.message);
