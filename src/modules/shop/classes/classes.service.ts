@@ -7,7 +7,7 @@ import {
 } from '@nestjs/common';
 import { Cron } from '@nestjs/schedule';
 import { ClassStatus, TypeClass, TypeCurrency } from '@prisma/client';
-import { format, isEqual, parse } from 'date-fns';
+import { format, isEqual } from 'date-fns';
 import * as moment from 'moment-timezone';
 import { TypedEventEmitter } from 'src/event-emitter/typed-event-emitter.class';
 import {
@@ -342,13 +342,15 @@ export class ClassesService {
   ): Promise<ClassesDataAdmin> {
     try {
       // Configurar el rango de búsqueda en UTC
+      const searchDate = new Date(format(dateClass, 'dd-MM-yyyy'));
+      console.log('🚀 ~ ClassesService ~ searchDate:', searchDate);
 
       // Inicio del día en Lima (UTC+5)
-      const startOfDay = new Date(dateClass);
+      const startOfDay = new Date(searchDate);
       startOfDay.setUTCHours(5, 0, 0, 0);
 
       // Fin del día en Lima (UTC+5)
-      const endOfDay = new Date(dateClass);
+      const endOfDay = new Date(searchDate);
       endOfDay.setUTCHours(28, 59, 59, 999);
 
       const startOfDayDate = startOfDay;
@@ -533,17 +535,9 @@ export class ClassesService {
     dateClass: string,
     typeClass: TypeClass
   ): Promise<ClassesDataAdmin> {
-    // Parse de la fecha considerando formato dd-MM-yyyy o ISO 8601
-    let parsedDate: Date;
-    const ddMMyyyyRegex = /^\d{2}-\d{2}-\d{4}$/;
-    if (ddMMyyyyRegex.test(dateClass)) {
-      parsedDate = parse(dateClass, 'dd-MM-yyyy', new Date());
-    } else {
-      parsedDate = new Date(dateClass);
-    }
-    if (isNaN(parsedDate.getTime())) {
-      throw new BadRequestException('Invalid date format');
-    }
+    console.log('🚀 ~ ClassesService ~ dateClass:', dateClass);
+    const parsedDate = new Date(dateClass);
+    console.log('🚀 ~ ClassesService ~ parsedDate:', parsedDate);
     const classDB = await this.findClassesByscheduleClass(scheduleClass, parsedDate, typeClass);
     const { totalParticipants, languageClass, registers } = classDB;
     // Verificamos si el total de participantes es igual al total de asistentes
