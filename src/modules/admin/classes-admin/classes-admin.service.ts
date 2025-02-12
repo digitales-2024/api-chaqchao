@@ -526,7 +526,8 @@ export class ClassesAdminService {
         id: true,
         dateClass: true,
         scheduleClass: true,
-        isClosed: true
+        isClosed: true,
+        totalParticipants: true
       }
     });
 
@@ -535,7 +536,8 @@ export class ClassesAdminService {
       id: classClosed.id,
       dateClass: classClosed.dateClass,
       scheduleClass: classClosed.scheduleClass,
-      isClosed: classClosed.isClosed
+      isClosed: classClosed.isClosed,
+      totalParticipants: classClosed.totalParticipants
     }));
 
     return classes;
