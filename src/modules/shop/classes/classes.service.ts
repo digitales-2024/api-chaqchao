@@ -343,8 +343,6 @@ export class ClassesService {
     try {
       // Configurar el rango de búsqueda en UTC
       const searchDate = new Date(format(dateClass, 'dd-MM-yyyy'));
-      console.log('🚀 ~ ClassesService ~ searchDate:', searchDate);
-
       // Inicio del día en Lima (UTC+5)
       const startOfDay = new Date(searchDate);
       startOfDay.setUTCHours(5, 0, 0, 0);
@@ -535,9 +533,7 @@ export class ClassesService {
     dateClass: string,
     typeClass: TypeClass
   ): Promise<ClassesDataAdmin> {
-    console.log('🚀 ~ ClassesService ~ dateClass:', dateClass);
     const parsedDate = new Date(dateClass);
-    console.log('🚀 ~ ClassesService ~ parsedDate:', parsedDate);
     const classDB = await this.findClassesByscheduleClass(scheduleClass, parsedDate, typeClass);
     const { totalParticipants, languageClass, registers } = classDB;
     // Verificamos si el total de participantes es igual al total de asistentes
