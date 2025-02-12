@@ -189,9 +189,9 @@ export class CreateClassDto {
     required: false,
     example: '100.00'
   })
-  @IsNumber()
+  @IsString()
   @IsOptional()
-  izipayAmount?: number;
+  izipayAmount?: string;
 
   @ApiProperty({
     name: 'izipayCurrency',

@@ -498,7 +498,6 @@ export class ClassesService {
       throw new BadRequestException('Class is already cancelled');
     }
 
-    console.log('🚀 ~ ClassesService ~ confirmClass ~ classData:', classData);
     const registerConfirm = await this.prisma.classRegister.update({
       where: { id: classId },
       data: {

@@ -540,10 +540,11 @@ model ClassRegister {
   paypalDate        String?
 
   // Campos de Izipay
-  izipayTransactionId  String?
-  izipayAuthCode       String?
-  izipayCardBrand      String?
-  izipayLastFourDigits String?
+  izipayOrderId     String?
+  izipayOrderStatus String?
+  izipayAmount      String?
+  izipayCurrency    String?
+  izipayDate        String?
 
   expiresAt DateTime
 
