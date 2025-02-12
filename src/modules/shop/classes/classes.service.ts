@@ -461,6 +461,19 @@ export class ClassesService {
         }
       });
     }
+
+    // Verificamos que la clase del registro que esta eliminando se queda con total de participantes 0 se elimina la clase
+    const classes = await this.prisma.classes.findMany({
+      where: {
+        totalParticipants: 0
+      }
+    });
+
+    for (const classItem of classes) {
+      await this.prisma.classes.delete({
+        where: { id: classItem.id }
+      });
+    }
   }
 
   /**
@@ -485,6 +498,7 @@ export class ClassesService {
       throw new BadRequestException('Class is already cancelled');
     }
 
+    console.log('🚀 ~ ClassesService ~ confirmClass ~ classData:', classData);
     const registerConfirm = await this.prisma.classRegister.update({
       where: { id: classId },
       data: {

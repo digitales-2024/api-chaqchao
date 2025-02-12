@@ -1,7 +1,15 @@
 import { ApiProperty } from '@nestjs/swagger';
 import { TypeClass, TypeCurrency } from '@prisma/client';
 import { Transform } from 'class-transformer';
-import { IsDate, IsEmail, IsNotEmpty, IsNumber, IsPhoneNumber, IsString } from 'class-validator';
+import {
+  IsDate,
+  IsEmail,
+  IsNotEmpty,
+  IsNumber,
+  IsOptional,
+  IsPhoneNumber,
+  IsString
+} from 'class-validator';
 
 export class CreateClassDto {
   @ApiProperty({
@@ -99,6 +107,7 @@ export class CreateClassDto {
     example: 'Comentario de la clase'
   })
   @IsString()
+  @IsOptional()
   @Transform(({ value }) => value.trim())
   comments?: string;
 
@@ -110,7 +119,7 @@ export class CreateClassDto {
     example: '1234567890'
   })
   @IsString()
-  @Transform(({ value }) => value.trim())
+  @IsOptional()
   paypalOrderId?: string;
 
   @ApiProperty({
@@ -120,7 +129,7 @@ export class CreateClassDto {
     example: 'COMPLETED'
   })
   @IsString()
-  @Transform(({ value }) => value.trim())
+  @IsOptional()
   paypalOrderStatus?: string;
 
   @ApiProperty({
@@ -130,7 +139,7 @@ export class CreateClassDto {
     example: '100.00'
   })
   @IsString()
-  @Transform(({ value }) => value.trim())
+  @IsOptional()
   paypalAmount?: string;
 
   @ApiProperty({
@@ -140,7 +149,7 @@ export class CreateClassDto {
     example: 'USD'
   })
   @IsString()
-  @Transform(({ value }) => value.trim())
+  @IsOptional()
   paypalCurrency?: string;
 
   @ApiProperty({
@@ -150,6 +159,57 @@ export class CreateClassDto {
     example: '2022-12-31T23:59:59Z'
   })
   @IsString()
-  @Transform(({ value }) => value.trim())
+  @IsOptional()
   paypalDate?: string;
+
+  // Datos de izipay
+  @ApiProperty({
+    name: 'izipayOrderId',
+    description: 'Izipay Order ID',
+    required: false,
+    example: '1234567890'
+  })
+  @IsString()
+  @IsOptional()
+  izipayOrderId?: string;
+
+  @ApiProperty({
+    name: 'izipayOrderStatus',
+    description: 'Izipay Order Status',
+    required: false,
+    example: 'COMPLETED'
+  })
+  @IsString()
+  @IsOptional()
+  izipayOrderStatus?: string;
+
+  @ApiProperty({
+    name: 'izipayAmount',
+    description: 'Izipay Amount',
+    required: false,
+    example: '100.00'
+  })
+  @IsNumber()
+  @IsOptional()
+  izipayAmount?: number;
+
+  @ApiProperty({
+    name: 'izipayCurrency',
+    description: 'Izipay Currency',
+    required: false,
+    example: 'USD'
+  })
+  @IsString()
+  @IsOptional()
+  izipayCurrency?: string;
+
+  @ApiProperty({
+    name: 'izipayDate',
+    description: 'Izipay Date',
+    required: false,
+    example: '2022-12-31T23:59:59Z'
+  })
+  @IsString()
+  @IsOptional()
+  izipayDate?: string;
 }
