@@ -32,6 +32,7 @@ import {
 import { ClassCapacityService } from 'src/modules/admin/class-capacity/class-capacity.service';
 import { ClassLanguageService } from 'src/modules/admin/class-language/class-language.service';
 import { ClassPriceService } from 'src/modules/admin/class-price/class-price.service';
+import { ClassRegistrationService } from 'src/modules/admin/class-registration/class-registration.service';
 import { ClassScheduleService } from 'src/modules/admin/class-schedule/class-schedule.service';
 import { ClassesAdminService } from 'src/modules/admin/classes-admin/classes-admin.service';
 import { CreateClassAdminDto } from 'src/modules/admin/classes-admin/dto/create-class-admin.dto';
@@ -54,7 +55,8 @@ export class ClassesController {
     private readonly classLanguageService: ClassLanguageService,
     private readonly classPriceService: ClassPriceService,
     private readonly classesAdminService: ClassesAdminService,
-    private readonly classCapacityService: ClassCapacityService
+    private readonly classCapacityService: ClassCapacityService,
+    private readonly classRegistrationService: ClassRegistrationService
   ) {}
 
   /**
@@ -257,5 +259,17 @@ export class ClassesController {
   @ApiParam({ name: 'id', required: true, description: 'Id del registro de la clase' })
   async deleteClass(@Param('id') id: string) {
     return await this.classesService.deleteClass(id);
+  }
+
+  /**
+   * Mostrar los registros de tiempos para el cierre de clases
+   * @returns Registros de tiempos para el cierre de clases
+   */
+  @Get('close-time')
+  @ApiOperation({ summary: 'Mostrar los registros de tiempos para el cierre de clases' })
+  @ApiOkResponse({ description: 'Registros de tiempos para el cierre de clases' })
+  async findAllCloseTime() {
+    const data = await this.classRegistrationService.findAll();
+    return data[0];
   }
 }

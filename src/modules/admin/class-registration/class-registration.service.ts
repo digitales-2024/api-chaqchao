@@ -5,13 +5,13 @@ import {
   Logger,
   NotFoundException
 } from '@nestjs/common';
-import { CreateClassRegistrationDto } from './dto/create-class-registration.dto';
-import { UpdateClassRegistrationDto } from './dto/update-class-registration.dto';
+import { AuditActionType } from '@prisma/client';
 import { ClassRegistrationData, HttpResponse, UserData } from 'src/interfaces';
 import { PrismaService } from 'src/prisma/prisma.service';
-import { BusinessConfigService } from '../business-config/business-config.service';
-import { AuditActionType } from '@prisma/client';
 import { handleException } from 'src/utils';
+import { BusinessConfigService } from '../business-config/business-config.service';
+import { CreateClassRegistrationDto } from './dto/create-class-registration.dto';
+import { UpdateClassRegistrationDto } from './dto/update-class-registration.dto';
 
 @Injectable()
 export class ClassRegistrationService {
