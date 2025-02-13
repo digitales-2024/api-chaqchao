@@ -4,17 +4,17 @@ import {
   InternalServerErrorException,
   Logger
 } from '@nestjs/common';
+import { ClassStatus, TypeClass } from '@prisma/client';
+import { format, parseISO } from 'date-fns';
+import { es } from 'date-fns/locale';
+import * as ExcelJS from 'exceljs';
+import * as fs from 'fs';
+import * as path from 'path';
+import * as puppeteer from 'puppeteer';
 import { ClassClosed, ClassesDataAdmin, ClassRegisterData } from 'src/interfaces';
 import { PrismaService } from 'src/prisma/prisma.service';
 import { handleException } from 'src/utils';
-import * as ExcelJS from 'exceljs';
-import * as puppeteer from 'puppeteer';
-import * as fs from 'fs';
-import * as path from 'path';
-import { ClassStatus, TypeClass, TypeCurrency } from '@prisma/client';
 import { CreateClassAdminDto } from './dto/create-class-admin.dto';
-import { format, parseISO } from 'date-fns';
-import { es } from 'date-fns/locale';
 
 @Injectable()
 export class ClassesAdminService {
@@ -93,8 +93,10 @@ export class ClassesAdminService {
             totalPrice: data.totalPrice,
             totalPriceAdults: data.totalPriceAdults,
             totalPriceChildren: data.totalPriceChildren,
-            typeCurrency: TypeCurrency.DOLAR,
-            status: ClassStatus.CONFIRMED,
+            allergies: data.allergies,
+            occasion: data.occasion,
+            typeCurrency: data.typeCurrency,
+            status: (data.status as ClassStatus) || ClassStatus.PENDING,
             comments: data.comments,
             expiresAt: new Date(Date.now() + 5 * 60 * 1000), // 5 minutes
             methodPayment: data.methodPayment
@@ -108,13 +110,14 @@ export class ClassesAdminService {
             totalParticipants: classEntity.totalParticipants + classRegister.totalParticipants,
             isClosed:
               classEntity.totalParticipants + classRegister.totalParticipants ===
-              participants.maxCapacity
+                participants.maxCapacity || data.isClosed
           }
         });
 
         return classRegister;
       });
     } catch (error) {
+      this.logger.error(`Error creating class: ${error.message}`, error.stack);
       // Manejo de errores específicos de Prisma
       if (error instanceof BadRequestException) {
         throw error; // Errores de validación
@@ -493,7 +496,7 @@ export class ClassesAdminService {
       }
     });
 
-    return classExists.id || undefined;
+    return classExists?.id || undefined;
   }
 
   /**
@@ -513,8 +516,8 @@ export class ClassesAdminService {
     // Buscamos todas las clases cerradas en el rango de fechas
     const classesClosed = await this.prisma.classes.findMany({
       where: {
-        scheduleClass,
-        typeClass,
+        scheduleClass: scheduleClass || undefined,
+        typeClass: typeClass || 'NORMAL',
         dateClass: {
           gte: today
         }
@@ -523,7 +526,8 @@ export class ClassesAdminService {
         id: true,
         dateClass: true,
         scheduleClass: true,
-        isClosed: true
+        isClosed: true,
+        totalParticipants: true
       }
     });
 
@@ -532,7 +536,8 @@ export class ClassesAdminService {
       id: classClosed.id,
       dateClass: classClosed.dateClass,
       scheduleClass: classClosed.scheduleClass,
-      isClosed: classClosed.isClosed
+      isClosed: classClosed.isClosed,
+      totalParticipants: classClosed.totalParticipants
     }));
 
     return classes;
@@ -547,7 +552,18 @@ export class ClassesAdminService {
    */
   async checkClass(scheduleClass: string, dateClass: string, typeClass: TypeClass): Promise<any> {
     try {
-      const parsedDate = parseISO(dateClass);
+      // Validar el formato de la fecha
+      let parsedDate: Date;
+      try {
+        parsedDate = parseISO(dateClass);
+        if (!parsedDate || isNaN(parsedDate.getTime())) {
+          throw new Error('Fecha inválida');
+        }
+      } catch (error) {
+        throw new BadRequestException(
+          'El formato de la fecha es inválido. Use el formato ISO (YYYY-MM-DD)'
+        );
+      }
 
       const classExists = await this.prisma.classes.findFirst({
         where: {

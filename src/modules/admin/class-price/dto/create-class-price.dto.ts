@@ -34,7 +34,7 @@ export class CreateClassPriceDto {
   @ApiProperty({
     description: 'Tipo de moneda en la que se asignará el precio de la clase',
     enum: TypeCurrency,
-    example: TypeCurrency.DOLAR
+    example: TypeCurrency.USD
   })
   @IsString()
   @IsNotEmpty()

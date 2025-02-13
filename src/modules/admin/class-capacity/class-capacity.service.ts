@@ -1,10 +1,10 @@
 import { BadRequestException, Injectable, Logger } from '@nestjs/common';
+import { TypeClass } from '@prisma/client';
+import { HttpResponse, UserData } from 'src/interfaces';
+import { PrismaService } from 'src/prisma/prisma.service';
+import { handleException } from 'src/utils';
 import { CreateClassCapacityDto } from './dto/create-class-capacity.dto';
 import { UpdateClassCapacityDto } from './dto/update-class-capacity.dto';
-import { PrismaService } from 'src/prisma/prisma.service';
-import { HttpResponse, UserData } from 'src/interfaces';
-import { handleException } from 'src/utils';
-import { TypeClass } from '@prisma/client';
 
 @Injectable()
 export class ClassCapacityService {
@@ -97,10 +97,29 @@ export class ClassCapacityService {
 
   /**
    * Obtener todas las capacidades de clase
+   * @param typeClass Tipo de clase
    * @returns Todas las capacidades de clase
    */
-  async findAll(): Promise<any> {
+  async findAll(typeClass?: TypeClass): Promise<any> {
     try {
+      // Si se proporciona un tipo de clase, obtener la capacidad de clase para ese tipo
+      if (typeClass) {
+        const classCapacity = await this.prisma.classCapacity.findFirst({
+          where: {
+            typeClass
+          },
+          select: {
+            id: true,
+            typeClass: true,
+            minCapacity: true,
+            maxCapacity: true
+          }
+        });
+
+        return classCapacity;
+      }
+
+      // Obtener todas las capacidades de clase
       const classCapacities = await this.prisma.classCapacity.findMany({
         select: {
           id: true,
