@@ -155,6 +155,8 @@ export class CreateClassAdminDto {
     required: false,
     enum: ClassStatus
   })
+  @IsString()
+  @IsOptional()
   status?: string;
 
   @ApiProperty({
