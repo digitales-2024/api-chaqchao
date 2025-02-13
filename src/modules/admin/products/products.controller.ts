@@ -1,22 +1,20 @@
 import {
-  Controller,
-  Get,
-  Post,
+  BadRequestException,
   Body,
-  Patch,
-  Param,
+  Controller,
   Delete,
-  UploadedFile,
+  Get,
+  Param,
+  Patch,
+  Post,
+  UploadedFiles,
   UseInterceptors
 } from '@nestjs/common';
-import { ProductsService } from './products.service';
-import { CreateProductDto } from './dto/create-product.dto';
-import { UpdateProductDto } from './dto/update-product.dto';
-import { Auth, GetUser, Module, Permission } from '../auth/decorators';
-import { HttpResponse, ProductData, UserData, UserPayload } from 'src/interfaces';
+import { FilesInterceptor } from '@nestjs/platform-express';
 import {
   ApiBadRequestResponse,
   ApiBody,
+  ApiConsumes,
   ApiCreatedResponse,
   ApiOkResponse,
   ApiOperation,
@@ -24,8 +22,12 @@ import {
   ApiTags,
   ApiUnauthorizedResponse
 } from '@nestjs/swagger';
+import { HttpResponse, ProductData, UserData, UserPayload } from 'src/interfaces';
+import { Auth, GetUser, Module, Permission } from '../auth/decorators';
+import { CreateProductDto } from './dto/create-product.dto';
 import { DeleteProductsDto } from './dto/delete-product.dto';
-import { FileInterceptor } from '@nestjs/platform-express';
+import { UpdateProductDto } from './dto/update-product.dto';
+import { ProductsService } from './products.service';
 
 @ApiTags('Admin Products')
 @ApiBadRequestResponse({ description: 'Bad Request' })
@@ -71,35 +73,68 @@ export class ProductsController {
   }
 
   /**
-   * Subir una imagen
-   * @param image Imagen a subir
-   * @returns URL de la imagen
+   * Subir imágenes para un producto
+   * @param productId ID del producto
+   * @param images Array de imágenes a subir (máximo 3)
+   * @returns URLs de las imágenes subidas
    */
-  @Post('upload/image')
+  @Post(':productId/images')
   @Permission(['CREATE'])
-  @ApiOperation({ summary: 'Subir una imagen' })
-  @ApiCreatedResponse({ description: 'Imagen cargado' })
-  @UseInterceptors(FileInterceptor('image'))
-  async uploadImage(@UploadedFile() image: Express.Multer.File): Promise<HttpResponse<string>> {
-    return this.productsService.uploadImage(image);
+  @ApiOperation({ summary: 'Subir imágenes para un producto (máximo 3)' })
+  @ApiCreatedResponse({ description: 'Imágenes subidas correctamente' })
+  @ApiConsumes('multipart/form-data')
+  @UseInterceptors(FilesInterceptor('images', 3))
+  async uploadImages(
+    @Param('productId') productId: string,
+    @UploadedFiles() images: Express.Multer.File[]
+  ): Promise<HttpResponse<string[]>> {
+    if (!images || images.length === 0) {
+      throw new BadRequestException('No se proporcionaron imágenes');
+    }
+    if (images.length > 3) {
+      throw new BadRequestException('No se pueden subir más de 3 imágenes por producto');
+    }
+    return this.productsService.uploadImages(productId, images);
   }
 
   /**
-   * Actualizar una imagen existente
-   * @param image Imagen nueva para reemplazar la existente
-   * @param existingFileName Nombre del archivo existente a actualizar
+   * Actualizar una imagen específica del producto
+   * @param productId ID del producto
+   * @param imageId ID de la imagen
+   * @param image Nueva imagen
    * @returns URL de la imagen actualizada
    */
-  @Patch('update/image/:existingFileName')
+  @Patch(':productId/images/:imageId')
   @Permission(['UPDATE'])
-  @ApiOperation({ summary: 'Actualizar imagen' })
-  @ApiCreatedResponse({ description: 'Image updated' })
-  @UseInterceptors(FileInterceptor('image'))
-  async updateImage(
-    @UploadedFile() image: Express.Multer.File,
-    @Param('existingFileName') existingFileName: string
+  @ApiOperation({ summary: 'Actualizar una imagen específica del producto' })
+  @ApiCreatedResponse({ description: 'Imagen actualizada' })
+  @UseInterceptors(FilesInterceptor('image', 1))
+  async updateProductImage(
+    @Param('productId') productId: string,
+    @Param('imageId') imageId: string,
+    @UploadedFiles() [image]: Express.Multer.File[]
   ): Promise<HttpResponse<string>> {
-    return this.productsService.updateImage(image, existingFileName);
+    if (!image) {
+      throw new BadRequestException('No se proporcionó una imagen');
+    }
+    return this.productsService.updateProductImage(productId, imageId, image);
+  }
+
+  /**
+   * Eliminar una imagen específica del producto
+   * @param productId ID del producto
+   * @param imageId ID de la imagen
+   * @returns Confirmación de eliminación
+   */
+  @Delete(':productId/images/:imageId')
+  @Permission(['DELETE'])
+  @ApiOperation({ summary: 'Eliminar una imagen específica del producto' })
+  @ApiOkResponse({ description: 'Imagen eliminada' })
+  async deleteProductImage(
+    @Param('productId') productId: string,
+    @Param('imageId') imageId: string
+  ): Promise<HttpResponse<string>> {
+    return this.productsService.deleteProductImage(productId, imageId);
   }
 
   /**
@@ -190,6 +225,7 @@ export class ProductsController {
   ): Promise<HttpResponse<ProductData>> {
     return this.productsService.toggleActivation(id, user);
   }
+
   /**
    * Reactivate multiple products
    * @param user User performing the reactivation

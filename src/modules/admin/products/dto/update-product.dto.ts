@@ -1,8 +1,8 @@
 import { ApiProperty, PartialType } from '@nestjs/swagger';
-import { CreateProductDto } from './create-product.dto';
-import { IsArray, IsNotEmpty, IsNumber, IsString, IsUrl, IsUUID } from 'class-validator';
 import { Transform } from 'class-transformer';
+import { IsArray, IsNotEmpty, IsNumber, IsString, IsUUID } from 'class-validator';
 import { UpdateProductVariationDto } from '../../product-variation/dto/update-product-variation.dto';
+import { CreateProductDto } from './create-product.dto';
 
 export class UpdateProductDto extends PartialType(CreateProductDto) {
   @ApiProperty({
@@ -16,7 +16,7 @@ export class UpdateProductDto extends PartialType(CreateProductDto) {
   name?: string;
 
   @ApiProperty({
-    description: 'Descripción del producto',
+    description: 'Descripción del producto',
     example: 'Café con leche',
     required: false
   })
@@ -33,16 +33,7 @@ export class UpdateProductDto extends PartialType(CreateProductDto) {
   price?: number;
 
   @ApiProperty({
-    description: 'Imagen del producto',
-    example: 'https://www.example.com/image.jpg',
-    required: false
-  })
-  @IsString()
-  @IsUrl()
-  image?: string;
-
-  @ApiProperty({
-    description: '¿El producto está restringido?',
+    description: '¿El producto está restringido?',
     example: false,
     required: false
   })
@@ -50,7 +41,7 @@ export class UpdateProductDto extends PartialType(CreateProductDto) {
   categoryId?: string;
 
   @ApiProperty({
-    description: 'Variaciones del producto',
+    description: 'Variaciones del producto a actualizar',
     example: [
       {
         id: '123e4567-e89b-12d3-a456-426614174000',

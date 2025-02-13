@@ -1,21 +1,21 @@
 import { BadRequestException, Injectable, Logger, NotFoundException } from '@nestjs/common';
-import { PrismaService } from 'src/prisma/prisma.service';
-import { OrderFilterDto } from './dto/order-filter.dto';
-import * as puppeteer from 'puppeteer';
-import * as fs from 'fs';
-import * as path from 'path';
+import { CartStatus, Prisma } from '@prisma/client';
 import { Buffer } from 'buffer';
 import * as ExcelJS from 'exceljs';
-import { ProductFilterDto } from './dto/product-filter.dto';
+import * as fs from 'fs';
+import * as path from 'path';
+import * as puppeteer from 'puppeteer';
+import { PrismaService } from 'src/prisma/prisma.service';
 import { GetTopProductsDto } from './dto/get-top-products.dto';
-import { CartStatus, Prisma } from '@prisma/client';
+import { OrderFilterDto } from './dto/order-filter.dto';
+import { ProductFilterDto } from './dto/product-filter.dto';
 
 interface Product {
   id: string;
   name: string;
   description: string;
   price: number;
-  image: string;
+  images: ProductImages[];
   isAvailable: boolean;
   isRestricted: boolean;
   isActive: boolean;
@@ -26,12 +26,19 @@ interface Product {
   };
 }
 
+interface ProductImages {
+  id: string;
+  url: string;
+  order: number;
+  isMain: boolean;
+}
+
 export interface ProductTop {
   id: string;
   name: string;
   isActive: boolean;
   price: number;
-  image: string;
+  images: ProductImages[];
   category: {
     id: string;
     name: string;
@@ -72,7 +79,7 @@ const translateStatus: Record<Order['orderStatus'], string> = {
 @Injectable()
 export class ReportsService {
   private readonly logger = new Logger(ReportsService.name);
-  constructor(private prisma: PrismaService) { }
+  constructor(private prisma: PrismaService) {}
 
   // Método para generar Excel para Orders
   async generateExcelOrder(data: Order[], filter: OrderFilterDto) {
@@ -179,10 +186,7 @@ export class ReportsService {
 
     // Generar el PDF usando Puppeteer
     const browser = await puppeteer.launch({
-      args: [
-        '--no-sandbox',
-        '--disable-setuid-sandbox'
-      ]
+      args: ['--no-sandbox', '--disable-setuid-sandbox']
     });
     const page = await browser.newPage();
     await page.setContent(htmlContent);
@@ -389,10 +393,7 @@ export class ReportsService {
 
     // Generar el PDF usando Puppeteer
     const browser = await puppeteer.launch({
-      args: [
-        '--no-sandbox',
-        '--disable-setuid-sandbox'
-      ]
+      args: ['--no-sandbox', '--disable-setuid-sandbox']
     });
     const page = await browser.newPage();
     await page.setContent(htmlContent);
@@ -514,7 +515,8 @@ export class ReportsService {
               include: {
                 product: {
                   include: {
-                    category: true // Incluir detalles de la categoría
+                    category: true, // Incluir detalles de la categoría
+                    images: true // Incluir imágenes del producto
                   }
                 }
               }
@@ -545,7 +547,7 @@ export class ReportsService {
               name: product.name,
               description: product.description,
               price: product.price,
-              image: product.image,
+              images: product.images,
               isAvailable: product.isAvailable,
               isRestricted: product.isRestricted,
               isActive: product.isActive,
@@ -655,10 +657,7 @@ export class ReportsService {
 
     // Generar el PDF usando Puppeteer
     const browser = await puppeteer.launch({
-      args: [
-        '--no-sandbox',
-        '--disable-setuid-sandbox'
-      ]
+      args: ['--no-sandbox', '--disable-setuid-sandbox']
     });
     const page = await browser.newPage();
     await page.setContent(htmlContent);
@@ -754,7 +753,6 @@ export class ReportsService {
               name: true,
               description: true,
               price: true,
-              image: true,
               isAvailable: true,
               isRestricted: true,
               isActive: true,
@@ -764,6 +762,14 @@ export class ReportsService {
                   name: true,
                   description: true
                 }
+              },
+              images: {
+                select: {
+                  id: true,
+                  url: true,
+                  order: true,
+                  isMain: true
+                }
               }
             }
           });
@@ -772,7 +778,7 @@ export class ReportsService {
             name: details.name,
             isActive: details.isActive,
             price: details.price,
-            image: details.image,
+            images: details.images,
             category: {
               id: details.category.id,
               name: details.category.name,
