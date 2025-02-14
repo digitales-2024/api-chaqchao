@@ -99,6 +99,7 @@ export class OrdersService {
         pickupTime: order.pickupTime,
         isActive: order.isActive,
         someonePickup: order.someonePickup,
+        isShipping: order.isShipping,
         pickupCode: order.pickupCode,
         totalAmount: order.totalAmount,
         client: order.cart.client
@@ -186,6 +187,7 @@ export class OrdersService {
         pickupTime: order.pickupTime,
         isActive: order.isActive,
         someonePickup: order.someonePickup,
+        isShipping: order.isShipping,
         pickupCode: order.pickupCode,
         totalAmount: order.totalAmount,
         cart: {
@@ -505,18 +507,17 @@ export class OrdersService {
             </p>`
           : ''
       }
-    `;
-  }
-
-  private generateDateAndDividerHtml(orderData: OrderDetails): string {
-    return `
-      <div style="height: 1px; width:100%; border-top:1px dashed #a8acb6; margin-top: 20px;margin-bottom: 20px;"/>
-      <p style="margin: 5px 0; color: #777; text-align: center;">
-        ${format(orderData.pickupTime, 'dd/MM/yyyy HH:mm:ss', { locale: es })}
-      </p>
-      <div style="height: 1px; width:100%; border-top:1px dashed #a8acb6;margin-top: 20px;margin-bottom: 20px;"/>
-    `;
-  }
+                <div style="height: 1px; width:100%; border-top:1px dashed #a8acb6; margin-top: 20px;margin-bottom: 20px;"/>
+                <p style="margin: 5px 0; color: #777; text-align: center;">${format(
+        orderData.pickupTime,
+        'dd/MM/yyyy HH:mm:ss',
+        {
+          locale: es
+        }
+      )}</p>
+                <div style="height: 1px; width:100%; border-top:1px dashed #a8acb6;margin-top: 20px;margin-bottom: 20px;"/>
+        </div>
+`;
 
   private generateOrderDetailsHtml(orderData: OrderDetails): string {
     let html = `
