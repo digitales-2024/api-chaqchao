@@ -431,6 +431,7 @@ export class CartService {
         customerEmail: createOrderDto.customerEmail,
         customerPhone: createOrderDto.customerPhone || '',
         someonePickup: createOrderDto.someonePickup,
+        isShipping: createOrderDto.isShipping,
         comments: createOrderDto.comments || '',
         // Usamos la misma fecha con offset que ya validamos arriba
         pickupTime: pickupDateInPeru,
