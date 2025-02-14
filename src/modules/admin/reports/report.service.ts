@@ -41,6 +41,7 @@ export interface ProductTop {
 }
 
 interface Order {
+  [x: string]: any;
   id: string;
   cartId: string;
   pickupCode: string;
@@ -49,6 +50,7 @@ interface Order {
   orderStatus: string;
   pickupAddress: string;
   someonePickup: boolean;
+  isShipping: boolean;
   comments: string;
   isActive: boolean;
   createdAt: string;
@@ -72,7 +74,7 @@ const translateStatus: Record<Order['orderStatus'], string> = {
 @Injectable()
 export class ReportsService {
   private readonly logger = new Logger(ReportsService.name);
-  constructor(private prisma: PrismaService) { }
+  constructor(private prisma: PrismaService) {}
 
   // Método para generar Excel para Orders
   async generateExcelOrder(data: Order[], filter: OrderFilterDto) {
@@ -83,7 +85,8 @@ export class ReportsService {
       { header: 'Fecha de Recojo', key: 'pickupTime', width: 20 },
       { header: 'Total', key: 'totalAmount', width: 7 },
       { header: 'Estado', key: 'status', width: 12 },
-      { header: 'Modo de Recojo', key: 'mode', width: 12 }
+      { header: 'Modo de Recojo', key: 'mode', width: 12 },
+      { header: 'Modo de Envio', key: 'isShipping', width: 12 }
     ];
 
     worksheet.addRow({
@@ -119,7 +122,8 @@ export class ReportsService {
       pickupTime: 'Fecha de Recojo',
       totalAmount: 'Total',
       status: 'Estado',
-      mode: 'Modo de Recojo'
+      mode: 'Modo de Recojo',
+      isShipping: 'Modo de Envio'
     });
 
     data.forEach((order) => {
@@ -128,7 +132,8 @@ export class ReportsService {
         pickupTime: order.pickupTime,
         totalAmount: order.totalAmount,
         status: translateStatus[order.orderStatus],
-        mode: order.someonePickup ? 'Recoge otra persona' : 'Recoge el cliente'
+        mode: order.someonePickup ? 'Recoge otra persona' : 'Recoge el cliente',
+        isShipping: order.isShipping ? 'Envio a otra ciudad' : 'No hay envio'
       });
     });
     const buffer = await workbook.xlsx.writeBuffer();
@@ -179,10 +184,7 @@ export class ReportsService {
 
     // Generar el PDF usando Puppeteer
     const browser = await puppeteer.launch({
-      args: [
-        '--no-sandbox',
-        '--disable-setuid-sandbox'
-      ]
+      args: ['--no-sandbox', '--disable-setuid-sandbox']
     });
     const page = await browser.newPage();
     await page.setContent(htmlContent);
@@ -208,6 +210,7 @@ export class ReportsService {
         <td>${order.totalAmount}</td>
         <td>${translateStatus[order.orderStatus]}</td>
         <td>${order.someonePickup ? 'Recoge otra persona' : 'Recoge el cliente'}</td>
+        <td>${order.isShipping ? 'Envio a otra ciudad' : 'No hay envio'}</td>
       </tr>`;
     });
     return ordersHtml;
@@ -389,10 +392,7 @@ export class ReportsService {
 
     // Generar el PDF usando Puppeteer
     const browser = await puppeteer.launch({
-      args: [
-        '--no-sandbox',
-        '--disable-setuid-sandbox'
-      ]
+      args: ['--no-sandbox', '--disable-setuid-sandbox']
     });
     const page = await browser.newPage();
     await page.setContent(htmlContent);
@@ -655,10 +655,7 @@ export class ReportsService {
 
     // Generar el PDF usando Puppeteer
     const browser = await puppeteer.launch({
-      args: [
-        '--no-sandbox',
-        '--disable-setuid-sandbox'
-      ]
+      args: ['--no-sandbox', '--disable-setuid-sandbox']
     });
     const page = await browser.newPage();
     await page.setContent(htmlContent);

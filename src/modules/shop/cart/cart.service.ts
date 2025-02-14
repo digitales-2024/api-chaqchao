@@ -404,6 +404,7 @@ export class CartService {
         customerEmail: createOrderDto.customerEmail,
         customerPhone: createOrderDto.customerPhone || '',
         someonePickup: createOrderDto.someonePickup,
+        isShipping: createOrderDto.isShipping,
         comments: createOrderDto.comments || '',
         pickupTime: createOrderDto.pickupTime,
         pickupCode: pickupCode,
