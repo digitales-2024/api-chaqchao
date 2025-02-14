@@ -423,6 +423,13 @@ model Order {
   someonePickup Boolean?    @default(false)
   isShipping    Boolean?    @default(false)
 
+  // Nuevos campos para shipping-to-another-city
+  isShipping         Boolean @default(false) // Si es envío o recogida en tienda
+  shippingState      String? // Estado del envío
+  shippingCity       String? // Ciudad del envío
+  shippingAddress    String? // Dirección de envío
+  shippingReferences String? // Referencias adicionales para el envío
+
   comments  String?
   isActive  Boolean  @default(true)
   createdAt DateTime @default(now()) @db.Timestamptz(6)
