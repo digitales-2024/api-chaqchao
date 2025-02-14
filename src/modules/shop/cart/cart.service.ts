@@ -1,31 +1,32 @@
 import {
+  BadRequestException,
+  ForbiddenException,
+  HttpStatus,
   Injectable,
   Logger,
-  HttpStatus,
-  BadRequestException,
-  NotFoundException,
-  ForbiddenException
+  NotFoundException
 } from '@nestjs/common';
-import { PrismaService } from 'src/prisma/prisma.service';
-import { CreateCartDto } from './dto/create-cart.dto';
-import { CartData, HttpResponse, ProductData } from 'src/interfaces';
-import { handleException } from 'src/utils';
-import * as PDFDocument from 'pdfkit';
-import { writeFileSync } from 'fs';
-import { CartDto } from './dto/cart.dto';
-import { CartStatus, DayOfWeek, OrderStatus } from '@prisma/client';
-import { AddCartItemDto } from './dto/add-cart-item.dto';
-import { MAX_QUANTITY } from 'src/constants/cart';
-import { UpdateCartItemDto } from './dto/update-cart-item.dto';
-import { CreateOrderDto } from './dto/create-order.dto';
-import { PickupCodeService } from './pickup-code/pickup-code.service';
-import { AdminGateway } from 'src/modules/admin/admin.gateway';
-import { DeleteItemDto } from './dto/delete-item';
 import { Cron } from '@nestjs/schedule';
-import { CartDataComplet } from 'src/interfaces/cart.interface';
+import { CartStatus, DayOfWeek, OrderStatus } from '@prisma/client';
 import { format } from 'date-fns';
-import { CreateInvoiceDto } from './dto/create-invoice.dto';
+import { formatInTimeZone } from 'date-fns-tz';
+import { writeFileSync } from 'fs';
+import * as PDFDocument from 'pdfkit';
+import { MAX_QUANTITY } from 'src/constants/cart';
 import { TypedEventEmitter } from 'src/event-emitter/typed-event-emitter.class';
+import { CartData, HttpResponse, ProductData } from 'src/interfaces';
+import { CartDataComplet } from 'src/interfaces/cart.interface';
+import { AdminGateway } from 'src/modules/admin/admin.gateway';
+import { PrismaService } from 'src/prisma/prisma.service';
+import { handleException } from 'src/utils';
+import { AddCartItemDto } from './dto/add-cart-item.dto';
+import { CartDto } from './dto/cart.dto';
+import { CreateCartDto } from './dto/create-cart.dto';
+import { CreateInvoiceDto } from './dto/create-invoice.dto';
+import { CreateOrderDto } from './dto/create-order.dto';
+import { DeleteItemDto } from './dto/delete-item';
+import { UpdateCartItemDto } from './dto/update-cart-item.dto';
+import { PickupCodeService } from './pickup-code/pickup-code.service';
 
 @Injectable()
 export class CartService {
@@ -405,7 +406,11 @@ export class CartService {
         customerPhone: createOrderDto.customerPhone || '',
         someonePickup: createOrderDto.someonePickup,
         comments: createOrderDto.comments || '',
-        pickupTime: createOrderDto.pickupTime,
+        pickupTime: formatInTimeZone(
+          createOrderDto.pickupTime,
+          'America/Lima',
+          "yyyy-MM-dd'T'HH:mm:ssXXX"
+        ),
         pickupCode: pickupCode,
         totalAmount: totalAmount,
         orderStatus: OrderStatus.PENDING,
