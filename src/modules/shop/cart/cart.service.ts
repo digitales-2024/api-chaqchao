@@ -11,13 +11,13 @@ import { CartStatus, DayOfWeek, OrderStatus } from '@prisma/client';
 import { format } from 'date-fns';
 import { writeFileSync } from 'fs';
 import * as PDFDocument from 'pdfkit';
-import { MAX_QUANTITY } from 'src/constants/cart';
-import { TypedEventEmitter } from 'src/event-emitter/typed-event-emitter.class';
-import { CartData, HttpResponse, ProductData } from 'src/interfaces';
-import { CartDataComplet } from 'src/interfaces/cart.interface';
-import { AdminGateway } from 'src/modules/admin/admin.gateway';
-import { PrismaService } from 'src/prisma/prisma.service';
-import { handleException } from 'src/utils';
+import { MAX_QUANTITY } from '../../../constants/cart';
+import { TypedEventEmitter } from '../../../event-emitter/typed-event-emitter.class';
+import { CartData, HttpResponse, ProductData } from '../../../interfaces';
+import { CartDataComplet } from '../../../interfaces/cart.interface';
+import { PrismaService } from '../../../prisma/prisma.service';
+import { handleException } from '../../../utils';
+import { AdminGateway } from '../../admin/admin.gateway';
 import { AddCartItemDto } from './dto/add-cart-item.dto';
 import { CartDto } from './dto/cart.dto';
 import { CreateCartDto } from './dto/create-cart.dto';
@@ -355,13 +355,10 @@ export class CartService {
     // Generar el pickupCode
     const pickupCode = await this.pickupCodeService.generatePickupCode();
 
-    // Si la fecha viene con Z, la convertimos a hora Perú
-    const pickupDate = createOrderDto.pickupTime.endsWith('Z')
-      ? new Date(createOrderDto.pickupTime) // Ya está en UTC
-      : new Date(createOrderDto.pickupTime + 'Z'); // Asumimos UTC si no tiene Z
-
-    // Ajustamos a hora Perú (UTC-5)
-    const pickupDateInPeru = new Date(pickupDate.getTime() - 5 * 60 * 60 * 1000);
+    // Si viene en UTC (con Z), convertimos a hora Perú
+    const pickupDateInPeru = createOrderDto.pickupTime.endsWith('Z')
+      ? new Date(new Date(createOrderDto.pickupTime).getTime() - 5 * 60 * 60 * 1000)
+      : new Date(createOrderDto.pickupTime); // Ya está en hora Perú
 
     // Obtener día y hora de pickup en Perú
     const dayOfWeek = format(pickupDateInPeru, 'EEEE').toUpperCase() as DayOfWeek;
