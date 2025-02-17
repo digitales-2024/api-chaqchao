@@ -9,7 +9,6 @@ import {
 import { Cron } from '@nestjs/schedule';
 import { CartStatus, DayOfWeek, OrderStatus } from '@prisma/client';
 import { format } from 'date-fns';
-import { formatInTimeZone } from 'date-fns-tz';
 import { writeFileSync } from 'fs';
 import * as PDFDocument from 'pdfkit';
 import { MAX_QUANTITY } from 'src/constants/cart';
@@ -356,35 +355,43 @@ export class CartService {
     // Generar el pickupCode
     const pickupCode = await this.pickupCodeService.generatePickupCode();
 
-    // Obtener el día actual de la semana
-    const today = format(new Date(createOrderDto.pickupTime), 'EEEE').toUpperCase() as DayOfWeek;
+    // Si la fecha viene con Z, la convertimos a hora Perú
+    const pickupDate = createOrderDto.pickupTime.endsWith('Z')
+      ? new Date(createOrderDto.pickupTime) // Ya está en UTC
+      : new Date(createOrderDto.pickupTime + 'Z'); // Asumimos UTC si no tiene Z
+
+    // Ajustamos a hora Perú (UTC-5)
+    const pickupDateInPeru = new Date(pickupDate.getTime() - 5 * 60 * 60 * 1000);
+
+    // Obtener día y hora de pickup en Perú
+    const dayOfWeek = format(pickupDateInPeru, 'EEEE').toUpperCase() as DayOfWeek;
+    const pickupTimeStr = format(pickupDateInPeru, 'HH:mm');
+
+    // Verificar horario de atención para ese día
     const businessHours = await this.prisma.businessHours.findFirst({
-      where: { dayOfWeek: today, isOpen: true }
+      where: { dayOfWeek, isOpen: true }
     });
+
     if (!businessHours) {
-      throw new BadRequestException('The business is closed today.');
+      throw new BadRequestException(`The business is closed on ${dayOfWeek.toLowerCase()}s.`);
     }
 
-    // Validar si la hora actual está dentro del rango de horarios permitidos y que sean mayor a la hora actual
+    // Obtener hora actual en Perú
+    const nowInPeru = new Date(new Date().toLocaleString('en-US', { timeZone: 'America/Lima' }));
+    const currentTimeStr = format(nowInPeru, 'HH:mm');
 
-    const currentTimeOrder = format(new Date(createOrderDto.pickupTime), 'HH:mm');
-    const currentTime = format(new Date(), 'HH:mm');
-
-    // Si la fecha es hoy, la hora de recojo debe ser mayor a la hora actual
-    if (
-      format(new Date(createOrderDto.pickupTime), 'yyyy-MM-dd') === format(new Date(), 'yyyy-MM-dd')
-    ) {
-      if (currentTimeOrder < currentTime) {
+    // Validar que no sea en el pasado si es el mismo día
+    if (format(pickupDateInPeru, 'yyyy-MM-dd') === format(nowInPeru, 'yyyy-MM-dd')) {
+      if (pickupTimeStr < currentTimeStr) {
         throw new BadRequestException('Orders cannot be placed in the past.');
       }
     }
 
-    // Si la hora de recojo es fuera del horario de atención
-    if (
-      currentTimeOrder < businessHours.openingTime ||
-      currentTimeOrder > businessHours.closingTime
-    ) {
-      throw new BadRequestException('Orders cannot be placed outside business hours.');
+    // Validar horario de atención
+    if (pickupTimeStr < businessHours.openingTime || pickupTimeStr > businessHours.closingTime) {
+      throw new BadRequestException(
+        `Orders can only be placed between ${businessHours.openingTime} and ${businessHours.closingTime} (Peru time).`
+      );
     }
 
     // Verificamos que no haya una orden pendiente del mismo cart
@@ -406,11 +413,8 @@ export class CartService {
         customerPhone: createOrderDto.customerPhone || '',
         someonePickup: createOrderDto.someonePickup,
         comments: createOrderDto.comments || '',
-        pickupTime: formatInTimeZone(
-          createOrderDto.pickupTime,
-          'America/Lima',
-          "yyyy-MM-dd'T'HH:mm:ssXXX"
-        ),
+        // Usamos la misma fecha con offset que ya validamos arriba
+        pickupTime: pickupDateInPeru,
         pickupCode: pickupCode,
         totalAmount: totalAmount,
         orderStatus: OrderStatus.PENDING,
