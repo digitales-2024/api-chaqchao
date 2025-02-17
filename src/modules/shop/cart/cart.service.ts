@@ -8,7 +8,17 @@ import {
 } from '@nestjs/common';
 import { Cron } from '@nestjs/schedule';
 import { CartStatus, DayOfWeek, OrderStatus } from '@prisma/client';
-import { format } from 'date-fns';
+import {
+  format,
+  isFriday,
+  isMonday,
+  isSaturday,
+  isSunday,
+  isThursday,
+  isTuesday,
+  isWednesday
+} from 'date-fns';
+import { formatInTimeZone } from 'date-fns-tz';
 import { writeFileSync } from 'fs';
 import * as PDFDocument from 'pdfkit';
 import { MAX_QUANTITY } from '../../../constants/cart';
@@ -360,9 +370,19 @@ export class CartService {
       ? new Date(new Date(createOrderDto.pickupTime).getTime() - 5 * 60 * 60 * 1000)
       : new Date(createOrderDto.pickupTime); // Ya está en hora Perú
 
+    const getDayName = (date) => {
+      if (isMonday(date)) return 'MONDAY';
+      if (isTuesday(date)) return 'TUESDAY';
+      if (isWednesday(date)) return 'WEDNESDAY';
+      if (isThursday(date)) return 'THURSDAY';
+      if (isFriday(date)) return 'FRIDAY';
+      if (isSaturday(date)) return 'SATURDAY';
+      if (isSunday(date)) return 'SUNDAY';
+    };
+
     // Obtener día y hora de pickup en Perú
-    const dayOfWeek = format(pickupDateInPeru, 'EEEE').toUpperCase() as DayOfWeek;
-    const pickupTimeStr = format(pickupDateInPeru, 'HH:mm');
+    const dayOfWeek = getDayName(pickupDateInPeru) as DayOfWeek;
+    const pickupTimeStr = formatInTimeZone(createOrderDto.pickupTime, 'America/Lima', 'HH:mm');
 
     // Verificar horario de atención para ese día
     const businessHours = await this.prisma.businessHours.findFirst({
@@ -375,7 +395,9 @@ export class CartService {
 
     // Obtener hora actual en Perú
     const nowInPeru = new Date(new Date().toLocaleString('en-US', { timeZone: 'America/Lima' }));
-    const currentTimeStr = format(nowInPeru, 'HH:mm');
+    let currentTimeStr = format(nowInPeru, 'HH:mm');
+    // Aumentar media hora, osea si el pedido esta entre los 30 minutos a partir de la hora actual
+    currentTimeStr = format(new Date(nowInPeru.setMinutes(nowInPeru.getMinutes() + 30)), 'HH:mm');
 
     // Validar que no sea en el pasado si es el mismo día
     if (format(pickupDateInPeru, 'yyyy-MM-dd') === format(nowInPeru, 'yyyy-MM-dd')) {
