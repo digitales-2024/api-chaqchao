@@ -11,7 +11,6 @@ export type OrderData = Pick<
   | 'isActive'
   | 'cartId'
   | 'someonePickup'
-  | 'isShipping'
   | 'pickupCode'
   | 'totalAmount'
 > & {
@@ -25,7 +24,6 @@ export type OrderInfo = Pick<
   | 'pickupAddress'
   | 'pickupTime'
   | 'someonePickup'
-  | 'isShipping'
   | 'pickupCode'
   | 'totalAmount'
   | 'isActive'
