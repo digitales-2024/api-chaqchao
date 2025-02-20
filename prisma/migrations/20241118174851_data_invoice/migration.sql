@@ -16,7 +16,6 @@ ALTER TABLE "BillingDocument" DROP COLUMN "ruc",
 ADD COLUMN     "address" TEXT NOT NULL,
 ADD COLUMN     "city" TEXT NOT NULL,
 ADD COLUMN     "country" TEXT NOT NULL,
-ADD COLUMN     "postalCode" TEXT NOT NULL,
 ADD COLUMN     "state" TEXT NOT NULL,
 ADD COLUMN     "typeDocument" TEXT NOT NULL;
 
