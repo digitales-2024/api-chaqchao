@@ -596,9 +596,18 @@ export class ClassesAdminService {
    */
   async closeClass(id: string): Promise<ClassClosed> {
     try {
+      const currentClass = await this.prisma.classes.findUnique({
+        where: { id },
+        select: { isClosed: true }
+      });
+
+      if (!currentClass) {
+        throw new BadRequestException('La clase no existe');
+      }
+
       const classClosed = await this.prisma.classes.update({
         where: { id },
-        data: { isClosed: true },
+        data: { isClosed: !currentClass.isClosed },
         select: {
           id: true,
           dateClass: true,
