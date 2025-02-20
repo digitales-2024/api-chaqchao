@@ -516,9 +516,9 @@ model Classes {
 model ClassRegister {
   id String @id @unique @default(uuid())
 
-  userName           String
-  userEmail          String
-  userPhone          String
+  userName           String?
+  userEmail          String?
+  userPhone          String?
   totalParticipants  Int
   totalAdults        Int
   totalChildren      Int
@@ -558,6 +558,7 @@ model ClassRegister {
 enum MethodPayment {
   PAYPAL
   IZIPAY
+  CASH
 }
 
 enum TypeClass {

@@ -1,16 +1,16 @@
-import * as puppeteer from 'puppeteer';
-import * as path from 'path';
 import { BadRequestException, Injectable, Logger } from '@nestjs/common';
 import { Order, OrderStatus } from '@prisma/client';
-import { PrismaService } from 'src/prisma/prisma.service';
-import { handleException } from 'src/utils';
-import { AdminGateway } from '../admin.gateway';
-import { OrderDetails, OrderInfo } from 'src/interfaces';
-import * as fs from 'fs';
-import { numberToLetter } from 'src/utils/numberToLetter';
 import { format } from 'date-fns';
 import { es } from 'date-fns/locale';
+import * as fs from 'fs';
+import * as path from 'path';
+import * as puppeteer from 'puppeteer';
 import { TypedEventEmitter } from 'src/event-emitter/typed-event-emitter.class';
+import { OrderDetails, OrderInfo } from 'src/interfaces';
+import { PrismaService } from 'src/prisma/prisma.service';
+import { handleException } from 'src/utils';
+import { numberToLetter } from 'src/utils/numberToLetter';
+import { AdminGateway } from '../admin.gateway';
 
 @Injectable()
 export class OrdersService {
@@ -19,7 +19,7 @@ export class OrdersService {
     private readonly prismaService: PrismaService,
     private readonly adminGateway: AdminGateway,
     private readonly eventEmitter: TypedEventEmitter
-  ) { }
+  ) {}
 
   /**
    * Mostrar todos los pedidos
@@ -29,10 +29,20 @@ export class OrdersService {
    */
   async findAll(date: string, status?: OrderStatus): Promise<OrderInfo[]> {
     try {
+      // Convertir la fecha a la zona horaria de Perú
       const formattedDate = new Date(date);
+
       if (isNaN(formattedDate.getTime())) {
         throw new BadRequestException('Invalid date format');
       }
+
+      // Convertimos la fecha de búsqueda a UTC
+      const searchDate = new Date(`${date}T00:00:00-05:00`); // Inicio del día en Perú
+      const nextDay = new Date(`${date}T00:00:00-05:00`);
+      nextDay.setDate(nextDay.getDate() + 1); // Final del día en Perú
+
+      const start = searchDate;
+      const end = nextDay;
 
       const orders = await this.prismaService.order.findMany({
         include: {
@@ -72,14 +82,14 @@ export class OrdersService {
         },
         where: {
           pickupTime: {
-            gte: formattedDate,
-            lt: new Date(formattedDate.getTime() + 24 * 60 * 60 * 1000)
+            gte: start,
+            lte: end
           },
           orderStatus: {
             ...(status === ('ALL' as unknown as OrderStatus)
               ? {
-                not: 'PENDING'
-              }
+                  not: 'PENDING'
+                }
               : { equals: status })
           }
         },
@@ -99,19 +109,19 @@ export class OrdersService {
         totalAmount: order.totalAmount,
         client: order.cart.client
           ? {
-            id: order.cart.client.id,
-            name: order.cart.client.name,
-            lastName: order.cart.client.lastName,
-            phone: order.cart.client.phone,
-            email: order.cart.client.email
-          }
+              id: order.cart.client.id,
+              name: order.cart.client.name,
+              lastName: order.cart.client.lastName,
+              phone: order.cart.client.phone,
+              email: order.cart.client.email
+            }
           : {
-            id: null,
-            name: order.customerName,
-            lastName: order.customerLastName,
-            phone: order.customerPhone,
-            email: order.customerEmail
-          }
+              id: null,
+              name: order.customerName,
+              lastName: order.customerLastName,
+              phone: order.customerPhone,
+              email: order.customerEmail
+            }
       }));
     } catch (error) {
       this.logger.error('Error get orders', error.message);
@@ -214,19 +224,19 @@ export class OrdersService {
         },
         client: order.cart.client
           ? {
-            id: order.cart.client.id,
-            name: order.cart.client.name,
-            lastName: order.cart.client.lastName,
-            phone: order.cart.client.phone,
-            email: order.cart.client.email
-          }
+              id: order.cart.client.id,
+              name: order.cart.client.name,
+              lastName: order.cart.client.lastName,
+              phone: order.cart.client.phone,
+              email: order.cart.client.email
+            }
           : {
-            id: null,
-            name: order.customerName,
-            phone: order.customerPhone,
-            lastName: order.customerLastName,
-            email: order.customerEmail
-          }
+              id: null,
+              name: order.customerName,
+              phone: order.customerPhone,
+              lastName: order.customerLastName,
+              email: order.customerEmail
+            }
       };
     } catch (error) {
       this.logger.error('Error get order', error.message);
@@ -427,10 +437,7 @@ export class OrdersService {
 
     // Generar el archivo PDF
     const browser = await puppeteer.launch({
-      args: [
-        '--no-sandbox',
-        '--disable-setuid-sandbox'
-      ]
+      args: ['--no-sandbox', '--disable-setuid-sandbox']
     });
     const page = await browser.newPage();
     await page.setContent(htmlContent);
@@ -486,18 +493,19 @@ export class OrdersService {
                     <p style="margin: 5px 0;display:flex; flex-direction:column;"><strong style="font-size:12px; color:#9da2ab">Ciudad:</strong>${orderData.billingDocument.city}</p>
             </div>
             
-            ${orderData.billingDocument.billingDocumentType === 'INVOICE'
-        ? `<p style="margin: 5px 0;"><strong style="font-size:12px; color:#9da2ab">Empresa:</strong>${orderData.billingDocument.businessName}</p>`
-        : ''
-      }
+            ${
+              orderData.billingDocument.billingDocumentType === 'INVOICE'
+                ? `<p style="margin: 5px 0;"><strong style="font-size:12px; color:#9da2ab">Empresa:</strong>${orderData.billingDocument.businessName}</p>`
+                : ''
+            }
                 <div style="height: 1px; width:100%; border-top:1px dashed #a8acb6; margin-top: 20px;margin-bottom: 20px;"/>
                 <p style="margin: 5px 0; color: #777; text-align: center;">${format(
-        orderData.pickupTime,
-        'dd/MM/yyyy HH:mm:ss',
-        {
-          locale: es
-        }
-      )}</p>
+                  orderData.pickupTime,
+                  'dd/MM/yyyy HH:mm:ss',
+                  {
+                    locale: es
+                  }
+                )}</p>
                 <div style="height: 1px; width:100%; border-top:1px dashed #a8acb6;margin-top: 20px;margin-bottom: 20px;"/>
         </div>
 `;
