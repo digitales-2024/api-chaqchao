@@ -1,7 +1,7 @@
 import { ApiProperty } from '@nestjs/swagger';
 import { ClassStatus, MethodPayment, TypeClass, TypeCurrency } from '@prisma/client';
 import { Transform } from 'class-transformer';
-import { IsBoolean, IsEmail, IsNotEmpty, IsNumber, IsOptional, IsString } from 'class-validator';
+import { IsBoolean, IsNotEmpty, IsNumber, IsOptional, IsString } from 'class-validator';
 
 export class CreateClassAdminDto {
   @ApiProperty({
@@ -21,17 +21,16 @@ export class CreateClassAdminDto {
   })
   @Transform(({ value }) => value.trim())
   @IsString()
-  @IsNotEmpty()
-  userName: string;
+  @IsOptional()
+  userName?: string;
 
   @ApiProperty({
     example: 'john.doe@example.com',
     description: 'Email del usuario que registra la clase',
     required: true
   })
-  @IsEmail()
-  @IsNotEmpty()
-  userEmail: string;
+  @IsOptional()
+  userEmail?: string;
 
   @ApiProperty({
     example: '123456789',
@@ -39,14 +38,14 @@ export class CreateClassAdminDto {
     required: true
   })
   @IsString()
-  userPhone: string;
+  @IsOptional()
+  userPhone?: string;
 
   @ApiProperty({
     example: 2,
     description: 'Número total de adultos',
     required: true
   })
-  @IsNotEmpty()
   @IsNumber()
   totalAdults: number;
 

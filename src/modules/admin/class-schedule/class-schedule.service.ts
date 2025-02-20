@@ -115,6 +115,9 @@ export class ClassScheduleService {
           id: true,
           startTime: true,
           typeClass: true
+        },
+        orderBy: {
+          startTime: 'asc'
         }
       });
 

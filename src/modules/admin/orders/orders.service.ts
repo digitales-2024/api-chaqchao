@@ -23,10 +23,20 @@ export class OrdersService {
 
   async findAll(date: string, status?: OrderStatus): Promise<OrderInfo[]> {
     try {
+      // Convertir la fecha a la zona horaria de Perú
       const formattedDate = new Date(date);
+
       if (isNaN(formattedDate.getTime())) {
         throw new BadRequestException('Invalid date format');
       }
+
+      // Convertimos la fecha de búsqueda a UTC
+      const searchDate = new Date(`${date}T00:00:00-05:00`); // Inicio del día en Perú
+      const nextDay = new Date(`${date}T00:00:00-05:00`);
+      nextDay.setDate(nextDay.getDate() + 1); // Final del día en Perú
+
+      const start = searchDate;
+      const end = nextDay;
 
       const orders = await this.prismaService.order.findMany({
         where: {
@@ -72,6 +82,19 @@ export class OrdersService {
                 }
               }
             }
+          }
+        },
+        where: {
+          pickupTime: {
+            gte: start,
+            lte: end
+          },
+          orderStatus: {
+            ...(status === ('ALL' as unknown as OrderStatus)
+              ? {
+                  not: 'PENDING'
+                }
+              : { equals: status })
           }
         },
         orderBy: {

@@ -1,5 +1,5 @@
-import { IsString, IsEmail, IsOptional, IsBoolean } from 'class-validator';
 import { ApiProperty } from '@nestjs/swagger';
+import { IsBoolean, IsEmail, IsOptional, IsString } from 'class-validator';
 
 export class CreateOrderDto {
   @ApiProperty({ description: 'Nombre del cliente', type: String, example: 'John' })
@@ -43,7 +43,7 @@ export class CreateOrderDto {
   @ApiProperty({
     description: 'Hora programada para la recogida',
     type: String,
-    example: '2021-09-01T12:00:00Z',
+    example: '2021-09-01T12:00:00-05:00',
     format: 'date-time'
   })
   @IsString()

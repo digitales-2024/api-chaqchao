@@ -1,31 +1,41 @@
 import {
+  BadRequestException,
+  ForbiddenException,
+  HttpStatus,
   Injectable,
   Logger,
-  HttpStatus,
-  BadRequestException,
-  NotFoundException,
-  ForbiddenException
+  NotFoundException
 } from '@nestjs/common';
-import { PrismaService } from 'src/prisma/prisma.service';
-import { CreateCartDto } from './dto/create-cart.dto';
-import { CartData, HttpResponse, ProductData } from 'src/interfaces';
-import { handleException } from 'src/utils';
-import * as PDFDocument from 'pdfkit';
-import { writeFileSync } from 'fs';
-import { CartDto } from './dto/cart.dto';
-import { CartStatus, DayOfWeek, OrderStatus } from '@prisma/client';
-import { AddCartItemDto } from './dto/add-cart-item.dto';
-import { MAX_QUANTITY } from 'src/constants/cart';
-import { UpdateCartItemDto } from './dto/update-cart-item.dto';
-import { CreateOrderDto } from './dto/create-order.dto';
-import { PickupCodeService } from './pickup-code/pickup-code.service';
-import { AdminGateway } from 'src/modules/admin/admin.gateway';
-import { DeleteItemDto } from './dto/delete-item';
 import { Cron } from '@nestjs/schedule';
-import { CartDataComplet } from 'src/interfaces/cart.interface';
-import { format } from 'date-fns';
+import { CartStatus, DayOfWeek, OrderStatus } from '@prisma/client';
+import {
+  format,
+  isFriday,
+  isMonday,
+  isSaturday,
+  isSunday,
+  isThursday,
+  isTuesday,
+  isWednesday
+} from 'date-fns';
+import { formatInTimeZone } from 'date-fns-tz';
+import { writeFileSync } from 'fs';
+import * as PDFDocument from 'pdfkit';
+import { MAX_QUANTITY } from '../../../constants/cart';
+import { TypedEventEmitter } from '../../../event-emitter/typed-event-emitter.class';
+import { CartData, HttpResponse, ProductData } from '../../../interfaces';
+import { CartDataComplet } from '../../../interfaces/cart.interface';
+import { PrismaService } from '../../../prisma/prisma.service';
+import { handleException } from '../../../utils';
+import { AdminGateway } from '../../admin/admin.gateway';
+import { AddCartItemDto } from './dto/add-cart-item.dto';
+import { CartDto } from './dto/cart.dto';
+import { CreateCartDto } from './dto/create-cart.dto';
 import { CreateInvoiceDto } from './dto/create-invoice.dto';
-import { TypedEventEmitter } from 'src/event-emitter/typed-event-emitter.class';
+import { CreateOrderDto } from './dto/create-order.dto';
+import { DeleteItemDto } from './dto/delete-item';
+import { UpdateCartItemDto } from './dto/update-cart-item.dto';
+import { PickupCodeService } from './pickup-code/pickup-code.service';
 
 @Injectable()
 export class CartService {
@@ -355,35 +365,52 @@ export class CartService {
     // Generar el pickupCode
     const pickupCode = await this.pickupCodeService.generatePickupCode();
 
-    // Obtener el día actual de la semana
-    const today = format(new Date(createOrderDto.pickupTime), 'EEEE').toUpperCase() as DayOfWeek;
+    // Si viene en UTC (con Z), convertimos a hora Perú
+    const pickupDateInPeru = createOrderDto.pickupTime.endsWith('Z')
+      ? new Date(new Date(createOrderDto.pickupTime).getTime() - 5 * 60 * 60 * 1000)
+      : new Date(createOrderDto.pickupTime); // Ya está en hora Perú
+
+    const getDayName = (date) => {
+      if (isMonday(date)) return 'MONDAY';
+      if (isTuesday(date)) return 'TUESDAY';
+      if (isWednesday(date)) return 'WEDNESDAY';
+      if (isThursday(date)) return 'THURSDAY';
+      if (isFriday(date)) return 'FRIDAY';
+      if (isSaturday(date)) return 'SATURDAY';
+      if (isSunday(date)) return 'SUNDAY';
+    };
+
+    // Obtener día y hora de pickup en Perú
+    const dayOfWeek = getDayName(pickupDateInPeru) as DayOfWeek;
+    const pickupTimeStr = formatInTimeZone(createOrderDto.pickupTime, 'America/Lima', 'HH:mm');
+
+    // Verificar horario de atención para ese día
     const businessHours = await this.prisma.businessHours.findFirst({
-      where: { dayOfWeek: today, isOpen: true }
+      where: { dayOfWeek, isOpen: true }
     });
+
     if (!businessHours) {
-      throw new BadRequestException('The business is closed today.');
+      throw new BadRequestException(`The business is closed on ${dayOfWeek.toLowerCase()}s.`);
     }
 
-    // Validar si la hora actual está dentro del rango de horarios permitidos y que sean mayor a la hora actual
+    // Obtener hora actual en Perú
+    const nowInPeru = new Date(new Date().toLocaleString('en-US', { timeZone: 'America/Lima' }));
+    let currentTimeStr = format(nowInPeru, 'HH:mm');
+    // Aumentar media hora, osea si el pedido esta entre los 30 minutos a partir de la hora actual
+    currentTimeStr = format(new Date(nowInPeru.setMinutes(nowInPeru.getMinutes() + 30)), 'HH:mm');
 
-    const currentTimeOrder = format(new Date(createOrderDto.pickupTime), 'HH:mm');
-    const currentTime = format(new Date(), 'HH:mm');
-
-    // Si la fecha es hoy, la hora de recojo debe ser mayor a la hora actual
-    if (
-      format(new Date(createOrderDto.pickupTime), 'yyyy-MM-dd') === format(new Date(), 'yyyy-MM-dd')
-    ) {
-      if (currentTimeOrder < currentTime) {
+    // Validar que no sea en el pasado si es el mismo día
+    if (format(pickupDateInPeru, 'yyyy-MM-dd') === format(nowInPeru, 'yyyy-MM-dd')) {
+      if (pickupTimeStr < currentTimeStr) {
         throw new BadRequestException('Orders cannot be placed in the past.');
       }
     }
 
-    // Si la hora de recojo es fuera del horario de atención
-    if (
-      currentTimeOrder < businessHours.openingTime ||
-      currentTimeOrder > businessHours.closingTime
-    ) {
-      throw new BadRequestException('Orders cannot be placed outside business hours.');
+    // Validar horario de atención
+    if (pickupTimeStr < businessHours.openingTime || pickupTimeStr > businessHours.closingTime) {
+      throw new BadRequestException(
+        `Orders can only be placed between ${businessHours.openingTime} and ${businessHours.closingTime} (Peru time).`
+      );
     }
 
     // Verificamos que no haya una orden pendiente del mismo cart
@@ -405,7 +432,8 @@ export class CartService {
         customerPhone: createOrderDto.customerPhone || '',
         someonePickup: createOrderDto.someonePickup,
         comments: createOrderDto.comments || '',
-        pickupTime: createOrderDto.pickupTime,
+        // Usamos la misma fecha con offset que ya validamos arriba
+        pickupTime: pickupDateInPeru,
         pickupCode: pickupCode,
         totalAmount: totalAmount,
         orderStatus: OrderStatus.PENDING,
