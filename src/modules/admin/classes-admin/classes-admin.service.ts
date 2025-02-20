@@ -13,8 +13,8 @@ import * as fs from 'fs';
 import * as path from 'path';
 import * as puppeteer from 'puppeteer';
 import { ClassClosed, ClassesDataAdmin, ClassRegisterData } from 'src/interfaces';
-import { PrismaService } from 'src/prisma/prisma.service';
-import { handleException } from 'src/utils';
+import { PrismaService } from '../../../prisma/prisma.service';
+import { handleException } from '../../../utils';
 import { CreateClassAdminDto } from './dto/create-class-admin.dto';
 
 @Injectable()
@@ -82,7 +82,7 @@ export class ClassesAdminService {
           data.totalAdults + data.totalChildren + classEntity.totalParticipants >
           participants.maxCapacity
         ) {
-          throw new BadRequestException('La capacidad de la clase ha sido alcanzada');
+          throw new BadRequestException('La capacidad de la clase ha sido excedida');
         }
 
         // Crear el registro

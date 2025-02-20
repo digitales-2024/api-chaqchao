@@ -1,3 +1,4 @@
+import { BadRequestException } from '@nestjs/common';
 import { Test, TestingModule } from '@nestjs/testing';
 import { CartStatus, DayOfWeek, OrderStatus } from '@prisma/client';
 import { TypedEventEmitter } from '../../../event-emitter/typed-event-emitter.class';
@@ -206,8 +207,13 @@ describe('CartService', () => {
       });
 
       it('Debería rechazar pedidos si es una time pasada a la hora actual, siempre y cuando sea el dia actual el pedido', async () => {
-        // 01:00 PM Peru = 18:00 UTC
-        const pedidoValido = '2025-02-18T17:58:00.000Z';
+        // Set current date to a fixed time
+        const now = new Date('2025-02-18T16:00:00.000Z');
+        jest.useFakeTimers();
+        jest.setSystemTime(now);
+
+        // Set order time to 1 hour before current time
+        const pastTime = '2025-02-18T15:00:00.000Z';
 
         const createOrderDto = {
           customerName: 'Test',
@@ -215,12 +221,14 @@ describe('CartService', () => {
           customerEmail: 'test@test.com',
           customerPhone: '123456789',
           someonePickup: false,
-          pickupTime: pedidoValido
+          pickupTime: pastTime
         };
 
         await expect(service.completeCart('1', createOrderDto)).rejects.toThrow(
-          /Orders cannot be placed in the past./
+          new BadRequestException('Orders cannot be placed in the past.')
         );
+
+        jest.useRealTimers();
       });
     });
   });
