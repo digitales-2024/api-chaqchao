@@ -50,7 +50,6 @@ interface Order {
   orderStatus: string;
   pickupAddress: string;
   someonePickup: boolean;
-  isShipping: boolean;
   comments: string;
   isActive: boolean;
   createdAt: string;
@@ -85,8 +84,7 @@ export class ReportsService {
       { header: 'Fecha de Recojo', key: 'pickupTime', width: 20 },
       { header: 'Total', key: 'totalAmount', width: 7 },
       { header: 'Estado', key: 'status', width: 12 },
-      { header: 'Modo de Recojo', key: 'mode', width: 12 },
-      { header: 'Modo de Envio', key: 'isShipping', width: 12 }
+      { header: 'Modo de Recojo', key: 'mode', width: 12 }
     ];
 
     worksheet.addRow({
@@ -122,8 +120,7 @@ export class ReportsService {
       pickupTime: 'Fecha de Recojo',
       totalAmount: 'Total',
       status: 'Estado',
-      mode: 'Modo de Recojo',
-      isShipping: 'Modo de Envio'
+      mode: 'Modo de Recojo'
     });
 
     data.forEach((order) => {
@@ -132,8 +129,7 @@ export class ReportsService {
         pickupTime: order.pickupTime,
         totalAmount: order.totalAmount,
         status: translateStatus[order.orderStatus],
-        mode: order.someonePickup ? 'Recoge otra persona' : 'Recoge el cliente',
-        isShipping: order.isShipping ? 'Envio a otra ciudad' : 'No hay envio'
+        mode: order.someonePickup ? 'Recoge otra persona' : 'Recoge el cliente'
       });
     });
     const buffer = await workbook.xlsx.writeBuffer();
@@ -210,7 +206,6 @@ export class ReportsService {
         <td>${order.totalAmount}</td>
         <td>${translateStatus[order.orderStatus]}</td>
         <td>${order.someonePickup ? 'Recoge otra persona' : 'Recoge el cliente'}</td>
-        <td>${order.isShipping ? 'Envio a otra ciudad' : 'No hay envio'}</td>
       </tr>`;
     });
     return ordersHtml;
