@@ -375,7 +375,7 @@ export class ProductsService {
         variations: product.productVariations
       }));
     } catch (error) {
-      this.logger.error('Error getting all products');
+      this.logger.error('Error getting all products', error);
       handleException(error, 'Error getting all products');
     }
   }
@@ -633,7 +633,6 @@ export class ProductsService {
       const productDesactivate = await this.prisma.$transaction(async (prisma) => {
         const productDB = await this.findById(id);
 
-        // Actualizar el estado del producto
         await prisma.product.update({
           where: { id },
           data: {
@@ -677,6 +676,46 @@ export class ProductsService {
     } catch (error) {
       this.logger.error(`Error deactivating a product for id: ${id}`, error.stack);
       handleException(error, 'Error deactivating a product');
+    }
+  }
+
+  /**
+   * Eliminar permanentemente un producto
+   * @param id Id del producto
+   * @returns Producto eliminado
+   */
+  async removePermanent(id: string): Promise<void> {
+    try {
+      const productDB = await this.prisma.product.findFirst({
+        where: { id },
+        include: {
+          images: true
+        }
+      });
+
+      if (!productDB) {
+        throw new NotFoundException('Product not found');
+      }
+
+      await this.prisma.$transaction(async (prisma) => {
+        // Eliminar las variaciones del producto
+        await prisma.productVariation.deleteMany({
+          where: { productId: id }
+        });
+
+        // Eliminar las imágenes del producto
+        await prisma.productImage.deleteMany({
+          where: { productId: id }
+        });
+
+        // Eliminar el producto
+        await prisma.product.delete({
+          where: { id }
+        });
+      });
+    } catch (error) {
+      this.logger.error(`Error deleting a product for id: ${id}`, error.stack);
+      handleException(error, 'Error deleting a product');
     }
   }
 

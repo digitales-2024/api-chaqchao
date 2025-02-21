@@ -188,6 +188,20 @@ export class ProductsController {
   }
 
   /**
+   * Eliminar permanente un producto
+   * @param id Id del producto
+   * @returns Información del producto eliminado
+   */
+  @Delete('permanent/:id')
+  @Permission(['DELETE'])
+  @ApiOperation({ summary: 'Eliminar permanentemente un producto' })
+  @ApiParam({ name: 'id', description: 'Id del producto' })
+  @ApiOkResponse({ description: 'Producto eliminado permanentemente' })
+  removePermanent(@Param('id') id: string): Promise<void> {
+    return this.productsService.removePermanent(id);
+  }
+
+  /**
    * Desactivar varios productos
    * @param products Arreglo de identificadores de los productos a desactivar
    * @param user Usuario que desactiva los productos

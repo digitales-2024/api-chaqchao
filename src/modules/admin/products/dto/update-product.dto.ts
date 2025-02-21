@@ -1,6 +1,6 @@
 import { ApiProperty, PartialType } from '@nestjs/swagger';
 import { Transform } from 'class-transformer';
-import { IsArray, IsNotEmpty, IsNumber, IsString, IsUUID } from 'class-validator';
+import { IsArray, IsNotEmpty, IsNumber, IsOptional, IsString, IsUUID } from 'class-validator';
 import { UpdateProductVariationDto } from '../../product-variation/dto/update-product-variation.dto';
 import { CreateProductDto } from './create-product.dto';
 
@@ -56,5 +56,6 @@ export class UpdateProductDto extends PartialType(CreateProductDto) {
     ]
   })
   @IsArray()
+  @IsOptional()
   variationsUpdate?: UpdateProductVariationDto[];
 }
