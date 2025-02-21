@@ -1,5 +1,3 @@
-import { ProductVariationData } from './product-variation.interface';
-
 export interface ProductImageData {
   id: string;
   url: string;
@@ -19,6 +17,5 @@ export interface ProductData {
     id: string;
     name: string;
   };
-  variations: ProductVariationData[];
   images: ProductImageData[];
 }

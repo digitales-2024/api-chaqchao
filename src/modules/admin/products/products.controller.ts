@@ -51,12 +51,16 @@ export class ProductsController {
   @Permission(['CREATE'])
   @ApiOperation({ summary: 'Crear un nuevo producto' })
   @ApiCreatedResponse({ description: 'Producto creado' })
-  @ApiBody({ type: CreateProductDto, description: 'Informacion del producto a crear' })
-  create(
+  @ApiConsumes('multipart/form-data')
+  @UseInterceptors(FilesInterceptor('images', 3))
+  async create(
     @Body() createProductDto: CreateProductDto,
+    @UploadedFiles() images: Express.Multer.File[],
     @GetUser() user: UserData
   ): Promise<HttpResponse<ProductData>> {
-    return this.productsService.create(createProductDto, user);
+    const product = await this.productsService.create(createProductDto, images, user);
+
+    return product;
   }
 
   /**
@@ -70,31 +74,6 @@ export class ProductsController {
   @ApiOkResponse({ description: 'Obtener todos los productos' })
   findAll(@GetUser() user: UserPayload): Promise<ProductData[]> {
     return this.productsService.findAll(user);
-  }
-
-  /**
-   * Subir imágenes para un producto
-   * @param productId ID del producto
-   * @param images Array de imágenes a subir (máximo 3)
-   * @returns URLs de las imágenes subidas
-   */
-  @Post(':productId/images')
-  @Permission(['CREATE'])
-  @ApiOperation({ summary: 'Subir imágenes para un producto (máximo 3)' })
-  @ApiCreatedResponse({ description: 'Imágenes subidas correctamente' })
-  @ApiConsumes('multipart/form-data')
-  @UseInterceptors(FilesInterceptor('images', 3))
-  async uploadImages(
-    @Param('productId') productId: string,
-    @UploadedFiles() images: Express.Multer.File[]
-  ): Promise<HttpResponse<string[]>> {
-    if (!images || images.length === 0) {
-      throw new BadRequestException('No se proporcionaron imágenes');
-    }
-    if (images.length > 3) {
-      throw new BadRequestException('No se pueden subir más de 3 imágenes por producto');
-    }
-    return this.productsService.uploadImages(productId, images);
   }
 
   /**

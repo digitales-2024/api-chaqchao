@@ -36,31 +36,11 @@ export class ProductsService {
 
   /**
    * Subir múltiples imágenes para un producto (máximo 3)
-   * @param productId ID del producto
    * @param images Array de imágenes a subir
    * @returns URLs de las imágenes subidas
    */
-  async uploadImages(
-    productId: string,
-    images: Express.Multer.File[]
-  ): Promise<HttpResponse<string[]>> {
+  async uploadImages(images: Express.Multer.File[]): Promise<string[]> {
     try {
-      // Verificar que el producto existe
-      const product = await this.prisma.product.findUnique({
-        where: { id: productId },
-        include: { images: true }
-      });
-
-      if (!product) {
-        throw new NotFoundException('Product not found');
-      }
-
-      // Verificar el límite de imágenes
-      const currentImageCount = product.images.length;
-      if (currentImageCount + images.length > 3) {
-        throw new BadRequestException('Maximum number of images (3) would be exceeded');
-      }
-
       // Validar cada imagen
       const validMimeTypes = ['image/jpeg', 'image/png', 'image/gif', 'image/webp'];
       images.forEach((image) => {
@@ -72,22 +52,12 @@ export class ProductsService {
       });
 
       // Subir las imágenes y crear los registros
-      const uploadedUrls = await this.prisma.$transaction(async (prisma) => {
+      const uploadedUrls = await this.prisma.$transaction(async () => {
         const urls: string[] = [];
 
         for (let i = 0; i < images.length; i++) {
           // Subir la imagen a Cloudflare
           const imageUrl = await this.cloudflareService.uploadImage(images[i]);
-
-          // Crear el registro de la imagen
-          await prisma.productImage.create({
-            data: {
-              url: imageUrl,
-              order: currentImageCount + i + 1,
-              isMain: currentImageCount === 0 && i === 0, // Primera imagen será la principal
-              productId
-            }
-          });
 
           urls.push(imageUrl);
         }
@@ -95,11 +65,7 @@ export class ProductsService {
         return urls;
       });
 
-      return {
-        statusCode: HttpStatus.CREATED,
-        message: 'Images uploaded successfully',
-        data: uploadedUrls
-      };
+      return uploadedUrls;
     } catch (error) {
       this.logger.error(`Error uploading images: ${error.message}`, error.stack);
       handleException(error, 'Error uploading images');
@@ -217,23 +183,43 @@ export class ProductsService {
    */
   async create(
     createProductDto: CreateProductDto,
+    images: Express.Multer.File[],
     user: UserData
   ): Promise<HttpResponse<ProductData>> {
-    const { name, description, price, categoryId, variations, isRestricted } = createProductDto;
-    let newProduct;
+    const { name, description, price, categoryId, isRestricted } = createProductDto;
+    let uploadedUrls: string[] = [];
 
     try {
-      // Validar la categoría si se proporciona un categoryId
+      // 1. Validar y subir imágenes primero
+      if (images?.length > 0) {
+        if (images.length > 3) {
+          throw new BadRequestException('No se pueden subir más de 3 imágenes por producto');
+        }
+
+        // Validar y subir las imágenes a Cloudflare
+        uploadedUrls = await this.uploadImages(images);
+
+        if (!uploadedUrls.length) {
+          throw new BadRequestException('Error al subir las imágenes a Cloudflare');
+        }
+      }
+
+      // 2. Validar la categoría
       if (categoryId) {
         const categoryDB = await this.categoryService.findById(categoryId);
         if (!categoryDB) {
+          // Si falla, eliminar las imágenes subidas
+          if (uploadedUrls.length > 0) {
+            await Promise.all(uploadedUrls.map((url) => this.cloudflareService.deleteImage(url)));
+          }
           throw new BadRequestException('Invalid categoryId provided');
         }
       }
 
-      // Crear el producto y registrar la auditoría
-      newProduct = await this.prisma.$transaction(async (prisma) => {
-        // Crear el nuevo producto
+      // 3. Solo si las imágenes se subieron correctamente (o no había imágenes),
+      // proceder con la creación del producto en una transacción
+      const newProduct = await this.prisma.$transaction(async (prisma) => {
+        // 1. Crear el nuevo producto con sus datos básicos
         const product = await prisma.product.create({
           data: {
             name,
@@ -242,7 +228,14 @@ export class ProductsService {
             isRestricted,
             categoryId
           },
-          include: {
+          select: {
+            id: true,
+            name: true,
+            description: true,
+            price: true,
+            isRestricted: true,
+            isActive: true,
+            isAvailable: true,
             category: {
               select: {
                 id: true,
@@ -252,8 +245,25 @@ export class ProductsService {
             images: true
           }
         });
+        console.log('🚀 ~ ProductsService ~ newProduct ~ product:', product);
 
-        // Registrar la auditoría de la creación del producto
+        // 2. Si hay imágenes subidas, crear los registros de imágenes
+        if (uploadedUrls.length > 0) {
+          await Promise.all(
+            uploadedUrls.map((url, index) =>
+              prisma.productImage.create({
+                data: {
+                  url,
+                  order: index + 1,
+                  isMain: index === 0,
+                  productId: product.id
+                }
+              })
+            )
+          );
+        }
+
+        // 3. Registrar la auditoría de la creación del producto
         await prisma.audit.create({
           data: {
             action: AuditActionType.CREATE,
@@ -264,29 +274,6 @@ export class ProductsService {
         });
 
         return product;
-      });
-
-      // Crear las variaciones del producto
-      await this.prisma.$transaction(async () => {
-        for (const variation of variations) {
-          const createProductVariationDto: CreateProductVariationDto = {
-            ...variation,
-            productId: newProduct.id,
-            description: variation.description || ''
-          };
-          await this.productVariationService.create(createProductVariationDto, user);
-        }
-      });
-
-      // Obtener las variaciones creadas para incluirlas en la respuesta
-      const createdVariations = await this.prisma.productVariation.findMany({
-        where: { productId: newProduct.id },
-        select: {
-          id: true,
-          name: true,
-          description: true,
-          additionalPrice: true
-        }
       });
 
       return {
@@ -304,19 +291,11 @@ export class ProductsService {
           category: {
             id: newProduct.category.id,
             name: newProduct.category.name
-          },
-          variations: createdVariations
+          }
         }
       };
     } catch (error) {
       this.logger.error(`Error creating product: ${error.message}`, error.stack);
-
-      if (newProduct) {
-        await this.prisma.product.delete({ where: { id: newProduct.id } });
-        this.logger.error(
-          `Product with ID ${newProduct.id} has been deleted due to error in creation.`
-        );
-      }
 
       if (error instanceof BadRequestException || error instanceof NotFoundException) {
         throw error;
@@ -589,8 +568,7 @@ export class ProductsService {
           category: {
             id: finalUpdatedProduct.category.id,
             name: finalUpdatedProduct.category.name
-          },
-          variations: finalUpdatedProduct.productVariations
+          }
         }
       };
     } catch (error) {
@@ -663,8 +641,7 @@ export class ProductsService {
           category: {
             id: productDB.category.id,
             name: productDB.category.name
-          },
-          variations: productDB.variations
+          }
         };
       });
 
@@ -854,8 +831,7 @@ export class ProductsService {
       isAvailable: productDB.isAvailable,
       isActive: productDB.isActive,
       isRestricted: productDB.isRestricted,
-      category: productDB.category,
-      variations: productDB.productVariations
+      category: productDB.category
     };
   }
 
@@ -932,8 +908,7 @@ export class ProductsService {
           category: {
             id: productDB.category.id,
             name: productDB.category.name
-          },
-          variations: productDB.productVariations
+          }
         };
 
         return { productData, action };

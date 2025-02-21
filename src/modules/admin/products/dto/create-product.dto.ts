@@ -1,9 +1,11 @@
 import { ApiProperty } from '@nestjs/swagger';
 import { Transform } from 'class-transformer';
-import { IsArray, IsNotEmpty, IsNumber, IsOptional, IsString, IsUUID } from 'class-validator';
-import { CreateProductVariationDto } from '../../product-variation/dto/create-product-variation.dto';
+import { IsNotEmpty, IsNumber, IsOptional, IsString, IsUUID } from 'class-validator';
 
 export class CreateProductDto {
+  @ApiProperty({ type: 'array', items: { type: 'string', format: 'binary' }, required: false })
+  images?: any[];
+
   @ApiProperty({
     description: 'Nombre del producto',
     example: 'Café Latte'
@@ -28,6 +30,7 @@ export class CreateProductDto {
   })
   @IsNotEmpty()
   @IsNumber()
+  @Transform(({ value }) => parseFloat(value))
   price: number;
 
   @ApiProperty({
@@ -35,6 +38,11 @@ export class CreateProductDto {
     example: false
   })
   @IsOptional()
+  @Transform(({ value }) => {
+    if (value === 'true') return true;
+    if (value === 'false') return false;
+    return value;
+  })
   isRestricted?: boolean;
 
   @ApiProperty({
@@ -44,11 +52,4 @@ export class CreateProductDto {
   @IsNotEmpty()
   @IsUUID()
   categoryId: string;
-
-  @ApiProperty({
-    description: 'Variaciones del producto',
-    type: [CreateProductVariationDto]
-  })
-  @IsArray()
-  variations: CreateProductVariationDto[];
 }
