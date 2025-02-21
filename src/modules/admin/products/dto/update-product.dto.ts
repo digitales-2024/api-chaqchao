@@ -1,10 +1,23 @@
 import { ApiProperty, PartialType } from '@nestjs/swagger';
 import { Transform } from 'class-transformer';
 import { IsArray, IsNotEmpty, IsNumber, IsOptional, IsString, IsUUID } from 'class-validator';
-import { UpdateProductVariationDto } from '../../product-variation/dto/update-product-variation.dto';
 import { CreateProductDto } from './create-product.dto';
 
 export class UpdateProductDto extends PartialType(CreateProductDto) {
+  @ApiProperty({ type: 'array', items: { type: 'string', format: 'binary' }, required: false })
+  images?: any[];
+
+  @ApiProperty({
+    description: 'IDs de las imágenes a eliminar',
+    type: 'array',
+    items: { type: 'string' },
+    required: false,
+    example: ['123e4567-e89b-12d3-a456-426614174000']
+  })
+  @IsArray()
+  @IsOptional()
+  deleteImages?: string[];
+
   @ApiProperty({
     description: 'Nombre del producto',
     example: 'Café Latte',
@@ -30,6 +43,7 @@ export class UpdateProductDto extends PartialType(CreateProductDto) {
     required: false
   })
   @IsNumber()
+  @Transform(({ value }) => parseFloat(value))
   price?: number;
 
   @ApiProperty({
@@ -39,23 +53,4 @@ export class UpdateProductDto extends PartialType(CreateProductDto) {
   })
   @IsUUID()
   categoryId?: string;
-
-  @ApiProperty({
-    description: 'Variaciones del producto a actualizar',
-    example: [
-      {
-        id: '123e4567-e89b-12d3-a456-426614174000',
-        name: 'Variación 1',
-        price: 10.5
-      },
-      {
-        id: '123e4567-e89b-12d3-a456-426614174001',
-        name: 'Variación 2',
-        price: 15.5
-      }
-    ]
-  })
-  @IsArray()
-  @IsOptional()
-  variationsUpdate?: UpdateProductVariationDto[];
 }

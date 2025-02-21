@@ -1,5 +1,4 @@
 import {
-  BadRequestException,
   Body,
   Controller,
   Delete,
@@ -77,46 +76,6 @@ export class ProductsController {
   }
 
   /**
-   * Actualizar una imagen específica del producto
-   * @param productId ID del producto
-   * @param imageId ID de la imagen
-   * @param image Nueva imagen
-   * @returns URL de la imagen actualizada
-   */
-  @Patch(':productId/images/:imageId')
-  @Permission(['UPDATE'])
-  @ApiOperation({ summary: 'Actualizar una imagen específica del producto' })
-  @ApiCreatedResponse({ description: 'Imagen actualizada' })
-  @UseInterceptors(FilesInterceptor('image', 1))
-  async updateProductImage(
-    @Param('productId') productId: string,
-    @Param('imageId') imageId: string,
-    @UploadedFiles() [image]: Express.Multer.File[]
-  ): Promise<HttpResponse<string>> {
-    if (!image) {
-      throw new BadRequestException('No se proporcionó una imagen');
-    }
-    return this.productsService.updateProductImage(productId, imageId, image);
-  }
-
-  /**
-   * Eliminar una imagen específica del producto
-   * @param productId ID del producto
-   * @param imageId ID de la imagen
-   * @returns Confirmación de eliminación
-   */
-  @Delete(':productId/images/:imageId')
-  @Permission(['DELETE'])
-  @ApiOperation({ summary: 'Eliminar una imagen específica del producto' })
-  @ApiOkResponse({ description: 'Imagen eliminada' })
-  async deleteProductImage(
-    @Param('productId') productId: string,
-    @Param('imageId') imageId: string
-  ): Promise<HttpResponse<string>> {
-    return this.productsService.deleteProductImage(productId, imageId);
-  }
-
-  /**
    * Mostrar producto por id
    * @param id Id del producto
    * @returns Informacion del producto
@@ -133,7 +92,8 @@ export class ProductsController {
   /**
    * Actualizar el producto por id
    * @param id Id del producto
-   * @param UpdateProductDto Datos del producto a actualizar
+   * @param updateProductDto Datos del producto a actualizar
+   * @param images Nuevas imágenes a agregar (opcional)
    * @param user Usuario que actualiza el producto
    * @returns Información del producto actualizado
    */
@@ -141,14 +101,17 @@ export class ProductsController {
   @Permission(['UPDATE'])
   @ApiOperation({ summary: 'Actualizar el producto por id' })
   @ApiParam({ name: 'id', description: 'Id del producto' })
+  @ApiConsumes('multipart/form-data')
   @ApiBody({ type: UpdateProductDto, description: 'Datos del producto a actualizar' })
   @ApiOkResponse({ description: 'Producto actualizado' })
-  update(
+  @UseInterceptors(FilesInterceptor('images', 3))
+  async update(
     @Param('id') id: string,
-    @Body() UpdateProductDto: UpdateProductDto,
+    @Body() updateProductDto: UpdateProductDto,
+    @UploadedFiles() images: Express.Multer.File[],
     @GetUser() user: UserData
   ): Promise<HttpResponse<ProductData>> {
-    return this.productsService.update(id, UpdateProductDto, user);
+    return await this.productsService.update(id, updateProductDto, images, user);
   }
 
   /**

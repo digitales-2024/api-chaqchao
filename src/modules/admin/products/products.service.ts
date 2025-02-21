@@ -14,8 +14,6 @@ import { PrismaService } from 'src/prisma/prisma.service';
 import { handleException } from 'src/utils';
 import { AdminGateway } from '../admin.gateway';
 import { CategoryService } from '../category/category.service';
-import { CreateProductVariationDto } from '../product-variation/dto/create-product-variation.dto';
-import { UpdateProductVariationDto } from '../product-variation/dto/update-product-variation.dto';
 import { ProductVariationService } from '../product-variation/product-variation.service';
 import { CreateProductDto } from './dto/create-product.dto';
 import { DeleteProductsDto } from './dto/delete-product.dto';
@@ -245,8 +243,6 @@ export class ProductsService {
             images: true
           }
         });
-        console.log('🚀 ~ ProductsService ~ newProduct ~ product:', product);
-
         // 2. Si hay imágenes subidas, crear los registros de imágenes
         if (uploadedUrls.length > 0) {
           await Promise.all(
@@ -386,170 +382,109 @@ export class ProductsService {
   async update(
     id: string,
     updateProductDto: UpdateProductDto,
+    images: Express.Multer.File[],
     user: UserData
   ): Promise<HttpResponse<ProductData>> {
     try {
-      // Obtener el producto actual desde la base de datos
-      const productDB = await this.prisma.product.findUnique({
+      let uploadedUrls: string[] = [];
+
+      // 1. Obtener y validar el producto
+      let product = await this.prisma.product.findUnique({
         where: { id, isActive: true },
         include: {
-          category: {
-            select: {
-              id: true,
-              name: true
-            }
-          },
-          productVariations: {
-            select: {
-              id: true,
-              name: true,
-              description: true,
-              additionalPrice: true
-            }
-          },
+          category: { select: { id: true, name: true } },
+          productVariations: true,
           images: true
         }
       });
 
-      if (!productDB) {
+      if (!product) {
         throw new NotFoundException('Product not found');
       }
 
-      // Validar la categoría si se proporciona un nuevo categoryId
+      // 2. Manejar eliminación de imágenes existentes
+      if (updateProductDto.deleteImages?.length > 0) {
+        for (const imageId of updateProductDto.deleteImages) {
+          const image = product.images.find((img) => img.id === imageId);
+          if (image) {
+            await this.cloudflareService.deleteImage(image.url);
+            await this.prisma.productImage.delete({ where: { id: imageId } });
+          }
+        }
+
+        // Recargar el producto para tener las imágenes actualizadas
+        product = await this.prisma.product.findUnique({
+          where: { id },
+          include: {
+            category: { select: { id: true, name: true } },
+            productVariations: true,
+            images: true
+          }
+        });
+      }
+
+      // 3. Validar y procesar nuevas imágenes
+      if (images?.length > 0) {
+        const currentImagesCount = product.images.length;
+        if (currentImagesCount + images.length > 3) {
+          throw new BadRequestException('El producto no puede tener más de 3 imágenes');
+        }
+        uploadedUrls = await this.uploadImages(images);
+      }
+
+      // 4. Validar categoría
       let categoryUpdate = undefined;
       if (updateProductDto.categoryId) {
         const categoryDB = await this.categoryService.findById(updateProductDto.categoryId);
         if (!categoryDB) {
+          if (uploadedUrls.length > 0) {
+            await Promise.all(uploadedUrls.map((url) => this.cloudflareService.deleteImage(url)));
+          }
           throw new BadRequestException('Invalid categoryId provided');
         }
         categoryUpdate = { connect: { id: updateProductDto.categoryId } };
       }
 
-      const { price, variationsUpdate } = updateProductDto;
-
-      // Prepare dataToUpdate
-      const dataToUpdate = {
-        name: updateProductDto.name,
-        description: updateProductDto.description,
-        price: price !== undefined ? parseFloat(price.toString()) : undefined,
-        category: categoryUpdate
-      };
-
-      // Verificar si hay cambios en los datos
-      const hasChanges =
-        (updateProductDto.name && updateProductDto.name !== productDB.name) ||
-        (updateProductDto.description && updateProductDto.description !== productDB.description) ||
-        (price !== undefined && parseFloat(price.toString()) !== productDB.price) ||
-        (updateProductDto.categoryId && updateProductDto.categoryId !== productDB.category.id);
-
-      // Actualizar el producto y registrar la auditoría
+      // 5. Actualizar el producto en una transacción
       const updatedProduct = await this.prisma.$transaction(async (prisma) => {
-        let productUpdate = productDB;
+        const productUpdate = await prisma.product.update({
+          where: { id },
+          data: {
+            name: updateProductDto.name,
+            description: updateProductDto.description,
+            price:
+              updateProductDto.price !== undefined
+                ? parseFloat(updateProductDto.price.toString())
+                : undefined,
+            category: categoryUpdate,
+            ...(uploadedUrls.length > 0 && {
+              images: {
+                create: uploadedUrls.map((url, index) => ({
+                  url,
+                  order: product.images.length + index + 1,
+                  isMain: product.images.length === 0 && index === 0
+                }))
+              }
+            })
+          },
+          include: {
+            category: { select: { id: true, name: true } },
+            productVariations: true,
+            images: true
+          }
+        });
 
-        if (hasChanges) {
-          productUpdate = await prisma.product.update({
-            where: { id },
-            data: dataToUpdate,
-            include: {
-              category: {
-                select: {
-                  id: true,
-                  name: true
-                }
-              },
-              productVariations: {
-                select: {
-                  id: true,
-                  name: true,
-                  description: true,
-                  additionalPrice: true
-                }
-              },
-              images: true
-            }
-          });
-
-          // Registrar la auditoría de la actualización del producto
-          await prisma.audit.create({
-            data: {
-              entityId: productUpdate.id,
-              action: AuditActionType.UPDATE,
-              performedById: user.id,
-              entityType: 'product'
-            }
-          });
-        }
+        // Registrar auditoría
+        await prisma.audit.create({
+          data: {
+            entityId: productUpdate.id,
+            action: AuditActionType.UPDATE,
+            performedById: user.id,
+            entityType: 'product'
+          }
+        });
 
         return productUpdate;
-      });
-
-      // Manejar las variaciones
-      await this.prisma.$transaction(async () => {
-        // Obtener las variaciones actuales
-        const existingVariations = productDB.productVariations;
-
-        // Identificar variaciones a eliminar
-        const updatedVariationNames = variationsUpdate
-          ? variationsUpdate.filter((v) => v.name).map((v) => v.name)
-          : [];
-        const variationIdsToRemove = existingVariations
-          .filter((v) => !updatedVariationNames.includes(v.name))
-          .map((v) => v.id);
-
-        // Eliminar variaciones que ya no están presentes
-        await Promise.all(
-          variationIdsToRemove.map((id) => this.productVariationService.remove(id, user))
-        );
-
-        // Actualizar o crear variaciones
-        for (const variation of variationsUpdate || []) {
-          const existingVariation = existingVariations.find((v) => v.name === variation.name);
-          if (existingVariation) {
-            // Actualizar variación existente
-            const updateVariationDto: UpdateProductVariationDto = {
-              ...variation,
-              description: variation.description || '',
-              additionalPrice: variation.additionalPrice
-            };
-            await this.productVariationService.update(
-              existingVariation.id,
-              updateVariationDto,
-              user
-            );
-          } else if (variation.name) {
-            // Crear nueva variación solo si `name` está presente
-            const createVariationDto: CreateProductVariationDto = {
-              ...variation,
-              productId: updatedProduct.id,
-              description: variation.description || '',
-              name: variation.name,
-              additionalPrice: variation.additionalPrice
-            };
-            await this.productVariationService.create(createVariationDto, user);
-          }
-        }
-      });
-
-      // Recargar el producto actualizado
-      const finalUpdatedProduct = await this.prisma.product.findUnique({
-        where: { id },
-        include: {
-          category: {
-            select: {
-              id: true,
-              name: true
-            }
-          },
-          productVariations: {
-            select: {
-              id: true,
-              name: true,
-              description: true,
-              additionalPrice: true
-            }
-          },
-          images: true
-        }
       });
 
       // Retornar la respuesta con los datos actualizados
@@ -557,17 +492,17 @@ export class ProductsService {
         statusCode: HttpStatus.OK,
         message: 'Product updated successfully',
         data: {
-          id: finalUpdatedProduct.id,
-          name: finalUpdatedProduct.name,
-          description: finalUpdatedProduct.description,
-          price: finalUpdatedProduct.price,
-          images: finalUpdatedProduct.images,
-          isAvailable: finalUpdatedProduct.isAvailable,
-          isActive: finalUpdatedProduct.isActive,
-          isRestricted: finalUpdatedProduct.isRestricted,
+          id: updatedProduct.id,
+          name: updatedProduct.name,
+          description: updatedProduct.description,
+          price: updatedProduct.price,
+          images: updatedProduct.images,
+          isAvailable: updatedProduct.isAvailable,
+          isActive: updatedProduct.isActive,
+          isRestricted: updatedProduct.isRestricted,
           category: {
-            id: finalUpdatedProduct.category.id,
-            name: finalUpdatedProduct.category.name
+            id: updatedProduct.category.id,
+            name: updatedProduct.category.name
           }
         }
       };
