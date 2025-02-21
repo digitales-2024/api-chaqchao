@@ -447,6 +447,12 @@ export class ProductsService {
 
       // 5. Actualizar el producto en una transacción
       const updatedProduct = await this.prisma.$transaction(async (prisma) => {
+        const orders = product.images.map((img) => img.order);
+        // Obtenemos el order que no existe
+        const order = Array.from({ length: orders.length + 1 }, (_, i) => i + 1).find(
+          (i) => !orders.includes(i)
+        );
+
         const productUpdate = await prisma.product.update({
           where: { id },
           data: {
@@ -461,7 +467,7 @@ export class ProductsService {
               images: {
                 create: uploadedUrls.map((url, index) => ({
                   url,
-                  order: product.images.length + index + 1,
+                  order,
                   isMain: product.images.length === 0 && index === 0
                 }))
               }
