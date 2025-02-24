@@ -31,14 +31,6 @@ export class CreateOrderDto {
   someonePickup: boolean;
 
   @ApiProperty({
-    description: 'Indica si alguien recogerá la orden',
-    example: true,
-    type: Boolean
-  })
-  @IsBoolean()
-  isShipping: boolean;
-
-  @ApiProperty({
     description: 'Comentarios adicionales',
     example: 'Comentarios adicionales',
     type: String,
