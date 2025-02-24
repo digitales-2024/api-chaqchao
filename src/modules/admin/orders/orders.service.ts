@@ -98,7 +98,6 @@ export class OrdersService {
         pickupTime: order.pickupTime,
         isActive: order.isActive,
         someonePickup: order.someonePickup,
-        isShipping: order.isShipping,
         pickupCode: order.pickupCode,
         totalAmount: order.totalAmount,
         client: order.cart.client
@@ -186,7 +185,6 @@ export class OrdersService {
         pickupTime: order.pickupTime,
         isActive: order.isActive,
         someonePickup: order.someonePickup,
-        isShipping: order.isShipping,
         pickupCode: order.pickupCode,
         totalAmount: order.totalAmount,
         cart: {
@@ -322,7 +320,6 @@ export class OrdersService {
           comments: true,
           isActive: true,
           someonePickup: true,
-          isShipping: true,
           pickupCode: true,
           totalAmount: true,
           cart: {
@@ -367,7 +364,6 @@ export class OrdersService {
           pickupTime: order.pickupTime,
           isActive: order.isActive,
           someonePickup: order.someonePickup,
-          isShipping: order.isShipping,
           pickupCode: order.pickupCode,
           totalAmount: order.totalAmount,
           client: {
