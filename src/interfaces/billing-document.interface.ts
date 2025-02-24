@@ -14,7 +14,6 @@ export type BillingDocumentData = Pick<
   | 'city'
   | 'state'
   | 'country'
-  | 'postalCode'
   | 'businessName'
 > & {
   order: { id: string };

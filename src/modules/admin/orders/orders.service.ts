@@ -172,7 +172,6 @@ export class OrdersService {
               state: true,
               country: true,
               city: true,
-              postalCode: true,
               typeDocument: true,
               businessName: true,
               paymentStatus: true
@@ -205,7 +204,17 @@ export class OrdersService {
             }
           }))
         },
-        billingDocument: order.billingDocument,
+        billingDocument: {
+          billingDocumentType: order.billingDocument.billingDocumentType,
+          documentNumber: order.billingDocument.documentNumber,
+          address: order.billingDocument.address,
+          state: order.billingDocument.state,
+          country: order.billingDocument.country,
+          city: order.billingDocument.city,
+          typeDocument: order.billingDocument.typeDocument,
+          businessName: order.billingDocument.businessName,
+          paymentStatus: order.billingDocument.paymentStatus
+        },
         client: order.cart.client
           ? {
               id: order.cart.client.id,
