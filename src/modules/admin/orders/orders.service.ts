@@ -173,7 +173,6 @@ export class OrdersService {
               state: true,
               country: true,
               city: true,
-              postalCode: true,
               typeDocument: true,
               businessName: true,
               paymentStatus: true
@@ -209,7 +208,6 @@ export class OrdersService {
           state: order.billingDocument.state,
           country: order.billingDocument.country,
           city: order.billingDocument.city,
-          postalCode: order.billingDocument.postalCode,
           typeDocument: order.billingDocument.typeDocument,
           businessName: order.billingDocument.businessName,
           paymentStatus: order.billingDocument.paymentStatus

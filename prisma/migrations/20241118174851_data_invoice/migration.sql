@@ -5,7 +5,6 @@
   - Added the required column `address` to the `BillingDocument` table without a default value. This is not possible if the table is not empty.
   - Added the required column `city` to the `BillingDocument` table without a default value. This is not possible if the table is not empty.
   - Added the required column `country` to the `BillingDocument` table without a default value. This is not possible if the table is not empty.
-  - Added the required column `postalCode` to the `BillingDocument` table without a default value. This is not possible if the table is not empty.
   - Added the required column `state` to the `BillingDocument` table without a default value. This is not possible if the table is not empty.
   - Added the required column `typeDocument` to the `BillingDocument` table without a default value. This is not possible if the table is not empty.
   - Added the required column `customerLastName` to the `Order` table without a default value. This is not possible if the table is not empty.
