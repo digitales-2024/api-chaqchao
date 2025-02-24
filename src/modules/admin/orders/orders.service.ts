@@ -98,7 +98,6 @@ export class OrdersService {
         pickupTime: order.pickupTime,
         isActive: order.isActive,
         someonePickup: order.someonePickup,
-        isShipping: order.isShipping,
         pickupCode: order.pickupCode,
         totalAmount: order.totalAmount,
         client: order.cart.client
@@ -186,7 +185,6 @@ export class OrdersService {
         pickupTime: order.pickupTime,
         isActive: order.isActive,
         someonePickup: order.someonePickup,
-        isShipping: order.isShipping,
         pickupCode: order.pickupCode,
         totalAmount: order.totalAmount,
         cart: {
@@ -304,7 +302,16 @@ export class OrdersService {
             clientId: id
           }
         },
-        include: {
+        select: {
+          id: true,
+          orderStatus: true,
+          pickupAddress: true,
+          pickupTime: true,
+          comments: true,
+          isActive: true,
+          someonePickup: true,
+          pickupCode: true,
+          totalAmount: true,
           cart: {
             include: {
               client: {

@@ -420,7 +420,6 @@ model Order {
   orderStatus   OrderStatus
   pickupAddress String
   someonePickup Boolean?    @default(false)
-  isShipping Boolean?    @default(false)
 
   comments  String?
   isActive  Boolean  @default(true)
