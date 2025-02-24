@@ -266,6 +266,7 @@ model Product {
   isAvailable  Boolean  @default(true)
   isActive     Boolean  @default(true)
   isRestricted Boolean? @default(false)
+  maxStock     Int?     @default(0)
 
   createdAt DateTime @default(now()) @db.Timestamptz(6)
   updatedAt DateTime @updatedAt
