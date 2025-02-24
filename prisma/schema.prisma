@@ -263,7 +263,6 @@ model Product {
   name         String
   description  String?
   price        Float
-  image        String?
   isAvailable  Boolean  @default(true)
   isActive     Boolean  @default(true)
   isRestricted Boolean? @default(false)
@@ -279,6 +278,25 @@ model Product {
 
   // Relación con ProductVariation
   productVariations ProductVariation[] @relation("productId")
+
+  // Relación con ProductImage
+  images ProductImage[] @relation("productImages")
+}
+
+// Nuevo modelo para las imágenes del producto
+model ProductImage {
+  id        String   @id @unique @default(uuid())
+  url       String
+  order     Int      @default(1) // Para mantener el orden de las imágenes (1,2,3)
+  isMain    Boolean  @default(false) // Para identificar la imagen principal
+  createdAt DateTime @default(now()) @db.Timestamptz(6)
+  updatedAt DateTime @updatedAt
+
+  // Relación con Product
+  product   Product @relation("productImages", fields: [productId], references: [id], onDelete: Cascade)
+  productId String
+
+  @@unique([productId, order]) // Garantiza que no haya duplicados de orden por producto
 }
 
 model Category {

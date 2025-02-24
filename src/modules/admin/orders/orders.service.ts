@@ -21,12 +21,6 @@ export class OrdersService {
     private readonly eventEmitter: TypedEventEmitter
   ) {}
 
-  /**
-   * Mostrar todos los pedidos
-   * @param date  Fecha de recogida
-   * @param status  Estado del pedido
-   * @returns  Pedidos
-   */
   async findAll(date: string, status?: OrderStatus): Promise<OrderInfo[]> {
     try {
       // Convertir la fecha a la zona horaria de Perú
@@ -45,41 +39,6 @@ export class OrdersService {
       const end = nextDay;
 
       const orders = await this.prismaService.order.findMany({
-        include: {
-          cart: {
-            select: {
-              id: true,
-              client: {
-                select: {
-                  id: true,
-                  name: true,
-                  lastName: true,
-                  phone: true,
-                  email: true
-                }
-              },
-              cartItems: {
-                select: {
-                  quantity: true,
-                  product: {
-                    select: {
-                      id: true,
-                      price: true,
-                      name: true,
-                      image: true,
-                      category: {
-                        select: {
-                          id: true,
-                          name: true
-                        }
-                      }
-                    }
-                  }
-                }
-              }
-            }
-          }
-        },
         where: {
           pickupTime: {
             gte: start,
@@ -93,6 +52,41 @@ export class OrdersService {
               : { equals: status })
           }
         },
+        include: {
+          cart: {
+            include: {
+              client: {
+                select: {
+                  id: true,
+                  name: true,
+                  lastName: true,
+                  phone: true,
+                  email: true
+                }
+              },
+              cartItems: {
+                include: {
+                  product: {
+                    include: {
+                      category: {
+                        select: {
+                          id: true,
+                          name: true
+                        }
+                      },
+                      images: {
+                        orderBy: {
+                          order: 'asc'
+                        }
+                      }
+                    }
+                  }
+                }
+              }
+            }
+          }
+        },
+
         orderBy: {
           pickupCode: 'desc'
         }
@@ -132,18 +126,13 @@ export class OrdersService {
     }
   }
 
-  /**
-   * Mostrar un pedido
-   * @param id  ID del pedido
-   * @returns  Pedido
-   */
   async findOne(id: string): Promise<OrderDetails> {
     try {
       const order = await this.prismaService.order.findUnique({
+        where: { id },
         include: {
           cart: {
-            select: {
-              id: true,
+            include: {
               client: {
                 select: {
                   id: true,
@@ -154,18 +143,18 @@ export class OrdersService {
                 }
               },
               cartItems: {
-                select: {
-                  quantity: true,
+                include: {
                   product: {
-                    select: {
-                      id: true,
-                      price: true,
-                      name: true,
-                      image: true,
+                    include: {
                       category: {
                         select: {
                           id: true,
                           name: true
+                        }
+                      },
+                      images: {
+                        orderBy: {
+                          order: 'asc'
                         }
                       }
                     }
@@ -188,9 +177,6 @@ export class OrdersService {
               paymentStatus: true
             }
           }
-        },
-        where: {
-          id
         }
       });
 
@@ -205,23 +191,19 @@ export class OrdersService {
         totalAmount: order.totalAmount,
         cart: {
           quantity: order.cart.cartItems.reduce((acc, { quantity }) => acc + quantity, 0),
-          products: order.cart.cartItems.flatMap(({ product }) => ({
-            ...product,
-            quantity: order.cart.cartItems.find((item) => item.product.id === product.id).quantity
+          products: order.cart.cartItems.map(({ product, quantity }) => ({
+            id: product.id,
+            name: product.name,
+            price: product.price,
+            images: product.images,
+            quantity,
+            category: {
+              id: product.category.id,
+              name: product.category.name
+            }
           }))
         },
-        billingDocument: {
-          billingDocumentType: order.billingDocument.billingDocumentType,
-          documentNumber: order.billingDocument.documentNumber,
-          address: order.billingDocument.address,
-          state: order.billingDocument.state,
-          country: order.billingDocument.country,
-          city: order.billingDocument.city,
-          postalCode: order.billingDocument.postalCode,
-          typeDocument: order.billingDocument.typeDocument,
-          businessName: order.billingDocument.businessName,
-          paymentStatus: order.billingDocument.paymentStatus
-        },
+        billingDocument: order.billingDocument,
         client: order.cart.client
           ? {
               id: order.cart.client.id,
@@ -233,8 +215,8 @@ export class OrdersService {
           : {
               id: null,
               name: order.customerName,
-              phone: order.customerPhone,
               lastName: order.customerLastName,
+              phone: order.customerPhone,
               email: order.customerEmail
             }
       };
@@ -244,25 +226,16 @@ export class OrdersService {
     }
   }
 
-  /**
-   * Actualizar el estado de un pedido
-   * @param id  ID del pedido
-   * @param status  Estado del pedido
-   * @returns  Pedido actualizado
-   */
   async updateStatus(id: string, status: OrderStatus): Promise<Order> {
     try {
       const order = await this.prismaService.order.update({
+        where: { id },
         data: {
           orderStatus: status
         },
-        where: {
-          id
-        },
         include: {
           cart: {
-            select: {
-              id: true,
+            include: {
               client: {
                 select: {
                   id: true,
@@ -273,18 +246,18 @@ export class OrdersService {
                 }
               },
               cartItems: {
-                select: {
-                  quantity: true,
+                include: {
                   product: {
-                    select: {
-                      id: true,
-                      price: true,
-                      name: true,
-                      image: true,
+                    include: {
                       category: {
                         select: {
                           id: true,
                           name: true
+                        }
+                      },
+                      images: {
+                        orderBy: {
+                          order: 'asc'
                         }
                       }
                     }
@@ -298,7 +271,6 @@ export class OrdersService {
 
       this.adminGateway.sendOrderStatusUpdated(order.id, order.orderStatus);
 
-      // Verficamos que cuando se cambie a estado COMPLETED se envie el correo
       if (order.orderStatus === OrderStatus.COMPLETED) {
         await this.eventEmitter.emitAsync('order.order-completed', {
           name: order.cart.client
@@ -312,7 +284,7 @@ export class OrdersService {
             name: item.product.name,
             quantity: item.quantity,
             price: item.product.price,
-            image: item.product.image
+            image: item.product.images[0]?.url || ''
           }))
         });
       }
@@ -324,12 +296,6 @@ export class OrdersService {
     }
   }
 
-  /**
-   * Mostrar pedidos por cliente
-   * @param id  ID del cliente
-   * @returns  Pedidos
-   * @throws  Error
-   */
   async findByClient(id: string): Promise<OrderInfo[]> {
     try {
       const ordersByClient = await this.prismaService.order.findMany({
@@ -338,19 +304,9 @@ export class OrdersService {
             clientId: id
           }
         },
-        select: {
-          id: true,
-          orderStatus: true,
-          pickupAddress: true,
-          pickupTime: true,
-          comments: true,
-          isActive: true,
-          someonePickup: true,
-          pickupCode: true,
-          totalAmount: true,
+        include: {
           cart: {
-            select: {
-              id: true,
+            include: {
               client: {
                 select: {
                   id: true,
@@ -361,18 +317,18 @@ export class OrdersService {
                 }
               },
               cartItems: {
-                select: {
-                  quantity: true,
+                include: {
                   product: {
-                    select: {
-                      id: true,
-                      name: true,
-                      price: true,
-                      image: true,
+                    include: {
                       category: {
                         select: {
                           id: true,
                           name: true
+                        }
+                      },
+                      images: {
+                        orderBy: {
+                          order: 'asc'
                         }
                       }
                     }
@@ -383,43 +339,34 @@ export class OrdersService {
           }
         }
       });
-      return ordersByClient.map((order) => {
-        return {
-          id: order.id,
-          orderStatus: order.orderStatus,
-          pickupAddress: order.pickupAddress,
-          pickupTime: order.pickupTime,
-          isActive: order.isActive,
-          someonePickup: order.someonePickup,
-          pickupCode: order.pickupCode,
-          totalAmount: order.totalAmount,
-          client: {
-            id: order.cart.client.id,
-            name: order.cart.client.name,
-            lastName: order.cart.client.lastName,
-            phone: order.cart.client.phone,
-            email: order.cart.client.email
-          }
-        };
-      });
+
+      return ordersByClient.map((order) => ({
+        id: order.id,
+        orderStatus: order.orderStatus,
+        pickupAddress: order.pickupAddress,
+        pickupTime: order.pickupTime,
+        isActive: order.isActive,
+        someonePickup: order.someonePickup,
+        pickupCode: order.pickupCode,
+        totalAmount: order.totalAmount,
+        client: {
+          id: order.cart.client.id,
+          name: order.cart.client.name,
+          lastName: order.cart.client.lastName,
+          phone: order.cart.client.phone,
+          email: order.cart.client.email
+        }
+      }));
     } catch (error) {
       this.logger.error('Error get orders by client', error.message);
       handleException(error, 'Error get orders by client');
     }
   }
 
-  /**
-   * Exportar un pedido en formato PDF
-   * @param id  ID del pedido
-   * @returns  Archivo PDF
-   * @throws  Error
-   */
   async exportPdf(id: string): Promise<{ code: string; pdfBuffer: Buffer }> {
     const order = await this.findOne(id);
-
     const templatePath = path.join(__dirname, '../../../../', 'templates', 'orderEnvoice.html');
 
-    // Leer el contenido de la plantilla HTML
     let templateHtml: string;
     try {
       templateHtml = fs.readFileSync(templatePath, 'utf8');
@@ -427,152 +374,202 @@ export class OrdersService {
       console.error('Error al leer la plantilla HTML:', error);
       throw new Error('No se pudo cargar la plantilla HTML.');
     }
+
     const business = await this.prismaService.businessConfig.findFirst({
       select: { address: true, businessName: true, ruc: true, contactNumber: true }
     });
 
     const orderHtml = this.generateOrderHtml(order, business);
-
     const htmlContent = templateHtml.replace('{{order}}', orderHtml);
 
-    // Generar el archivo PDF
     const browser = await puppeteer.launch({
       args: ['--no-sandbox', '--disable-setuid-sandbox']
     });
     const page = await browser.newPage();
     await page.setContent(htmlContent);
-    // Formato de boleta
     await page.emulateMediaType('screen');
     const pdfBuffer = await page.pdf({
       format: 'A4'
     });
     await browser.close();
 
-    // Convertir Uint8Array a Buffer
     return { code: order.pickupCode, pdfBuffer: Buffer.from(pdfBuffer) };
   }
 
-  /**
-   * Generar el contenido HTML del pedido
-   * @param order  Pedido
-   * @returns  Contenido HTML
-   */
   private generateOrderHtml(orderData: OrderDetails, business): string {
-    // Calcular total
     const totalPrice = orderData.cart.products.reduce(
       (total, product) => total + product.price * product.quantity,
       0
     );
 
-    // Encabezado principal
     let invoiceHtml = `
-<div style="max-width: 600px; margin: 20px auto; padding: 20px;">
-  <h2 style="text-align: center; color: #000;">${orderData.billingDocument.billingDocumentType === 'INVOICE' ? 'Factura' : 'Boleta'}</h2>
-  <p style="text-align: center; font-size: 16px; margin: 10px 0;"><strong>${business.businessName}</strong></p>
-  <p style="text-align: center; font-size: 12px; margin: 10px 0;"><strong>${business.address}</strong></p>
-  <p style="text-align: center; font-size: 12px; margin: 10px 0;"><strong>RUC: ${business.ruc}</strong></p>
-  <p style="text-align: center; font-size: 12px; margin: 10px 0;"><strong>Tel: ${business.contactNumber}</strong></p>
-  <p style="text-align: center; font-size: 16px; margin: 10px 0;"><strong>PEDIDO # ${orderData.pickupCode}</strong></p>
-`;
+    <div style="max-width: 600px; margin: 20px auto; padding: 20px;">
+      <h2 style="text-align: center; color: #000;">${
+        orderData.billingDocument.billingDocumentType === 'INVOICE' ? 'Factura' : 'Boleta'
+      }</h2>
+      <p style="text-align: center; font-size: 16px; margin: 10px 0;"><strong>${
+        business.businessName
+      }</strong></p>
+      <p style="text-align: center; font-size: 12px; margin: 10px 0;"><strong>${
+        business.address
+      }</strong></p>
+      <p style="text-align: center; font-size: 12px; margin: 10px 0;"><strong>RUC: ${
+        business.ruc
+      }</strong></p>
+      <p style="text-align: center; font-size: 12px; margin: 10px 0;"><strong>Tel: ${
+        business.contactNumber
+      }</strong></p>
+      <p style="text-align: center; font-size: 16px; margin: 10px 0;"><strong>PEDIDO # ${
+        orderData.pickupCode
+      }</strong></p>
+    `;
 
     // Información del cliente
-    invoiceHtml += `
-    <div style="height: 1px; width:100%; border-top:1px dashed #a8acb6; margin-top: 20px;margin-bottom: 20px;"/>
-  <div style="margin-top: 20px;">
-            <h3 style="margin-bottom: 10px; color: #555; text-align: center;">Información del cliente</h3>
-            <div style="display: grid; grid-template-columns: repeat(2, minmax(0, 1fr));">
-                    <p style="margin: 5px 0; display:flex; flex-direction:column;"><strong style="font-size:12px; color:#9da2ab">Cliente:</strong>${orderData.client.name + ' ' + orderData.client.lastName}</p>
-                    <p style="margin: 5px 0;"><strong style="font-size:12px; color:#9da2ab">Correo electrónico:</strong> ${orderData.client.email}</p>
-                    <p style="margin: 5px 0; display:flex; flex-direction:column;"><strong style="font-size:12px; color:#9da2ab">Teléfono:</strong> ${orderData.client.phone}</p>
-                    <p></p>
-                    <p style="margin: 5px 0; display:flex; flex-direction:column;"><strong style="font-size:12px; color:#9da2ab">Tipo documento:</strong> ${orderData.billingDocument.typeDocument}</p>
-                    <p style="margin: 5px 0;display:flex; flex-direction:column;"><strong style="font-size:12px; color:#9da2ab">N° documento:</strong>${orderData.billingDocument.documentNumber}</p>
-                    <p style="margin: 5px 0; display:flex; flex-direction:column;"><strong style="font-size:12px; color:#9da2ab">Dirección:</strong> ${orderData.billingDocument.address}</p>
-                    <p style="margin: 5px 0;display:flex; flex-direction:column;"><strong style="font-size:12px; color:#9da2ab">País:</strong>${orderData.billingDocument.country}</p>
-                    <p style="margin: 5px 0;display:flex; flex-direction:column;"><strong style="font-size:12px; color:#9da2ab">Estado:</strong> ${orderData.billingDocument.state}</p>
-                    <p style="margin: 5px 0;display:flex; flex-direction:column;"><strong style="font-size:12px; color:#9da2ab">Ciudad:</strong>${orderData.billingDocument.city}</p>
-            </div>
-            
-            ${
-              orderData.billingDocument.billingDocumentType === 'INVOICE'
-                ? `<p style="margin: 5px 0;"><strong style="font-size:12px; color:#9da2ab">Empresa:</strong>${orderData.billingDocument.businessName}</p>`
-                : ''
-            }
-                <div style="height: 1px; width:100%; border-top:1px dashed #a8acb6; margin-top: 20px;margin-bottom: 20px;"/>
-                <p style="margin: 5px 0; color: #777; text-align: center;">${format(
-                  orderData.pickupTime,
-                  'dd/MM/yyyy HH:mm:ss',
-                  {
-                    locale: es
-                  }
-                )}</p>
-                <div style="height: 1px; width:100%; border-top:1px dashed #a8acb6;margin-top: 20px;margin-bottom: 20px;"/>
-        </div>
-`;
+    invoiceHtml += this.generateClientInfoHtml(orderData);
 
     // Detalles del pedido
-    invoiceHtml += `
-  <div style="margin-bottom: 20px;">
-    <h3 style="margin-bottom: 10px; font-size: 18px;">Detalles del pedido</h3>
-    <table style="width: 100%; font-size: 14px;">
-      <thead>
-        <tr>
-          <th style="padding: 8px; color: #758399 ">Artículo</th>
-          <th style="padding: 8px; color: #758399 ">Cant.</th>
-          <th style="padding: 8px; color: #758399 ">P.U</th>
-          <th style="padding: 8px; color: #758399 ">Importe</th>
-        </tr>
-      </thead>
-      <tbody>
-`;
+    invoiceHtml += this.generateOrderDetailsHtml(orderData);
+
+    // Total y pie de página
+    invoiceHtml += this.generateTotalAndFooterHtml(totalPrice);
+
+    return invoiceHtml;
+  }
+
+  private generateClientInfoHtml(orderData: OrderDetails): string {
+    return `
+      <div style="height: 1px; width:100%; border-top:1px dashed #a8acb6; margin-top: 20px;margin-bottom: 20px;"/>
+      <div style="margin-top: 20px;">
+        <h3 style="margin-bottom: 10px; color: #555; text-align: center;">Información del cliente</h3>
+        <div style="display: grid; grid-template-columns: repeat(2, minmax(0, 1fr));">
+          <p style="margin: 5px 0; display:flex; flex-direction:column;">
+            <strong style="font-size:12px; color:#9da2ab">Cliente:</strong>
+            ${orderData.client.name + ' ' + orderData.client.lastName}
+          </p>
+          <p style="margin: 5px 0;">
+            <strong style="font-size:12px; color:#9da2ab">Correo electrónico:</strong>
+            ${orderData.client.email}
+          </p>
+          <p style="margin: 5px 0; display:flex; flex-direction:column;">
+            <strong style="font-size:12px; color:#9da2ab">Teléfono:</strong>
+            ${orderData.client.phone}
+          </p>
+          <p></p>
+          ${this.generateBillingInfoHtml(orderData)}
+        </div>
+        ${this.generateDateAndDividerHtml(orderData)}
+      </div>
+    `;
+  }
+
+  private generateBillingInfoHtml(orderData: OrderDetails): string {
+    return `
+      <p style="margin: 5px 0; display:flex; flex-direction:column;">
+        <strong style="font-size:12px; color:#9da2ab">Tipo documento:</strong>
+        ${orderData.billingDocument.typeDocument}
+      </p>
+      <p style="margin: 5px 0;display:flex; flex-direction:column;">
+        <strong style="font-size:12px; color:#9da2ab">N° documento:</strong>
+        ${orderData.billingDocument.documentNumber}
+      </p>
+      <p style="margin: 5px 0; display:flex; flex-direction:column;">
+        <strong style="font-size:12px; color:#9da2ab">Dirección:</strong>
+        ${orderData.billingDocument.address}
+      </p>
+      <p style="margin: 5px 0;display:flex; flex-direction:column;">
+        <strong style="font-size:12px; color:#9da2ab">País:</strong>
+        ${orderData.billingDocument.country}
+      </p>
+      <p style="margin: 5px 0;display:flex; flex-direction:column;">
+        <strong style="font-size:12px; color:#9da2ab">Estado:</strong>
+        ${orderData.billingDocument.state}
+      </p>
+      <p style="margin: 5px 0;display:flex; flex-direction:column;">
+        <strong style="font-size:12px; color:#9da2ab">Ciudad:</strong>
+        ${orderData.billingDocument.city}
+      </p>
+      ${
+        orderData.billingDocument.billingDocumentType === 'INVOICE'
+          ? `<p style="margin: 5px 0;">
+              <strong style="font-size:12px; color:#9da2ab">Empresa:</strong>
+              ${orderData.billingDocument.businessName}
+            </p>`
+          : ''
+      }
+    `;
+  }
+
+  private generateDateAndDividerHtml(orderData: OrderDetails): string {
+    return `
+      <div style="height: 1px; width:100%; border-top:1px dashed #a8acb6; margin-top: 20px;margin-bottom: 20px;"/>
+      <p style="margin: 5px 0; color: #777; text-align: center;">
+        ${format(orderData.pickupTime, 'dd/MM/yyyy HH:mm:ss', { locale: es })}
+      </p>
+      <div style="height: 1px; width:100%; border-top:1px dashed #a8acb6;margin-top: 20px;margin-bottom: 20px;"/>
+    `;
+  }
+
+  private generateOrderDetailsHtml(orderData: OrderDetails): string {
+    let html = `
+      <div style="margin-bottom: 20px;">
+        <h3 style="margin-bottom: 10px; font-size: 18px;">Detalles del pedido</h3>
+        <table style="width: 100%; font-size: 14px;">
+          <thead>
+            <tr>
+              <th style="padding: 8px; color: #758399">Artículo</th>
+              <th style="padding: 8px; color: #758399">Cant.</th>
+              <th style="padding: 8px; color: #758399">P.U</th>
+              <th style="padding: 8px; color: #758399">Importe</th>
+            </tr>
+          </thead>
+          <tbody>
+    `;
 
     orderData.cart.products.forEach((product) => {
       const importe = (product.price * product.quantity).toFixed(2);
-      invoiceHtml += `
+      html += `
         <tr>
           <td style="padding: 8px; text-align: left;">
-            <img src="${product.image}" alt="${product.name}" style="width: 40px; height: auto; margin-right: 10px; vertical-align: middle;" />
+            <img src="${
+              product.images[0]?.url || ''
+            }" alt="${product.name}" style="width: 40px; height: auto; margin-right: 10px; vertical-align: middle;" />
             ${product.name}
           </td>
           <td style="padding: 8px; text-align: center;">${product.quantity}</td>
           <td style="padding: 8px; text-align: center;">S/. ${product.price.toFixed(2)}</td>
           <td style="padding: 8px; text-align: center;">S/. ${importe}</td>
         </tr>
-    `;
+      `;
     });
 
-    invoiceHtml += `
-      </tbody>
-    </table>
-  </div>
-`;
+    html += `
+          </tbody>
+        </table>
+      </div>
+    `;
 
-    // Total y pie de página
-    invoiceHtml += `
-  <div style="text-align: right; margin-top: 20px; font-size: 16px;">
-    <p style="margin-bottom: 5px; display:flex;justify-content: space-between;"><strong>Total venta:</strong> 
-    <span>
-    S/. ${totalPrice.toFixed(2)}
-    </span>
-    </p>
-    </div>
-    
-    <p style="margin-bottom: 5px; text-align: center;">Son ${numberToLetter(totalPrice)}</p>
-      <div
-      style="display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); align-items:center;"
-    >
-      <div style="height: 1px; width: 100%; border-top: 1px dashed #a8acb6;margin-top: 20px;margin-bottom: 20px;" ></div>
-      <p style="text-align: center;">Forma de pago</p>
-      <div style="height: 1px; width: 100%; border-top: 1px dashed #a8acb6;margin-top: 20px;margin-bottom: 20px;" ></div>
-    </div>
-    <p style="margin-bottom: 5px; display:flex;justify-content: space-between;"><strong>Izipay</strong> 
-    <span>
-    S/. ${totalPrice.toFixed(2)}
-    </span>
-    </p>
-    </div>
-`;
+    return html;
+  }
 
-    return invoiceHtml;
+  private generateTotalAndFooterHtml(totalPrice: number): string {
+    return `
+      <div style="text-align: right; margin-top: 20px; font-size: 16px;">
+        <p style="margin-bottom: 5px; display:flex;justify-content: space-between;">
+          <strong>Total venta:</strong>
+          <span>S/. ${totalPrice.toFixed(2)}</span>
+        </p>
+      </div>
+      <p style="margin-bottom: 5px; text-align: center;">Son ${numberToLetter(totalPrice)}</p>
+      <div style="display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); align-items:center;">
+        <div style="height: 1px; width: 100%; border-top: 1px dashed #a8acb6;margin-top: 20px;margin-bottom: 20px;"></div>
+        <p style="text-align: center;">Forma de pago</p>
+        <div style="height: 1px; width: 100%; border-top: 1px dashed #a8acb6;margin-top: 20px;margin-bottom: 20px;"></div>
+      </div>
+      <p style="margin-bottom: 5px; display:flex;justify-content: space-between;">
+        <strong>Izipay</strong>
+        <span>S/. ${totalPrice.toFixed(2)}</span>
+      </p>
+    </div>
+    `;
   }
 }

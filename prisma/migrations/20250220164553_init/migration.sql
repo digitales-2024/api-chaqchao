@@ -29,7 +29,7 @@ CREATE TYPE "PaymentStatus" AS ENUM ('PAID', 'RUNNING', 'UNPAID', 'ABANDONED');
 CREATE TYPE "NotificationType" AS ENUM ('ORDER_CONFIRMED', 'ORDER_PREPARING', 'ORDER_READY', 'ORDER_PICKED_UP', 'ORDER_CANCELLED', 'PROMOTIONAL', 'REMINDER');
 
 -- CreateEnum
-CREATE TYPE "MethodPayment" AS ENUM ('PAYPAL', 'IZIPAY');
+CREATE TYPE "MethodPayment" AS ENUM ('PAYPAL', 'IZIPAY', 'CASH');
 
 -- CreateEnum
 CREATE TYPE "TypeClass" AS ENUM ('NORMAL', 'PRIVATE', 'GROUP');
@@ -222,7 +222,6 @@ CREATE TABLE "Product" (
     "name" TEXT NOT NULL,
     "description" TEXT,
     "price" DOUBLE PRECISION NOT NULL,
-    "image" TEXT,
     "isAvailable" BOOLEAN NOT NULL DEFAULT true,
     "isActive" BOOLEAN NOT NULL DEFAULT true,
     "isRestricted" BOOLEAN DEFAULT false,
@@ -231,6 +230,19 @@ CREATE TABLE "Product" (
     "categoryId" TEXT NOT NULL,
 
     CONSTRAINT "Product_pkey" PRIMARY KEY ("id")
+);
+
+-- CreateTable
+CREATE TABLE "ProductImage" (
+    "id" TEXT NOT NULL,
+    "url" TEXT NOT NULL,
+    "order" INTEGER NOT NULL DEFAULT 1,
+    "isMain" BOOLEAN NOT NULL DEFAULT false,
+    "createdAt" TIMESTAMPTZ(6) NOT NULL DEFAULT CURRENT_TIMESTAMP,
+    "updatedAt" TIMESTAMP(3) NOT NULL,
+    "productId" TEXT NOT NULL,
+
+    CONSTRAINT "ProductImage_pkey" PRIMARY KEY ("id")
 );
 
 -- CreateTable
@@ -392,9 +404,9 @@ CREATE TABLE "Classes" (
 -- CreateTable
 CREATE TABLE "ClassRegister" (
     "id" TEXT NOT NULL,
-    "userName" TEXT NOT NULL,
-    "userEmail" TEXT NOT NULL,
-    "userPhone" TEXT NOT NULL,
+    "userName" TEXT,
+    "userEmail" TEXT,
+    "userPhone" TEXT,
     "totalParticipants" INTEGER NOT NULL,
     "totalAdults" INTEGER NOT NULL,
     "totalChildren" INTEGER NOT NULL,
@@ -532,6 +544,12 @@ CREATE UNIQUE INDEX "ClassRegistrationConfig_id_key" ON "ClassRegistrationConfig
 CREATE UNIQUE INDEX "Product_id_key" ON "Product"("id");
 
 -- CreateIndex
+CREATE UNIQUE INDEX "ProductImage_id_key" ON "ProductImage"("id");
+
+-- CreateIndex
+CREATE UNIQUE INDEX "ProductImage_productId_order_key" ON "ProductImage"("productId", "order");
+
+-- CreateIndex
 CREATE UNIQUE INDEX "Category_id_key" ON "Category"("id");
 
 -- CreateIndex
@@ -638,6 +656,9 @@ ALTER TABLE "ClassRegistrationConfig" ADD CONSTRAINT "ClassRegistrationConfig_bu
 
 -- AddForeignKey
 ALTER TABLE "Product" ADD CONSTRAINT "Product_categoryId_fkey" FOREIGN KEY ("categoryId") REFERENCES "Category"("id") ON DELETE RESTRICT ON UPDATE CASCADE;
+
+-- AddForeignKey
+ALTER TABLE "ProductImage" ADD CONSTRAINT "ProductImage_productId_fkey" FOREIGN KEY ("productId") REFERENCES "Product"("id") ON DELETE CASCADE ON UPDATE CASCADE;
 
 -- AddForeignKey
 ALTER TABLE "ProductVariation" ADD CONSTRAINT "ProductVariation_productId_fkey" FOREIGN KEY ("productId") REFERENCES "Product"("id") ON DELETE RESTRICT ON UPDATE CASCADE;
