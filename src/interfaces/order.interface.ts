@@ -24,7 +24,6 @@ export type OrderInfo = Pick<
   | 'pickupAddress'
   | 'pickupTime'
   | 'someonePickup'
-  | 'isShipping'
   | 'pickupCode'
   | 'totalAmount'
   | 'isActive'
