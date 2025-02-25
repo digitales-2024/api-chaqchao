@@ -213,8 +213,8 @@ enum ClassTypeUser {
 }
 
 enum TypeCurrency {
-  SOL
-  DOLAR
+  PEN
+  USD
 }
 
 model ClassSchedule {
@@ -263,7 +263,6 @@ model Product {
   name         String
   description  String?
   price        Float
-  image        String?
   isAvailable  Boolean  @default(true)
   isActive     Boolean  @default(true)
   isRestricted Boolean? @default(false)
@@ -279,6 +278,25 @@ model Product {
 
   // Relación con ProductVariation
   productVariations ProductVariation[] @relation("productId")
+
+  // Relación con ProductImage
+  images ProductImage[] @relation("productImages")
+}
+
+// Nuevo modelo para las imágenes del producto
+model ProductImage {
+  id        String   @id @unique @default(uuid())
+  url       String
+  order     Int      @default(1) // Para mantener el orden de las imágenes (1,2,3)
+  isMain    Boolean  @default(false) // Para identificar la imagen principal
+  createdAt DateTime @default(now()) @db.Timestamptz(6)
+  updatedAt DateTime @updatedAt
+
+  // Relación con Product
+  product   Product @relation("productImages", fields: [productId], references: [id], onDelete: Cascade)
+  productId String
+
+  @@unique([productId, order]) // Garantiza que no haya duplicados de orden por producto
 }
 
 model Category {
@@ -515,9 +533,9 @@ model Classes {
 model ClassRegister {
   id String @id @unique @default(uuid())
 
-  userName           String
-  userEmail          String
-  userPhone          String
+  userName           String?
+  userEmail          String?
+  userPhone          String?
   totalParticipants  Int
   totalAdults        Int
   totalChildren      Int
@@ -525,6 +543,8 @@ model ClassRegister {
   totalPriceChildren Float
   totalPrice         Float
   typeCurrency       TypeCurrency
+  allergies          String?
+  occasion           String?
   comments           String?
   status             ClassStatus    @default(PENDING)
   methodPayment      MethodPayment?
@@ -535,7 +555,15 @@ model ClassRegister {
   paypalAmount      String?
   paypalCurrency    String?
   paypalDate        String?
-  expiresAt         DateTime
+
+  // Campos de Izipay
+  izipayOrderId     String?
+  izipayOrderStatus String?
+  izipayAmount      String?
+  izipayCurrency    String?
+  izipayDate        String?
+
+  expiresAt DateTime
 
   createdAt DateTime @default(now()) @db.Timestamptz(6)
   updatedAt DateTime @updatedAt
@@ -547,6 +575,7 @@ model ClassRegister {
 enum MethodPayment {
   PAYPAL
   IZIPAY
+  CASH
 }
 
 enum TypeClass {

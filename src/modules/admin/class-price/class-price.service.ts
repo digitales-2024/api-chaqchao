@@ -376,48 +376,10 @@ export class ClassPriceService {
   }
 
   /**
-   * Encontrar precio de las clases por el tipo de moneda
-   * @param typeCurrency Tipo de moneda
-   * @param typeClass Tipo de clase
-   * @returns Precios de las clases
-   */
-  async findClassPriceByTypeCurrency(
-    typeCurrency: TypeCurrency,
-    typeClass: TypeClass
-  ): Promise<ClassPriceConfigData[]> {
-    try {
-      const classPrices = await this.prisma.classPriceConfig.findMany({
-        where: {
-          typeCurrency,
-          typeClass
-        },
-        select: {
-          id: true,
-          classTypeUser: true,
-          price: true,
-          typeCurrency: true,
-          typeClass: true
-        }
-      });
-
-      return classPrices.map((classPrice) => ({
-        id: classPrice.id,
-        classTypeUser: classPrice.classTypeUser,
-        price: classPrice.price,
-        typeCurrency: classPrice.typeCurrency,
-        typeClass: classPrice.typeClass
-      })) as ClassPriceConfigData[];
-    } catch (error) {
-      this.logger.error(`Error fetching class prices: ${error.message}`, error.stack);
-      throw new BadRequestException('Error fetching class prices');
-    }
-  }
-
-  /**
    * Encontrar precio de las clases por el tipo de moneda y el tipo de clase
-   * @param typeCurrency Tipo de moneda
+   * @param typeCurrency Tipo de moneda (SOLES/DOLARES)
    * @param typeClass Tipo de clase
-   * @returns Precios de las clases
+   * @returns Precios de las clases agrupados por tipo de usuario
    */
   async findClassPriceByTypeCurrencyAndTypeClass(
     typeCurrency: TypeCurrency,
@@ -435,18 +397,22 @@ export class ClassPriceService {
           price: true,
           typeCurrency: true,
           typeClass: true
+        },
+        orderBy: {
+          classTypeUser: 'asc'
         }
       });
 
-      return classPrices.map((classPrice) => ({
-        id: classPrice.id,
-        classTypeUser: classPrice.classTypeUser,
-        price: classPrice.price,
-        typeCurrency: classPrice.typeCurrency,
-        typeClass: classPrice.typeClass
-      })) as ClassPriceConfigData[];
+      if (!classPrices.length) {
+        throw new NotFoundException(`No prices found for ${typeClass} classes in ${typeCurrency}`);
+      }
+
+      return classPrices;
     } catch (error) {
       this.logger.error(`Error fetching class prices: ${error.message}`, error.stack);
+      if (error instanceof NotFoundException) {
+        throw error;
+      }
       throw new BadRequestException('Error fetching class prices');
     }
   }

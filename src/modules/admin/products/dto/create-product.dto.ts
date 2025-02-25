@@ -1,17 +1,11 @@
 import { ApiProperty } from '@nestjs/swagger';
 import { Transform } from 'class-transformer';
-import {
-  IsArray,
-  IsNotEmpty,
-  IsNumber,
-  IsOptional,
-  IsString,
-  IsUrl,
-  IsUUID
-} from 'class-validator';
-import { CreateProductVariationDto } from '../../product-variation/dto/create-product-variation.dto';
+import { IsNotEmpty, IsNumber, IsOptional, IsString, IsUUID } from 'class-validator';
 
 export class CreateProductDto {
+  @ApiProperty({ type: 'array', items: { type: 'string', format: 'binary' }, required: false })
+  images?: any[];
+
   @ApiProperty({
     description: 'Nombre del producto',
     example: 'Café Latte'
@@ -22,7 +16,7 @@ export class CreateProductDto {
   name: string;
 
   @ApiProperty({
-    description: 'Descripción del producto',
+    description: 'Descripción del producto',
     example: 'Café con leche',
     required: false
   })
@@ -36,35 +30,26 @@ export class CreateProductDto {
   })
   @IsNotEmpty()
   @IsNumber()
+  @Transform(({ value }) => parseFloat(value))
   price: number;
 
   @ApiProperty({
-    description: 'Imagen del producto',
-    example: 'https://www.example.com/image.jpg'
-  })
-  @IsString()
-  @IsUrl()
-  image: string;
-
-  @ApiProperty({
-    description: '¿El producto está restringido?',
+    description: '¿El producto está restringido?',
     example: false
   })
   @IsOptional()
+  @Transform(({ value }) => {
+    if (value === 'true') return true;
+    if (value === 'false') return false;
+    return value;
+  })
   isRestricted?: boolean;
 
   @ApiProperty({
-    description: 'ID de la categoría a la que pertenece el producto',
+    description: 'ID de la categoría a la que pertenece el producto',
     example: '123e4567-e89b-12d3-a456-426614174000'
   })
   @IsNotEmpty()
   @IsUUID()
   categoryId: string;
-
-  @ApiProperty({
-    description: 'Variaciones del producto',
-    type: [CreateProductVariationDto]
-  })
-  @IsArray()
-  variations: CreateProductVariationDto[];
 }

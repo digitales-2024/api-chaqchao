@@ -1,5 +1,5 @@
-import { Injectable, ConflictException, Logger } from '@nestjs/common';
-import { PrismaService } from 'src/prisma/prisma.service';
+import { ConflictException, Injectable, Logger } from '@nestjs/common';
+import { PrismaService } from '../../../../prisma/prisma.service';
 
 @Injectable()
 export class PickupCodeService {

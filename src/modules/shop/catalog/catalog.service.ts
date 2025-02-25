@@ -1,10 +1,10 @@
 import { Injectable, Logger } from '@nestjs/common';
-import { PrismaService } from 'src/prisma/prisma.service';
-import { GetCategoryDto } from './dto/get-category.dto';
-import { CategoryData, ProductData } from 'src/interfaces';
-import { handleException } from 'src/utils';
-import { GetProductDto } from './dto/get-products.dto';
 import { Family } from '@prisma/client';
+import { CategoryData, ProductData } from 'src/interfaces';
+import { PrismaService } from 'src/prisma/prisma.service';
+import { handleException } from 'src/utils';
+import { GetCategoryDto } from './dto/get-category.dto';
+import { GetProductDto } from './dto/get-products.dto';
 
 @Injectable()
 export class CatalogService {
@@ -44,7 +44,7 @@ export class CatalogService {
    */
   async getFilteredCategory(filter: GetCategoryDto): Promise<any> {
     const whereConditions: any = {
-      isActive: true, // Categorías activas
+      isActive: true,
       products: {
         some: {
           isActive: true,
@@ -60,7 +60,6 @@ export class CatalogService {
       };
     }
 
-    // Consulta para obtener categorías con productos activos y disponibles
     const categories = await this.prisma.category.findMany({
       where: whereConditions,
       select: {
@@ -89,7 +88,7 @@ export class CatalogService {
    */
   async getFilteredProducts(filter: GetProductDto): Promise<ProductData[]> {
     const whereConditions: any = {
-      isActive: true // Productos activos
+      isActive: true
     };
 
     if (filter.name) {
@@ -115,18 +114,9 @@ export class CatalogService {
       };
     }
 
-    // Consulta para obtener productos activos y disponibles
     const products = await this.prisma.product.findMany({
       where: whereConditions,
-      select: {
-        id: true,
-        name: true,
-        description: true,
-        price: true,
-        image: true,
-        isActive: true,
-        isAvailable: true,
-        isRestricted: true,
+      include: {
         category: {
           select: {
             id: true,
@@ -140,7 +130,8 @@ export class CatalogService {
             description: true,
             additionalPrice: true
           }
-        }
+        },
+        images: true
       }
     });
 
@@ -149,7 +140,7 @@ export class CatalogService {
       name: product.name,
       description: product.description,
       price: product.price,
-      image: product.image,
+      images: product.images,
       isActive: product.isActive,
       isAvailable: product.isAvailable,
       isRestricted: product.isRestricted,
@@ -157,12 +148,7 @@ export class CatalogService {
         id: product.category.id,
         name: product.category.name
       },
-      variations: product.productVariations.map((variation) => ({
-        id: variation.id,
-        name: variation.name,
-        description: variation.description,
-        additionalPrice: variation.additionalPrice
-      }))
+      variations: product.productVariations
     }));
   }
 
@@ -177,15 +163,7 @@ export class CatalogService {
           family: Family.MERCH
         }
       },
-      select: {
-        id: true,
-        name: true,
-        description: true,
-        price: true,
-        image: true,
-        isActive: true,
-        isAvailable: true,
-        isRestricted: true,
+      include: {
         category: {
           select: {
             id: true,
@@ -199,7 +177,8 @@ export class CatalogService {
             description: true,
             additionalPrice: true
           }
-        }
+        },
+        images: true
       }
     });
 
@@ -208,7 +187,7 @@ export class CatalogService {
       name: product.name,
       description: product.description,
       price: product.price,
-      image: product.image,
+      images: product.images,
       isActive: product.isActive,
       isAvailable: product.isAvailable,
       isRestricted: product.isRestricted,
@@ -216,12 +195,7 @@ export class CatalogService {
         id: product.category.id,
         name: product.category.name
       },
-      variations: product.productVariations.map((variation) => ({
-        id: variation.id,
-        name: variation.name,
-        description: variation.description,
-        additionalPrice: variation.additionalPrice
-      }))
+      variations: product.productVariations
     }));
   }
 
@@ -233,7 +207,7 @@ export class CatalogService {
    */
   async getFilteredProductCategory(filter: GetCategoryDto): Promise<any> {
     const whereConditions: any = {
-      isActive: true // Categorías activas
+      isActive: true
     };
 
     if (filter.name) {
@@ -243,26 +217,25 @@ export class CatalogService {
       };
     }
 
-    // Consulta para obtener categorías con productos activos y disponibles
     const categories = await this.prisma.category.findMany({
       where: whereConditions,
       select: {
         id: true,
         name: true,
         products: {
+          where: {
+            isActive: true,
+            isAvailable: true
+          },
           select: {
             id: true,
             name: true,
             description: true,
             price: true,
-            image: true,
             isActive: true,
             isRestricted: true,
-            isAvailable: true
-          },
-          where: {
-            isActive: true,
-            isAvailable: true
+            isAvailable: true,
+            images: true
           }
         }
       }
@@ -277,7 +250,7 @@ export class CatalogService {
         name: product.name,
         description: product.description,
         price: product.price,
-        image: product.image,
+        images: product.images,
         isActive: product.isActive,
         isAvailable: product.isAvailable,
         isRestricted: product.isRestricted
@@ -315,10 +288,11 @@ export class CatalogService {
           }
         }
       });
+
       const categoryIds = purchasedCategories
         .flatMap((order) => order.cart.cartItems.map((item) => item.product.categoryId))
         .filter((value, index, self) => self.indexOf(value) === index);
-      // Obtener productos en esas categorías excluyendo los ya comprados
+
       const recommendations = await this.prisma.product.findMany({
         where: {
           categoryId: {
@@ -330,15 +304,7 @@ export class CatalogService {
             }
           }
         },
-        select: {
-          id: true,
-          name: true,
-          description: true,
-          price: true,
-          image: true,
-          isActive: true,
-          isAvailable: true,
-          isRestricted: true,
+        include: {
           category: {
             select: {
               id: true,
@@ -352,9 +318,10 @@ export class CatalogService {
               description: true,
               additionalPrice: true
             }
-          }
+          },
+          images: true
         },
-        take: 4 // Limitar el número de recomendaciones
+        take: 4
       });
 
       return recommendations.map((product) => ({
@@ -362,7 +329,7 @@ export class CatalogService {
         name: product.name,
         description: product.description,
         price: product.price,
-        image: product.image,
+        images: product.images,
         isActive: product.isActive,
         isAvailable: product.isAvailable,
         isRestricted: product.isRestricted,
@@ -370,12 +337,7 @@ export class CatalogService {
           id: product.category.id,
           name: product.category.name
         },
-        variations: product.productVariations.map((variation) => ({
-          id: variation.id,
-          name: variation.name,
-          description: variation.description,
-          additionalPrice: variation.additionalPrice
-        }))
+        variations: product.productVariations
       }));
     } catch (error) {
       this.logger.error(`Error getting recommended products for client ${id}: ${error.message}`);
@@ -390,7 +352,6 @@ export class CatalogService {
    */
   async getRecommendedProducts(): Promise<ProductData[]> {
     try {
-      // Obtener productos recomendados
       const recommendations = await this.prisma.product.findMany({
         where: {
           isActive: true,
@@ -400,15 +361,7 @@ export class CatalogService {
             }
           }
         },
-        select: {
-          id: true,
-          name: true,
-          description: true,
-          price: true,
-          image: true,
-          isActive: true,
-          isAvailable: true,
-          isRestricted: true,
+        include: {
           category: {
             select: {
               id: true,
@@ -423,6 +376,7 @@ export class CatalogService {
               additionalPrice: true
             }
           },
+          images: true,
           cartItems: {
             include: {
               cart: true
@@ -434,7 +388,7 @@ export class CatalogService {
             _count: 'desc'
           }
         },
-        take: 8 // Limitar el número de recomendaciones
+        take: 8
       });
 
       return recommendations.map((product) => ({
@@ -442,7 +396,7 @@ export class CatalogService {
         name: product.name,
         description: product.description,
         price: product.price,
-        image: product.image,
+        images: product.images,
         isActive: product.isActive,
         isAvailable: product.isAvailable,
         isRestricted: product.isRestricted,
@@ -451,12 +405,7 @@ export class CatalogService {
           id: product.category.id,
           name: product.category.name
         },
-        variations: product.productVariations.map((variation) => ({
-          id: variation.id,
-          name: variation.name,
-          description: variation.description,
-          additionalPrice: variation.additionalPrice
-        }))
+        variations: product.productVariations
       }));
     } catch (error) {
       this.logger.error(`Error getting recommended products: ${error.message}`);
@@ -471,9 +420,7 @@ export class CatalogService {
    */
   async getProductCategoryById(id: string): Promise<ProductData[]> {
     const category = await this.prisma.category.findUnique({
-      where: {
-        id
-      },
+      where: { id },
       select: {
         id: true,
         name: true,
@@ -483,10 +430,10 @@ export class CatalogService {
             name: true,
             description: true,
             price: true,
-            image: true,
             isActive: true,
             isAvailable: true,
-            isRestricted: true
+            isRestricted: true,
+            images: true
           }
         }
       }
@@ -497,7 +444,7 @@ export class CatalogService {
       name: product.name,
       description: product.description,
       price: product.price,
-      image: product.image,
+      images: product.images,
       isActive: product.isActive,
       isAvailable: product.isAvailable,
       isRestricted: product.isRestricted,

@@ -1,22 +1,19 @@
 import {
-  Controller,
-  Get,
-  Post,
   Body,
-  Patch,
-  Param,
+  Controller,
   Delete,
-  UploadedFile,
+  Get,
+  Param,
+  Patch,
+  Post,
+  UploadedFiles,
   UseInterceptors
 } from '@nestjs/common';
-import { ProductsService } from './products.service';
-import { CreateProductDto } from './dto/create-product.dto';
-import { UpdateProductDto } from './dto/update-product.dto';
-import { Auth, GetUser, Module, Permission } from '../auth/decorators';
-import { HttpResponse, ProductData, UserData, UserPayload } from 'src/interfaces';
+import { FilesInterceptor } from '@nestjs/platform-express';
 import {
   ApiBadRequestResponse,
   ApiBody,
+  ApiConsumes,
   ApiCreatedResponse,
   ApiOkResponse,
   ApiOperation,
@@ -24,8 +21,12 @@ import {
   ApiTags,
   ApiUnauthorizedResponse
 } from '@nestjs/swagger';
+import { HttpResponse, ProductData, UserData, UserPayload } from 'src/interfaces';
+import { Auth, GetUser, Module, Permission } from '../auth/decorators';
+import { CreateProductDto } from './dto/create-product.dto';
 import { DeleteProductsDto } from './dto/delete-product.dto';
-import { FileInterceptor } from '@nestjs/platform-express';
+import { UpdateProductDto } from './dto/update-product.dto';
+import { ProductsService } from './products.service';
 
 @ApiTags('Admin Products')
 @ApiBadRequestResponse({ description: 'Bad Request' })
@@ -49,12 +50,16 @@ export class ProductsController {
   @Permission(['CREATE'])
   @ApiOperation({ summary: 'Crear un nuevo producto' })
   @ApiCreatedResponse({ description: 'Producto creado' })
-  @ApiBody({ type: CreateProductDto, description: 'Informacion del producto a crear' })
-  create(
+  @ApiConsumes('multipart/form-data')
+  @UseInterceptors(FilesInterceptor('images', 3))
+  async create(
     @Body() createProductDto: CreateProductDto,
+    @UploadedFiles() images: Express.Multer.File[],
     @GetUser() user: UserData
   ): Promise<HttpResponse<ProductData>> {
-    return this.productsService.create(createProductDto, user);
+    const product = await this.productsService.create(createProductDto, images, user);
+
+    return product;
   }
 
   /**
@@ -68,38 +73,6 @@ export class ProductsController {
   @ApiOkResponse({ description: 'Obtener todos los productos' })
   findAll(@GetUser() user: UserPayload): Promise<ProductData[]> {
     return this.productsService.findAll(user);
-  }
-
-  /**
-   * Subir una imagen
-   * @param image Imagen a subir
-   * @returns URL de la imagen
-   */
-  @Post('upload/image')
-  @Permission(['CREATE'])
-  @ApiOperation({ summary: 'Subir una imagen' })
-  @ApiCreatedResponse({ description: 'Imagen cargado' })
-  @UseInterceptors(FileInterceptor('image'))
-  async uploadImage(@UploadedFile() image: Express.Multer.File): Promise<HttpResponse<string>> {
-    return this.productsService.uploadImage(image);
-  }
-
-  /**
-   * Actualizar una imagen existente
-   * @param image Imagen nueva para reemplazar la existente
-   * @param existingFileName Nombre del archivo existente a actualizar
-   * @returns URL de la imagen actualizada
-   */
-  @Patch('update/image/:existingFileName')
-  @Permission(['UPDATE'])
-  @ApiOperation({ summary: 'Actualizar imagen' })
-  @ApiCreatedResponse({ description: 'Image updated' })
-  @UseInterceptors(FileInterceptor('image'))
-  async updateImage(
-    @UploadedFile() image: Express.Multer.File,
-    @Param('existingFileName') existingFileName: string
-  ): Promise<HttpResponse<string>> {
-    return this.productsService.updateImage(image, existingFileName);
   }
 
   /**
@@ -119,7 +92,8 @@ export class ProductsController {
   /**
    * Actualizar el producto por id
    * @param id Id del producto
-   * @param UpdateProductDto Datos del producto a actualizar
+   * @param updateProductDto Datos del producto a actualizar
+   * @param images Nuevas imágenes a agregar (opcional)
    * @param user Usuario que actualiza el producto
    * @returns Información del producto actualizado
    */
@@ -127,14 +101,17 @@ export class ProductsController {
   @Permission(['UPDATE'])
   @ApiOperation({ summary: 'Actualizar el producto por id' })
   @ApiParam({ name: 'id', description: 'Id del producto' })
+  @ApiConsumes('multipart/form-data')
   @ApiBody({ type: UpdateProductDto, description: 'Datos del producto a actualizar' })
   @ApiOkResponse({ description: 'Producto actualizado' })
-  update(
+  @UseInterceptors(FilesInterceptor('images', 3))
+  async update(
     @Param('id') id: string,
-    @Body() UpdateProductDto: UpdateProductDto,
+    @Body() updateProductDto: UpdateProductDto,
+    @UploadedFiles() images: Express.Multer.File[],
     @GetUser() user: UserData
   ): Promise<HttpResponse<ProductData>> {
-    return this.productsService.update(id, UpdateProductDto, user);
+    return await this.productsService.update(id, updateProductDto, images, user);
   }
 
   /**
@@ -150,6 +127,20 @@ export class ProductsController {
   @ApiOkResponse({ description: 'Producto eliminado' })
   remove(@Param('id') id: string, @GetUser() user: UserData): Promise<HttpResponse<ProductData>> {
     return this.productsService.remove(id, user);
+  }
+
+  /**
+   * Eliminar permanente un producto
+   * @param id Id del producto
+   * @returns Información del producto eliminado
+   */
+  @Delete('permanent/:id')
+  @Permission(['DELETE'])
+  @ApiOperation({ summary: 'Eliminar permanentemente un producto' })
+  @ApiParam({ name: 'id', description: 'Id del producto' })
+  @ApiOkResponse({ description: 'Producto eliminado permanentemente' })
+  removePermanent(@Param('id') id: string): Promise<void> {
+    return this.productsService.removePermanent(id);
   }
 
   /**
@@ -190,6 +181,7 @@ export class ProductsController {
   ): Promise<HttpResponse<ProductData>> {
     return this.productsService.toggleActivation(id, user);
   }
+
   /**
    * Reactivate multiple products
    * @param user User performing the reactivation
