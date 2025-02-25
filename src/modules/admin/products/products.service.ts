@@ -351,7 +351,9 @@ export class ProductsService {
           id: product.category.id,
           name: product.category.name
         },
-        variations: product.productVariations
+        variations: product.productVariations,
+        createdAt: product.createdAt,
+        updatedAt: product.updatedAt
       }));
     } catch (error) {
       this.logger.error('Error getting all products', error);
@@ -465,6 +467,10 @@ export class ProductsService {
             price:
               updateProductDto.price !== undefined
                 ? parseFloat(updateProductDto.price.toString())
+                : undefined,
+            maxStock:
+              updateProductDto.maxStock !== undefined
+                ? parseFloat(updateProductDto.maxStock.toString())
                 : undefined,
             category: categoryUpdate,
             ...(uploadedUrls.length > 0 && {
