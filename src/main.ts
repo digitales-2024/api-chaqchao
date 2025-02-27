@@ -58,7 +58,8 @@ async function bootstrap() {
     { name: 'Shop Billing', description: 'Operaciones sobre la facturación de la tienda' },
     { name: 'Shop Classes', description: 'Operaciones sobre las clases de la tienda' },
     { name: 'Shop Business', description: 'Operaciones sobre la información de la tienda' },
-    { name: 'Shop Claims', description: 'Operaciones sobre los reclamos de la tienda' }
+    { name: 'Shop Claims', description: 'Operaciones sobre los reclamos de la tienda' },
+    { name: 'Shipping to another city', description: 'Operaciones sobre los envios' }
   ];
 
   SwaggerModule.setup('api', app, document);
