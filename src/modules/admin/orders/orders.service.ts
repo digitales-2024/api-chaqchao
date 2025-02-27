@@ -171,6 +171,7 @@ export class OrdersService {
               state: true,
               country: true,
               city: true,
+              postalCode: true,
               typeDocument: true,
               businessName: true,
               paymentStatus: true
