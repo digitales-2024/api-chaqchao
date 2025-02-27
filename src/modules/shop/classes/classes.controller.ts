@@ -1,19 +1,17 @@
 import {
-  Controller,
-  Post,
+  BadRequestException,
   Body,
+  Controller,
+  Delete,
   Get,
-  Patch,
   Param,
-  Query,
-  BadRequestException
+  Patch,
+  Post,
+  Query
 } from '@nestjs/common';
-import { ClassesService } from './classes.service';
-import { CreateClassDto } from './dto/create-class.dto';
 import {
   ApiBadRequestResponse,
   ApiBody,
-  ApiCreatedResponse,
   ApiInternalServerErrorResponse,
   ApiOkResponse,
   ApiOperation,
@@ -21,8 +19,8 @@ import {
   ApiQuery,
   ApiTags
 } from '@nestjs/swagger';
+import { TypeClass, TypeCurrency } from '@prisma/client';
 import {
-  ClassesData,
   ClassesDataAdmin,
   ClassLanguageData,
   ClassPriceConfigData,
@@ -31,14 +29,17 @@ import {
   ClientData,
   HttpResponse
 } from 'src/interfaces';
-import { ClassScheduleService } from 'src/modules/admin/class-schedule/class-schedule.service';
+import { ClassCapacityService } from 'src/modules/admin/class-capacity/class-capacity.service';
 import { ClassLanguageService } from 'src/modules/admin/class-language/class-language.service';
 import { ClassPriceService } from 'src/modules/admin/class-price/class-price.service';
-import { GetClient } from '../auth/decorators/get-client.decorator';
+import { ClassRegistrationService } from 'src/modules/admin/class-registration/class-registration.service';
+import { ClassScheduleService } from 'src/modules/admin/class-schedule/class-schedule.service';
+import { ClassesAdminService } from 'src/modules/admin/classes-admin/classes-admin.service';
+import { CreateClassAdminDto } from 'src/modules/admin/classes-admin/dto/create-class-admin.dto';
 import { ClientAuth } from '../auth/decorators/client-auth.decorator';
+import { GetClient } from '../auth/decorators/get-client.decorator';
+import { ClassesService } from './classes.service';
 import { UpdateClassDto } from './dto/update-class.dto';
-import { GetPricesClassDto } from './dto/get-prices-class.dto';
-import { TypeClass } from '@prisma/client';
 
 @ApiTags('Shop Classes')
 @ApiInternalServerErrorResponse({ description: 'Internal server error' })
@@ -52,20 +53,23 @@ export class ClassesController {
     private readonly classesService: ClassesService,
     private readonly classScheduleService: ClassScheduleService,
     private readonly classLanguageService: ClassLanguageService,
-    private readonly classPriceService: ClassPriceService
+    private readonly classPriceService: ClassPriceService,
+    private readonly classesAdminService: ClassesAdminService,
+    private readonly classCapacityService: ClassCapacityService,
+    private readonly classRegistrationService: ClassRegistrationService
   ) {}
 
   /**
-   * Create a new class record.
-   * @param createClassDto - Data transfer object containing information to create a class.
-   * @returns A promise that resolves to the HTTP response containing the created class data.
+   * Crear una clase desde el panel de administración
+   * @param data Datos de la clase a crear
+   * @returns Datos de la clase creada
    */
   @Post()
-  @ApiOperation({ summary: 'Crear un registro para una clases' })
-  @ApiCreatedResponse({ description: 'Registro creado' })
-  @ApiBody({ type: CreateClassDto, description: 'Información de la clase' })
-  create(@Body() createClassDto: CreateClassDto): Promise<HttpResponse<ClassesData>> {
-    return this.classesService.create(createClassDto);
+  @ApiOperation({ summary: 'Crear una clase desde el panel de administración' })
+  @ApiOkResponse({ description: 'Clase creada' })
+  @ApiBody({ description: 'Datos de la clase a crear', type: CreateClassAdminDto })
+  create(@Body() data: CreateClassAdminDto): Promise<ClassRegisterData> {
+    return this.classesAdminService.createClass(data);
   }
 
   /**
@@ -110,15 +114,37 @@ export class ClassesController {
    * Buscar todos los precios de las clases en dolares
    * @returns Promesa que se resuelve con los precios de las clases en dolares encontrados
    */
-  @Get('/prices/dolar')
-  @ApiOperation({ summary: 'Buscar todos los precios de dolares' })
+  @Get('/prices')
+  @ApiOperation({ summary: 'Buscar precios por tipo de moneda y tipo de clase' })
   @ApiOkResponse({ description: 'Precios encontrados' })
-  @ApiBadRequestResponse({ description: 'No clase de precios' })
-  findAllPricesToClass(@Body() pricesToClass: GetPricesClassDto): Promise<ClassPriceConfigData[]> {
-    return this.classPriceService.findClassPriceByTypeCurrency(
-      pricesToClass.typeCurrency,
-      pricesToClass.typeClass
-    );
+  @ApiBadRequestResponse({ description: 'No hay precios disponibles' })
+  @ApiQuery({
+    name: 'typeCurrency',
+    required: true,
+    description: 'Tipo de moneda (SOLES/DOLARES)',
+    enum: TypeCurrency
+  })
+  @ApiQuery({
+    name: 'typeClass',
+    required: true,
+    description: 'Tipo de clase',
+    enum: TypeClass
+  })
+  async findAllPricesToClass(
+    @Query('typeCurrency') typeCurrency: TypeCurrency,
+    @Query('typeClass') typeClass: TypeClass
+  ): Promise<ClassPriceConfigData[]> {
+    // Validar el tipo de moneda
+    this.classPriceService.validateTypeCurrency(typeCurrency);
+
+    // Validar que typeClass sea válido
+    if (!Object.values(TypeClass).includes(typeClass)) {
+      throw new BadRequestException(
+        `Invalid typeClass value. Use one of: ${Object.values(TypeClass).join(', ')}`
+      );
+    }
+
+    return this.classPriceService.findClassPriceByTypeCurrencyAndTypeClass(typeCurrency, typeClass);
   }
 
   /**
@@ -160,17 +186,90 @@ export class ClassesController {
   ): Promise<ClassesDataAdmin> {
     try {
       if (!scheduleClass || !dateClass) {
-        throw new BadRequestException('Date and time are required');
+        throw new BadRequestException('Date and schedule are required');
       }
 
-      const dateTime = new Date(dateClass);
-
-      if (isNaN(dateTime.getTime())) {
-        throw new BadRequestException('Invalid date or time format');
-      }
       return this.classesService.checkClass(scheduleClass, dateClass, typeClass);
     } catch (error) {
       throw new BadRequestException(error.message);
     }
+  }
+
+  /**
+   * Mostrar todos los horarios de clases
+   * @summary Mostrar todos los horarios de clases
+   * @returns Todos los horarios de clases
+   */
+  @Get('/schedule')
+  @ApiOperation({ summary: 'Mostrar todos los horarios de clases' })
+  @ApiOkResponse({ description: 'Todos los horarios de clases' })
+  findAllSchedule(): Promise<ClassScheduleData[]> {
+    return this.classScheduleService.findAll();
+  }
+
+  /**
+   * Obtener todos los registros de clases futuras para un horario y tipo de clase
+   * @param scheduleClass Horario de inicio de la clase
+   * @param typeClass Tipo de clase
+   * @returns Todos los registros de clases futuras
+   */
+  @Get('futures')
+  @ApiOperation({ summary: 'Obtener todos los registros de clases futuras' })
+  @ApiOkResponse({ description: 'Registros de clases futuras' })
+  @ApiQuery({
+    name: 'schedule',
+    description: 'Horario de inicio de la clase para obtener las clases futuras',
+    required: false
+  })
+  @ApiQuery({
+    name: 'typeClass',
+    description: 'Tipo de clase para obtener las clases futuras',
+    required: false
+  })
+  async findAllFutureClasses(@Query('typeClass') typeClass: TypeClass) {
+    return await this.classesAdminService.findAllFutureClasses('', typeClass);
+  }
+
+  /**
+   * Obtener todos las capacidades de los tipos de clases
+   * @returns Todas las capacidades de los tipos de clases
+   */
+  @Get('capacity')
+  @ApiOperation({ summary: 'Obtener todas las capacidades de los tipos de clases' })
+  @ApiOkResponse({ description: 'Capacidades de los tipos de clases' })
+  @ApiQuery({
+    name: 'typeClass',
+    description: 'Tipo de clase para obtener las capacidades',
+    enum: TypeClass,
+    required: false
+  })
+  async findAllCapacities(@Query('typeClass') typeClass?: TypeClass) {
+    return await this.classCapacityService.findAll(typeClass);
+  }
+
+  /**
+   * Eliminar un registro de una clase
+   * @param id Id del registro de la clase
+   *
+   */
+  @Delete(':id/delete')
+  @ApiOperation({ summary: 'Eliminar un registro de una clase' })
+  @ApiOkResponse({ description: 'Registro de clase eliminado' })
+  @ApiBadRequestResponse({ description: 'No se puede eliminar el registro de la clase' })
+  @ApiParam({ name: 'id', required: true, description: 'Id del registro de la clase' })
+  async deleteClass(@Param('id') id: string) {
+    return await this.classesService.deleteClass(id);
+  }
+
+  /**
+   * Mostrar los registros de tiempos para el cierre de clases
+   * @returns Registros de tiempos para el cierre de clases
+   */
+  @Get('close-time')
+  @ApiOperation({ summary: 'Mostrar los registros de tiempos para el cierre de clases' })
+  @ApiOkResponse({ description: 'Registros de tiempos para el cierre de clases' })
+  async findAllCloseTime() {
+    const data = await this.classRegistrationService.findAll();
+    return data[0];
   }
 }
