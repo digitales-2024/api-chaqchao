@@ -453,11 +453,10 @@ model BillingDocument {
   billingDocumentType BillingDocumentType
   typeDocument        String
   documentNumber      String
-  address             String
-  city                String
-  state               String
-  country             String
-  postalCode          String
+  address             String?
+  city                String?
+  state               String?
+  country             String?
 
   // Datos de la empresa
   businessName String?

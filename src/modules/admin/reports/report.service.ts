@@ -48,6 +48,7 @@ export interface ProductTop {
 }
 
 interface Order {
+  [x: string]: any;
   id: string;
   cartId: string;
   pickupCode: string;
