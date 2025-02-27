@@ -36,8 +36,7 @@ export class CreateBillingDocumentDto {
     example: 'Av. Los Pinos 123'
   })
   @IsString()
-  @IsOptional()
-  address?: string;
+  address: string;
 
   @ApiProperty({
     title: 'Ciudad',
@@ -45,8 +44,7 @@ export class CreateBillingDocumentDto {
     example: 'Lima'
   })
   @IsString()
-  @IsOptional()
-  city?: string;
+  city: string;
 
   @ApiProperty({
     title: 'Departamento',
@@ -54,8 +52,7 @@ export class CreateBillingDocumentDto {
     example: 'Lima'
   })
   @IsString()
-  @IsOptional()
-  state?: string;
+  state: string;
 
   @ApiProperty({
     title: 'País',
@@ -63,8 +60,15 @@ export class CreateBillingDocumentDto {
     example: 'Perú'
   })
   @IsString()
-  @IsOptional()
-  country?: string;
+  country: string;
+
+  @ApiProperty({
+    title: 'Código postal',
+    description: 'Código postal de facturación',
+    example: '15001'
+  })
+  @IsString()
+  postalCode: string;
 
   @ApiProperty({
     title: 'Estado de pago',
