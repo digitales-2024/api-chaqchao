@@ -86,19 +86,6 @@ export class OrdersService {
             }
           }
         },
-        where: {
-          pickupTime: {
-            gte: formattedDate,
-            lt: new Date(formattedDate.getTime() + 24 * 60 * 60 * 1000)
-          },
-          orderStatus: {
-            ...(status === ('ALL' as unknown as OrderStatus)
-              ? {
-                  not: 'PENDING'
-                }
-              : { equals: status })
-          }
-        },
         orderBy: {
           pickupCode: 'desc'
         }
