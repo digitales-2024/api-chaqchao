@@ -86,6 +86,7 @@ export class OrdersService {
             }
           }
         },
+
         orderBy: {
           pickupCode: 'desc'
         }
