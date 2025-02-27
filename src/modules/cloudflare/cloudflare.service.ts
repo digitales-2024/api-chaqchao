@@ -1,8 +1,8 @@
-import { DeleteObjectCommand, PutObjectCommand, S3Client } from '@aws-sdk/client-s3';
 import { Injectable } from '@nestjs/common';
 import { ConfigService } from '@nestjs/config';
-import { randomUUID } from 'crypto';
 import { extname } from 'path';
+import { randomUUID } from 'crypto';
+import { DeleteObjectCommand, PutObjectCommand, S3Client } from '@aws-sdk/client-s3';
 
 @Injectable()
 export class CloudflareService {
@@ -63,8 +63,13 @@ export class CloudflareService {
     // Generar un nuevo nombre de archivo único con la nueva extensión
     const fileName = `${randomUUID()}.${newExtension}`;
 
-    // Eliminar el archivo existente si existe
-    await this.deleteImage(existingFileName);
+    // Eliminar el archivo existente
+    const deleteParams = {
+      Bucket: this.bucketName,
+      Key: existingFileName
+    };
+    const deleteCommand = new DeleteObjectCommand(deleteParams);
+    await this.s3Client.send(deleteCommand);
 
     // Parámetros para actualizar el archivo
     const params = {
@@ -80,32 +85,5 @@ export class CloudflareService {
 
     // Retorna la URL pública del archivo actualizado
     return `${this.publicUrl}/${fileName}`;
-  }
-
-  /**
-   * Eliminar una imagen de Cloudflare R2
-   * @param imageUrl URL de la imagen a eliminar
-   * @returns void
-   */
-  async deleteImage(imageUrl: string): Promise<void> {
-    // Extraer el nombre del archivo de la URL
-    const fileName = imageUrl.split('/').pop();
-
-    // Parámetros para eliminar el archivo
-    const params = {
-      Bucket: this.bucketName,
-      Key: fileName
-    };
-
-    try {
-      // Ejecuta el comando para eliminar el archivo
-      const command = new DeleteObjectCommand(params);
-      await this.s3Client.send(command);
-    } catch (error) {
-      // Si el archivo no existe, ignoramos el error
-      if (error.name !== 'NoSuchKey') {
-        throw error;
-      }
-    }
   }
 }

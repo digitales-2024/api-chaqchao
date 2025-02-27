@@ -72,6 +72,7 @@ export class BillingDocumentService {
       city,
       state,
       country,
+      postalCode,
       businessName
     } = createBillingDocumentDto;
     let newBillingDocument;
@@ -87,6 +88,7 @@ export class BillingDocumentService {
             city,
             state,
             country,
+            postalCode,
             totalAmount,
             paymentStatus: paymentStatus,
             issuedAt,
@@ -104,6 +106,7 @@ export class BillingDocumentService {
             city: true,
             state: true,
             country: true,
+            postalCode: true,
             businessName: true,
             order: {
               select: {
@@ -131,6 +134,7 @@ export class BillingDocumentService {
           city: newBillingDocument.city,
           state: newBillingDocument.state,
           country: newBillingDocument.country,
+          postalCode: newBillingDocument.postalCode,
           typeDocument: newBillingDocument.typeDocument,
           businessName: newBillingDocument.businessName,
           order: {
@@ -174,6 +178,7 @@ export class BillingDocumentService {
           city: true,
           state: true,
           country: true,
+          postalCode: true,
           businessName: true,
           order: {
             select: {
@@ -199,6 +204,7 @@ export class BillingDocumentService {
           state: updatedBillingStatus.state,
           country: updatedBillingStatus.country,
           typeDocument: updatedBillingStatus.typeDocument,
+          postalCode: updatedBillingStatus.postalCode,
           businessName: updatedBillingStatus.businessName,
           order: {
             id: updatedBillingStatus.order.id

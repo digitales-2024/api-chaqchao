@@ -1,22 +1,10 @@
-export interface ProductImageData {
-  id: string;
-  url: string;
-  order: number;
-  isMain: boolean;
-}
+import { Product } from '@prisma/client';
+import { ProductVariationData } from './product-variation.interface';
 
-export interface ProductData {
-  id: string;
-  name: string;
-  description?: string;
-  price: number;
-  isAvailable: boolean;
-  isActive: boolean;
-  isRestricted?: boolean;
-  maxStock: number;
-  category: {
-    id: string;
-    name: string;
-  };
-  images: ProductImageData[];
-}
+export type ProductData = Pick<
+  Product,
+  'id' | 'name' | 'description' | 'price' | 'image' | 'isAvailable' | 'isActive' | 'isRestricted'
+> & {
+  category: { id: string; name: string };
+  variations: ProductVariationData[];
+};

@@ -1,14 +1,8 @@
-import {
-  BadRequestException,
-  Body,
-  Controller,
-  Get,
-  Param,
-  Patch,
-  Post,
-  Query,
-  Res
-} from '@nestjs/common';
+import { Body, Controller, Get, Param, Patch, Post, Query, Res } from '@nestjs/common';
+import { Response } from 'express';
+import { ClassesAdminService } from './classes-admin.service';
+import { Auth, Module, Permission } from '../auth/decorators';
+import { ClassesDataAdmin, ClassRegisterData } from 'src/interfaces';
 import {
   ApiBadRequestResponse,
   ApiBody,
@@ -19,14 +13,8 @@ import {
   ApiTags,
   ApiUnauthorizedResponse
 } from '@nestjs/swagger';
-import { TypeClass, TypeCurrency } from '@prisma/client';
-import { Response } from 'express';
-import { ClassesDataAdmin, ClassPriceConfigData, ClassRegisterData } from 'src/interfaces';
-import { Auth, Module, Permission } from '../auth/decorators';
-import { ClassCapacityService } from '../class-capacity/class-capacity.service';
-import { ClassPriceService } from '../class-price/class-price.service';
-import { ClassesAdminService } from './classes-admin.service';
 import { CreateClassAdminDto } from './dto/create-class-admin.dto';
+import { TypeClass } from '@prisma/client';
 
 @ApiTags('Admin Classes')
 @ApiBadRequestResponse({ description: 'Bad Request' })
@@ -35,11 +23,7 @@ import { CreateClassAdminDto } from './dto/create-class-admin.dto';
 @Module('CLS')
 @Controller({ path: '/class/admin', version: '1' })
 export class ClassesAdminController {
-  constructor(
-    private readonly classesAdminService: ClassesAdminService,
-    private readonly classCapacityService: ClassCapacityService,
-    private readonly classPriceService: ClassPriceService
-  ) {}
+  constructor(private readonly classesAdminService: ClassesAdminService) {}
 
   /**
    * Crear una clase desde el panel de administración
@@ -178,59 +162,5 @@ export class ClassesAdminController {
   @ApiParam({ name: 'classId', description: 'ID de la clase a cerrar', required: true })
   async closeClass(@Param('classId') classId: string) {
     return await this.classesAdminService.closeClass(classId);
-  }
-
-  /**
-   * Obtener todos las capacidades de los tipos de clases
-   * @returns Todas las capacidades de los tipos de clases
-   */
-  @Get('capacity')
-  @ApiOperation({ summary: 'Obtener todas las capacidades de los tipos de clases' })
-  @ApiOkResponse({ description: 'Capacidades de los tipos de clases' })
-  @ApiQuery({
-    name: 'typeClass',
-    description: 'Tipo de clase para obtener las capacidades',
-    enum: TypeClass,
-    required: false
-  })
-  async findAllCapacities(@Query('typeClass') typeClass?: TypeClass) {
-    return await this.classCapacityService.findAll(typeClass);
-  }
-
-  /**
-   * Buscar todos los precios de las clases en dolares
-   * @returns Promesa que se resuelve con los precios de las clases en dolares encontrados
-   */
-  @Get('/prices')
-  @ApiOperation({ summary: 'Buscar precios por tipo de moneda y tipo de clase' })
-  @ApiOkResponse({ description: 'Precios encontrados' })
-  @ApiBadRequestResponse({ description: 'No hay precios disponibles' })
-  @ApiQuery({
-    name: 'typeCurrency',
-    required: true,
-    description: 'Tipo de moneda (SOLES/DOLARES)',
-    enum: TypeCurrency
-  })
-  @ApiQuery({
-    name: 'typeClass',
-    required: true,
-    description: 'Tipo de clase',
-    enum: TypeClass
-  })
-  async findAllPricesToClass(
-    @Query('typeCurrency') typeCurrency: TypeCurrency,
-    @Query('typeClass') typeClass: TypeClass
-  ): Promise<ClassPriceConfigData[]> {
-    // Validar el tipo de moneda
-    this.classPriceService.validateTypeCurrency(typeCurrency);
-
-    // Validar que typeClass sea válido
-    if (!Object.values(TypeClass).includes(typeClass)) {
-      throw new BadRequestException(
-        `Invalid typeClass value. Use one of: ${Object.values(TypeClass).join(', ')}`
-      );
-    }
-
-    return this.classPriceService.findClassPriceByTypeCurrencyAndTypeClass(typeCurrency, typeClass);
   }
 }

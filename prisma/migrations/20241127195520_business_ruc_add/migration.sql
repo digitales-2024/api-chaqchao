@@ -1,0 +1,2 @@
+-- AlterTable
+ALTER TABLE "BusinessConfig" ADD COLUMN     "ruc" TEXT NOT NULL DEFAULT '00000000000';

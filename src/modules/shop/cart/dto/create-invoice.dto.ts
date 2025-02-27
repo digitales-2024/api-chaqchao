@@ -29,32 +29,35 @@ export class CreateInvoiceDto {
     example: 'Av. Los Pinos 123'
   })
   @IsString()
-  @IsOptional()
-  address?: string;
+  address: string;
 
   @ApiProperty({
     description: 'Ciudad de facturación',
     example: 'Lima'
   })
   @IsString()
-  @IsOptional()
-  city?: string;
+  city: string;
 
   @ApiProperty({
     description: 'Departamento de facturación',
     example: 'Lima'
   })
   @IsString()
-  @IsOptional()
-  state?: string;
+  state: string;
 
   @ApiProperty({
     description: 'País de facturación',
     example: 'Perú'
   })
   @IsString()
-  @IsOptional()
-  country?: string;
+  country: string;
+
+  @ApiProperty({
+    description: 'Código postal de facturación',
+    example: '15023'
+  })
+  @IsString()
+  postalCode: string;
 
   @ApiProperty({
     description: 'Número de teléfono del cliente',
