@@ -5,13 +5,13 @@ import {
   Logger,
   NotFoundException
 } from '@nestjs/common';
-import { AuditActionType, TypeClass } from '@prisma/client';
-import { ClassScheduleData, HttpResponse, UserData } from 'src/interfaces';
-import { PrismaService } from 'src/prisma/prisma.service';
-import { handleException } from 'src/utils';
-import { BusinessConfigService } from '../business-config/business-config.service';
 import { CreateClassScheduleDto } from './dto/create-class-schedule.dto';
 import { UpdateClassScheduleDto } from './dto/update-class-schedule.dto';
+import { ClassScheduleData, HttpResponse, UserData } from 'src/interfaces';
+import { AuditActionType, TypeClass } from '@prisma/client';
+import { PrismaService } from 'src/prisma/prisma.service';
+import { BusinessConfigService } from '../business-config/business-config.service';
+import { handleException } from 'src/utils';
 
 @Injectable()
 export class ClassScheduleService {
@@ -115,9 +115,6 @@ export class ClassScheduleService {
           id: true,
           startTime: true,
           typeClass: true
-        },
-        orderBy: {
-          startTime: 'asc'
         }
       });
 
@@ -231,6 +228,12 @@ export class ClassScheduleService {
         if (existingSchedule) {
           throw new BadRequestException('Start time already exists');
         }
+        console.log(
+          '🚀 ~ ClassScheduleService ~ returnawaitthis.prisma.$transaction ~ id:',
+          id,
+          startTime
+        );
+
         // Actualizar el class schedule
         const updatedClassSchedule = await prisma.classSchedule.update({
           where: { id },

@@ -5,11 +5,12 @@ import {
   Logger,
   NotFoundException
 } from '@nestjs/common';
-import { Cron } from '@nestjs/schedule';
-import { ClassStatus, TypeClass, TypeCurrency } from '@prisma/client';
-import { format, isEqual, parse } from 'date-fns';
+import { PrismaService } from 'src/prisma/prisma.service';
+import { handleException } from 'src/utils';
+import { ClassScheduleService } from 'src/modules/admin/class-schedule/class-schedule.service';
+import { ClassRegistrationService } from 'src/modules/admin/class-registration/class-registration.service';
+import { ClassLanguageService } from 'src/modules/admin/class-language/class-language.service';
 import * as moment from 'moment-timezone';
-import { TypedEventEmitter } from 'src/event-emitter/typed-event-emitter.class';
 import {
   ClassesData,
   ClassesDataAdmin,
@@ -17,21 +18,18 @@ import {
   ClientData,
   HttpResponse
 } from 'src/interfaces';
-import { AdminGateway } from 'src/modules/admin/admin.gateway';
-import { ClassLanguageService } from 'src/modules/admin/class-language/class-language.service';
 import { ClassPriceService } from 'src/modules/admin/class-price/class-price.service';
-import { ClassRegistrationService } from 'src/modules/admin/class-registration/class-registration.service';
-import { ClassScheduleService } from 'src/modules/admin/class-schedule/class-schedule.service';
-import { PrismaService } from 'src/prisma/prisma.service';
-import { handleException } from 'src/utils';
-import { CreateClassDto } from './dto/create-class.dto';
+import { TypedEventEmitter } from 'src/event-emitter/typed-event-emitter.class';
+import { AdminGateway } from 'src/modules/admin/admin.gateway';
+import { ClassStatus, TypeClass, TypeCurrency } from '@prisma/client';
+import { Cron } from '@nestjs/schedule';
 import { UpdateClassDto } from './dto/update-class.dto';
+import { format, isEqual } from 'date-fns';
+import { CreateClassDto } from './dto/create-class.dto';
 
 @Injectable()
 export class ClassesService {
-  private readonly logger = new Logger(ClassesService.name, {
-    timestamp: true
-  });
+  private readonly logger = new Logger(ClassesService.name);
 
   constructor(
     private readonly prisma: PrismaService,
@@ -95,7 +93,7 @@ export class ClassesService {
     totalAdults: number,
     totalChildren: number
   ): Promise<{ totalPriceAdults: number; totalPriceChildren: number; totalPrice: number }> {
-    const pricesClassDB = await this.classPriceService.findClassPriceByTypeCurrencyAndTypeClass(
+    const pricesClassDB = await this.classPriceService.findClassPriceByTypeCurrency(
       typeCurrency as TypeCurrency,
       typeClass
     );
@@ -209,7 +207,7 @@ export class ClassesService {
     ]);
 
     const intervalsClassRegistration = await this.classRegistrationService.findAll();
-    const classPrices = await this.classPriceService.findClassPriceByTypeCurrencyAndTypeClass(
+    const classPrices = await this.classPriceService.findClassPriceByTypeCurrency(
       typeCurrency,
       typeClass
     );
@@ -247,7 +245,6 @@ export class ClassesService {
           ) {
             return sum + classItem.totalParticipants;
           }
-          return sum; // Retornar sum sin cambios si no cumple la condición
         },
         0
       );
@@ -340,29 +337,19 @@ export class ClassesService {
     dateClass: Date,
     typeClass: TypeClass
   ): Promise<ClassesDataAdmin> {
+    const startOfDay = new Date(dateClass);
+    startOfDay.setUTCHours(0, 0, 0, 0); // Inicio del día en UTC
+    const endOfDay = new Date(dateClass);
+    endOfDay.setUTCHours(23, 59, 59, 999); // Fin del día en UTC
     try {
-      // Configurar el rango de búsqueda en UTC
-      const searchDate = new Date(dateClass);
-      // Inicio del día en Lima (UTC+5)
-      const startOfDay = new Date(searchDate);
-      startOfDay.setUTCHours(5, 0, 0, 0);
-
-      // Fin del día en Lima (UTC+5)
-      const endOfDay = new Date(searchDate);
-      endOfDay.setUTCHours(28, 59, 59, 999);
-
-      const startOfDayDate = startOfDay;
-      const endOfDayDate = endOfDay;
-
       const claseDB = await this.prisma.classes.findFirst({
         where: {
           scheduleClass,
           dateClass: {
-            gte: startOfDayDate,
-            lte: endOfDayDate
+            gte: startOfDay,
+            lte: endOfDay
           },
-          typeClass,
-          isClosed: false
+          typeClass
         },
         select: {
           id: true,
@@ -391,16 +378,9 @@ export class ClassesService {
           }
         },
         orderBy: {
-          dateClass: 'asc' as const
+          dateClass: 'asc'
         }
       });
-
-      this.logger.debug('Resultado de la consulta:', claseDB);
-
-      // Añadir verificación para cuando no se encuentra ninguna clase
-      if (!claseDB) {
-        throw new NotFoundException('No classes found');
-      }
 
       return {
         totalParticipants: claseDB.totalParticipants,
@@ -445,33 +425,9 @@ export class ClassesService {
     });
 
     for (const registration of expiredRegistrations) {
-      const registeCanceled = await this.prisma.classRegister.delete({
-        where: { id: registration.id }
-      });
-
-      await this.prisma.classes.update({
-        where: {
-          id: registeCanceled.classesId
-        },
-        data: {
-          totalParticipants: {
-            decrement: registeCanceled.totalParticipants
-          },
-          isClosed: false
-        }
-      });
-    }
-
-    // Verificamos que la clase del registro que esta eliminando se queda con total de participantes 0 se elimina la clase
-    const classes = await this.prisma.classes.findMany({
-      where: {
-        totalParticipants: 0
-      }
-    });
-
-    for (const classItem of classes) {
-      await this.prisma.classes.delete({
-        where: { id: classItem.id }
+      await this.prisma.classRegister.update({
+        where: { id: registration.id },
+        data: { status: ClassStatus.CANCELLED }
       });
     }
   }
@@ -546,9 +502,11 @@ export class ClassesService {
     dateClass: string,
     typeClass: TypeClass
   ): Promise<ClassesDataAdmin> {
-    const parsedDate = parse(dateClass, 'dd-MM-yyyy', new Date());
+    const parsedDate = new Date(dateClass);
     const classDB = await this.findClassesByscheduleClass(scheduleClass, parsedDate, typeClass);
+
     const { totalParticipants, languageClass, registers } = classDB;
+
     // Verificamos si el total de participantes es igual al total de asistentes
 
     const totalParticipantsInSchedule = registers.reduce((sum, classItem) => {
@@ -570,46 +528,5 @@ export class ClassesService {
       isClosed: classDB.isClosed,
       registers: classDB.registers
     };
-  }
-
-  /**
-   * Obtener todos las capacidades de los tipos de clases
-   * @returns Todas las capacidades de los tipos de clases
-   */
-  async findAllCapacities(): Promise<number[]> {
-    const capacities = await this.prisma.classes.findMany({
-      select: {
-        totalParticipants: true
-      }
-    });
-
-    return capacities.map((capacity) => capacity.totalParticipants);
-  }
-
-  /**
-   * Eliminar un registro de una clase
-   * @param classId ID de la clase
-   */
-  async deleteClass(registerId: string): Promise<void> {
-    const register = await this.prisma.classRegister.findUnique({
-      where: { id: registerId }
-    });
-
-    if (!register) {
-      throw new NotFoundException('Class not found');
-    }
-
-    await this.prisma.classRegister.delete({
-      where: { id: registerId }
-    });
-
-    await this.prisma.classes.update({
-      where: { id: register.classesId },
-      data: {
-        totalParticipants: {
-          decrement: register.totalParticipants
-        }
-      }
-    });
   }
 }

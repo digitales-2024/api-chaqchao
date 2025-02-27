@@ -4,18 +4,17 @@ import {
   InternalServerErrorException,
   Logger
 } from '@nestjs/common';
-import { ClassStatus, TypeClass } from '@prisma/client';
-import { format, parseISO } from 'date-fns';
-import { formatInTimeZone } from 'date-fns-tz';
-import { es } from 'date-fns/locale';
+import { ClassClosed, ClassesDataAdmin, ClassRegisterData } from 'src/interfaces';
+import { PrismaService } from 'src/prisma/prisma.service';
+import { handleException } from 'src/utils';
 import * as ExcelJS from 'exceljs';
+import * as puppeteer from 'puppeteer';
 import * as fs from 'fs';
 import * as path from 'path';
-import * as puppeteer from 'puppeteer';
-import { ClassClosed, ClassesDataAdmin, ClassRegisterData } from 'src/interfaces';
-import { PrismaService } from '../../../prisma/prisma.service';
-import { handleException } from '../../../utils';
+import { ClassStatus, TypeClass, TypeCurrency } from '@prisma/client';
 import { CreateClassAdminDto } from './dto/create-class-admin.dto';
+import { format, parseISO } from 'date-fns';
+import { es } from 'date-fns/locale';
 
 @Injectable()
 export class ClassesAdminService {
@@ -29,19 +28,16 @@ export class ClassesAdminService {
    * @returns Clase creada
    */
   async createClass(data: CreateClassAdminDto): Promise<ClassRegisterData> {
+    console.log(data);
     const { dateClass, scheduleClass, typeClass } = data;
 
     // Buscamos si ya hay una clase en la fecha y horario especificados
     try {
-      // Formatear la fecha considerando la zona horaria de Lima
-      const formattedDate = formatInTimeZone(dateClass, 'America/Lima', 'yyyy-MM-dd');
-      const parsedDate = parseISO(formattedDate);
-
       // Iniciar la transacción
       return await this.prisma.$transaction(async (prisma) => {
         // Buscar una clase existente para la fecha y hora
         let classEntity = await prisma.classes.findFirst({
-          where: { dateClass: parsedDate, scheduleClass, typeClass }
+          where: { dateClass, scheduleClass, typeClass }
         });
 
         if (classEntity && classEntity.isClosed) {
@@ -82,7 +78,7 @@ export class ClassesAdminService {
           data.totalAdults + data.totalChildren + classEntity.totalParticipants >
           participants.maxCapacity
         ) {
-          throw new BadRequestException('La capacidad de la clase ha sido excedida');
+          throw new BadRequestException('La capacidad de la clase ha sido alcanzada');
         }
 
         // Crear el registro
@@ -98,10 +94,8 @@ export class ClassesAdminService {
             totalPrice: data.totalPrice,
             totalPriceAdults: data.totalPriceAdults,
             totalPriceChildren: data.totalPriceChildren,
-            allergies: data.allergies,
-            occasion: data.occasion,
-            typeCurrency: data.typeCurrency,
-            status: (data.status as ClassStatus) || ClassStatus.PENDING,
+            typeCurrency: TypeCurrency.DOLAR,
+            status: ClassStatus.CONFIRMED,
             comments: data.comments,
             expiresAt: new Date(Date.now() + 5 * 60 * 1000), // 5 minutes
             methodPayment: data.methodPayment
@@ -122,7 +116,6 @@ export class ClassesAdminService {
         return classRegister;
       });
     } catch (error) {
-      this.logger.error(`Error creating class: ${error.message}`, error.stack);
       // Manejo de errores específicos de Prisma
       if (error instanceof BadRequestException) {
         throw error; // Errores de validación
@@ -138,15 +131,10 @@ export class ClassesAdminService {
    * @returns Registros de clases por fecha
    */
   async findByDate(date: string): Promise<ClassesDataAdmin[]> {
-    // Formatear la fecha considerando la zona horaria de Lima
-    const formattedDate = formatInTimeZone(parseISO(date), 'America/Lima', 'yyyy-MM-dd');
-    const parsedDate = parseISO(formattedDate);
-
-    // Establecer inicio y fin del día en la zona horaria de Lima
-    const startOfDay = new Date(parsedDate);
-    const endOfDay = new Date(parsedDate);
-    startOfDay.setHours(0, 0, 0, 0);
-    endOfDay.setHours(23, 59, 59, 999);
+    const startOfDay = new Date(date);
+    startOfDay.setUTCHours(0, 0, 0, 0); // Inicio del día en UTC
+    const endOfDay = new Date(date);
+    endOfDay.setUTCHours(23, 59, 59, 999); // Fin del día en UTC
 
     try {
       const classDB = await this.prisma.classes.findMany({
@@ -519,17 +507,15 @@ export class ClassesAdminService {
     scheduleClass?: string,
     typeClass?: TypeClass
   ): Promise<ClassClosed[]> {
-    // Calculamos la fecha de hoy en la zona horaria de Lima
+    // Calculamos la fecha de hoy
     const today = new Date();
-    const formattedToday = formatInTimeZone(today, 'America/Lima', 'yyyy-MM-dd');
-    const zonedToday = parseISO(formattedToday);
-    zonedToday.setHours(0, 0, 0, 0);
+    today.setUTCHours(0, 0, 0, 0);
 
     // Buscamos todas las clases cerradas en el rango de fechas
     const classesClosed = await this.prisma.classes.findMany({
       where: {
-        scheduleClass: scheduleClass || undefined,
-        typeClass: typeClass || 'NORMAL',
+        scheduleClass,
+        typeClass,
         dateClass: {
           gte: today
         }
@@ -538,8 +524,7 @@ export class ClassesAdminService {
         id: true,
         dateClass: true,
         scheduleClass: true,
-        isClosed: true,
-        totalParticipants: true
+        isClosed: true
       }
     });
 
@@ -548,8 +533,7 @@ export class ClassesAdminService {
       id: classClosed.id,
       dateClass: classClosed.dateClass,
       scheduleClass: classClosed.scheduleClass,
-      isClosed: classClosed.isClosed,
-      totalParticipants: classClosed.totalParticipants
+      isClosed: classClosed.isClosed
     }));
 
     return classes;
@@ -567,14 +551,10 @@ export class ClassesAdminService {
       // Validar el formato de la fecha
       let parsedDate: Date;
       try {
-        // Parsear la fecha
-        const date = parseISO(dateClass);
-        if (!date || isNaN(date.getTime())) {
+        parsedDate = parseISO(dateClass);
+        if (!parsedDate || isNaN(parsedDate.getTime())) {
           throw new Error('Fecha inválida');
         }
-        // Formatear la fecha considerando la zona horaria de Lima
-        const formattedDate = formatInTimeZone(date, 'America/Lima', 'yyyy-MM-dd');
-        parsedDate = parseISO(formattedDate);
       } catch (error) {
         throw new BadRequestException(
           'El formato de la fecha es inválido. Use el formato ISO (YYYY-MM-DD)'
@@ -612,18 +592,9 @@ export class ClassesAdminService {
    */
   async closeClass(id: string): Promise<ClassClosed> {
     try {
-      const currentClass = await this.prisma.classes.findUnique({
-        where: { id },
-        select: { isClosed: true }
-      });
-
-      if (!currentClass) {
-        throw new BadRequestException('La clase no existe');
-      }
-
       const classClosed = await this.prisma.classes.update({
         where: { id },
-        data: { isClosed: !currentClass.isClosed },
+        data: { isClosed: true },
         select: {
           id: true,
           dateClass: true,

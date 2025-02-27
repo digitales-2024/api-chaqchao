@@ -6,7 +6,7 @@ export class GetPricesClassDto {
   @ApiProperty({
     description: 'Tipo de moneda',
     enum: TypeCurrency,
-    example: TypeCurrency.USD
+    example: TypeCurrency.DOLAR
   })
   @IsNotEmpty()
   @IsString()

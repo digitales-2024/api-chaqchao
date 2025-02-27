@@ -16,7 +16,6 @@ export type OrderData = Pick<
 > & {
   cart: { id: string; clientId: string; cartStatus: CartStatus };
 };
-
 export type OrderInfo = Pick<
   Order,
   | 'id'
@@ -24,7 +23,6 @@ export type OrderInfo = Pick<
   | 'pickupAddress'
   | 'pickupTime'
   | 'someonePickup'
-  | 'isShipping'
   | 'pickupCode'
   | 'totalAmount'
   | 'isActive'
@@ -48,17 +46,11 @@ interface Client {
   phone: string;
 }
 
-interface ProductImage {
-  url: string;
-  order: number;
-  isMain: boolean;
-}
-
 type ProductData = {
   id: string;
   name: string;
   price: number;
-  images: ProductImage[];
+  image: string;
   quantity: number;
   category: CategoryData;
 };
