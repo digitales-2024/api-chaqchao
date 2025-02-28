@@ -1,6 +1,8 @@
 import { BadRequestException, Injectable, Logger, NotFoundException } from '@nestjs/common';
 import { CartStatus, Prisma } from '@prisma/client';
 import { Buffer } from 'buffer';
+import { format } from 'date-fns';
+import { es } from 'date-fns/locale';
 import * as ExcelJS from 'exceljs';
 import * as fs from 'fs';
 import * as path from 'path';
@@ -53,7 +55,7 @@ interface Order {
   cartId: string;
   pickupCode: string;
   totalAmount: string;
-  pickupTime: string;
+  pickupTime: Date;
   orderStatus: string;
   pickupAddress: string;
   someonePickup: boolean;
@@ -207,9 +209,15 @@ export class ReportsService {
   private generateOrderHtml(data: Order[]): string {
     let ordersHtml = '';
     data.forEach((order) => {
+      const pickupDate = new Date(order.pickupTime.toISOString().replace('Z', ''));
+      const hour = pickupDate.getHours();
+      const minute = pickupDate.getMinutes().toString().padStart(2, '0');
+      const hour12 = hour % 12 || 12;
+      const ampm = hour >= 12 ? 'PM' : 'AM';
+
       ordersHtml += `<tr>
         <td>${order.pickupCode}</td>
-        <td>${order.pickupTime.toLocaleString()}</td>
+        <td>${format(pickupDate, 'EEEE, dd MMMM', { locale: es })}, ${hour12}:${minute} ${ampm}</td>
         <td>${order.totalAmount}</td>
         <td>${translateStatus[order.orderStatus]}</td>
         <td>${order.someonePickup ? 'Recoge otra persona' : 'Recoge el cliente'}</td>
