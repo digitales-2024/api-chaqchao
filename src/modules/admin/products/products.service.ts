@@ -184,7 +184,7 @@ export class ProductsService {
     images: Express.Multer.File[],
     user: UserData
   ): Promise<HttpResponse<ProductData>> {
-    const { name, description, price, categoryId, isRestricted } = createProductDto;
+    const { name, description, price, categoryId, isRestricted, maxStock } = createProductDto;
     let uploadedUrls: string[] = [];
 
     try {
@@ -224,6 +224,7 @@ export class ProductsService {
             description,
             price: parseFloat(price.toString()),
             isRestricted,
+            maxStock,
             categoryId
           },
           select: {
@@ -234,6 +235,7 @@ export class ProductsService {
             isRestricted: true,
             isActive: true,
             isAvailable: true,
+            maxStock: true,
             category: {
               select: {
                 id: true,
@@ -284,6 +286,7 @@ export class ProductsService {
           isAvailable: newProduct.isAvailable,
           isActive: newProduct.isActive,
           isRestricted: newProduct.isRestricted,
+          maxStock: newProduct.maxStock,
           category: {
             id: newProduct.category.id,
             name: newProduct.category.name
@@ -343,11 +346,14 @@ export class ProductsService {
         isAvailable: product.isAvailable,
         isRestricted: product.isRestricted,
         isActive: product.isActive,
+        maxStock: product.maxStock,
         category: {
           id: product.category.id,
           name: product.category.name
         },
-        variations: product.productVariations
+        variations: product.productVariations,
+        createdAt: product.createdAt,
+        updatedAt: product.updatedAt
       }));
     } catch (error) {
       this.logger.error('Error getting all products', error);
@@ -462,6 +468,10 @@ export class ProductsService {
               updateProductDto.price !== undefined
                 ? parseFloat(updateProductDto.price.toString())
                 : undefined,
+            maxStock:
+              updateProductDto.maxStock !== undefined
+                ? parseFloat(updateProductDto.maxStock.toString())
+                : undefined,
             category: categoryUpdate,
             ...(uploadedUrls.length > 0 && {
               images: {
@@ -506,6 +516,7 @@ export class ProductsService {
           isAvailable: updatedProduct.isAvailable,
           isActive: updatedProduct.isActive,
           isRestricted: updatedProduct.isRestricted,
+          maxStock: updatedProduct.maxStock,
           category: {
             id: updatedProduct.category.id,
             name: updatedProduct.category.name
@@ -579,6 +590,7 @@ export class ProductsService {
           isAvailable: productDB.isAvailable,
           isActive: productDB.isActive,
           isRestricted: productDB.isRestricted,
+          maxStock: productDB.maxStock,
           category: {
             id: productDB.category.id,
             name: productDB.category.name
@@ -772,6 +784,7 @@ export class ProductsService {
       isAvailable: productDB.isAvailable,
       isActive: productDB.isActive,
       isRestricted: productDB.isRestricted,
+      maxStock: productDB.maxStock,
       category: productDB.category
     };
   }
@@ -846,6 +859,7 @@ export class ProductsService {
           isAvailable: newStatus,
           isActive: productDB.isActive,
           isRestricted: productDB.isRestricted,
+          maxStock: productDB.maxStock,
           category: {
             id: productDB.category.id,
             name: productDB.category.name
@@ -930,6 +944,7 @@ export class ProductsService {
           isAvailable: productDB.isAvailable,
           isActive: productDB.isActive,
           isRestricted: productDB.isRestricted,
+          maxStock: productDB.maxStock,
           category: {
             id: productDB.category.id,
             name: productDB.category.name
