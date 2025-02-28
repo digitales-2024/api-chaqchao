@@ -424,9 +424,9 @@ export class ReportsService {
     data.forEach((product) => {
       productsHtml += `<tr>
       <td>${product.name}</td>
-        <td style="width: 200px">${product.description}</td>
+        <td style="width: 200px">${product.description ?? '--'}</td>
         <td>${product.category.name}</td>
-        <td>${product.price}</td>
+        <td>S/. ${product.price.toFixed(2)}</td>
       </tr>`;
     });
     return productsHtml;
