@@ -488,7 +488,6 @@ export class CartService {
         country: invoice.country,
         state: invoice.state,
         city: invoice.city,
-        postalCode: invoice.postalCode,
         paymentStatus: invoice.paymentStatus,
         totalAmount: order.totalAmount,
         issuedAt: new Date(),

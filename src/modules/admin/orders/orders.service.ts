@@ -86,7 +86,6 @@ export class OrdersService {
             }
           }
         },
-
         orderBy: {
           pickupCode: 'desc'
         }
@@ -171,7 +170,6 @@ export class OrdersService {
               state: true,
               country: true,
               city: true,
-              postalCode: true,
               typeDocument: true,
               businessName: true,
               paymentStatus: true
@@ -215,8 +213,8 @@ export class OrdersService {
           : {
               id: null,
               name: order.customerName,
-              lastName: order.customerLastName,
               phone: order.customerPhone,
+              lastName: order.customerLastName,
               email: order.customerEmail
             }
       };
@@ -271,6 +269,12 @@ export class OrdersService {
 
       this.adminGateway.sendOrderStatusUpdated(order.id, order.orderStatus);
 
+      const pickupDate = new Date(order.pickupTime.toString().replace('Z', ''));
+      const hour = pickupDate.getHours();
+      const minute = pickupDate.getMinutes().toString().padStart(2, '0');
+      const hour12 = hour % 12 || 12;
+      const ampm = hour >= 12 ? 'PM' : 'AM';
+
       if (order.orderStatus === OrderStatus.COMPLETED) {
         await this.eventEmitter.emitAsync('order.order-completed', {
           name: order.cart.client
@@ -279,7 +283,7 @@ export class OrdersService {
           email: order.cart.client ? order.cart.client.email : order.customerEmail,
           orderNumber: order.pickupCode,
           totalOrder: order.totalAmount.toFixed(2),
-          pickupDate: format(order.pickupTime, 'PPPp'),
+          pickupDate: `${format(pickupDate, 'EEEE, dd MMMM', { locale: es })}, ${hour12}:${minute} ${ampm}`,
           products: order.cart.cartItems.map((item) => ({
             name: item.product.name,
             quantity: item.quantity,
@@ -446,7 +450,7 @@ export class OrdersService {
             <strong style="font-size:12px; color:#9da2ab">Cliente:</strong>
             ${orderData.client.name + ' ' + orderData.client.lastName}
           </p>
-          <p style="margin: 5px 0;">
+          <p style="margin: 5px 0; display:flex; flex-direction:column;">
             <strong style="font-size:12px; color:#9da2ab">Correo electrónico:</strong>
             ${orderData.client.email}
           </p>
@@ -474,19 +478,19 @@ export class OrdersService {
       </p>
       <p style="margin: 5px 0; display:flex; flex-direction:column;">
         <strong style="font-size:12px; color:#9da2ab">Dirección:</strong>
-        ${orderData.billingDocument.address}
+        ${orderData.billingDocument.address ?? '--'}
       </p>
       <p style="margin: 5px 0;display:flex; flex-direction:column;">
         <strong style="font-size:12px; color:#9da2ab">País:</strong>
-        ${orderData.billingDocument.country}
+        ${orderData.billingDocument.country ?? '--'}
       </p>
       <p style="margin: 5px 0;display:flex; flex-direction:column;">
         <strong style="font-size:12px; color:#9da2ab">Estado:</strong>
-        ${orderData.billingDocument.state}
+        ${orderData.billingDocument.state ?? '--'}
       </p>
       <p style="margin: 5px 0;display:flex; flex-direction:column;">
         <strong style="font-size:12px; color:#9da2ab">Ciudad:</strong>
-        ${orderData.billingDocument.city}
+        ${orderData.billingDocument.city ?? '--'}
       </p>
       ${
         orderData.billingDocument.billingDocumentType === 'INVOICE'
@@ -500,10 +504,16 @@ export class OrdersService {
   }
 
   private generateDateAndDividerHtml(orderData: OrderDetails): string {
+    // Mantener la hora original sin ajustes de zona horaria
+    const pickupDate = new Date(orderData.pickupTime.toISOString().replace('Z', ''));
+    const hour = pickupDate.getHours();
+    const minute = pickupDate.getMinutes().toString().padStart(2, '0');
+    const hour12 = hour % 12 || 12;
+    const ampm = hour >= 12 ? 'PM' : 'AM';
     return `
       <div style="height: 1px; width:100%; border-top:1px dashed #a8acb6; margin-top: 20px;margin-bottom: 20px;"/>
       <p style="margin: 5px 0; color: #777; text-align: center;">
-        ${format(orderData.pickupTime, 'dd/MM/yyyy HH:mm:ss', { locale: es })}
+        ${format(pickupDate, 'EEEE, dd MMMM', { locale: es })}, ${hour12}:${minute} ${ampm}
       </p>
       <div style="height: 1px; width:100%; border-top:1px dashed #a8acb6;margin-top: 20px;margin-bottom: 20px;"/>
     `;
