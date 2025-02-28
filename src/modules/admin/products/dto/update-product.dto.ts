@@ -47,15 +47,6 @@ export class UpdateProductDto extends PartialType(CreateProductDto) {
   price?: number;
 
   @ApiProperty({
-    description: 'Stock máximo del producto',
-    example: 10,
-    required: false
-  })
-  @IsNumber()
-  @Transform(({ value }) => parseFloat(value))
-  maxStock?: number;
-
-  @ApiProperty({
     description: '¿El producto está restringido?',
     example: false,
     required: false

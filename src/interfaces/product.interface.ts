@@ -13,7 +13,6 @@ export interface ProductData {
   isAvailable: boolean;
   isActive: boolean;
   isRestricted?: boolean;
-  maxStock: number;
   category: {
     id: string;
     name: string;

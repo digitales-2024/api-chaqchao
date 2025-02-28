@@ -123,6 +123,14 @@ export class CatalogService {
             name: true
           }
         },
+        productVariations: {
+          select: {
+            id: true,
+            name: true,
+            description: true,
+            additionalPrice: true
+          }
+        },
         images: true
       }
     });
@@ -133,14 +141,14 @@ export class CatalogService {
       description: product.description,
       price: product.price,
       images: product.images,
-      maxStock: product.maxStock,
       isActive: product.isActive,
       isAvailable: product.isAvailable,
       isRestricted: product.isRestricted,
       category: {
         id: product.category.id,
         name: product.category.name
-      }
+      },
+      variations: product.productVariations
     }));
   }
 
@@ -162,6 +170,14 @@ export class CatalogService {
             name: true
           }
         },
+        productVariations: {
+          select: {
+            id: true,
+            name: true,
+            description: true,
+            additionalPrice: true
+          }
+        },
         images: true
       }
     });
@@ -175,11 +191,11 @@ export class CatalogService {
       isActive: product.isActive,
       isAvailable: product.isAvailable,
       isRestricted: product.isRestricted,
-      maxStock: product.maxStock,
       category: {
         id: product.category.id,
         name: product.category.name
-      }
+      },
+      variations: product.productVariations
     }));
   }
 
@@ -317,11 +333,11 @@ export class CatalogService {
         isActive: product.isActive,
         isAvailable: product.isAvailable,
         isRestricted: product.isRestricted,
-        maxStock: product.maxStock,
         category: {
           id: product.category.id,
           name: product.category.name
-        }
+        },
+        variations: product.productVariations
       }));
     } catch (error) {
       this.logger.error(`Error getting recommended products for client ${id}: ${error.message}`);
@@ -384,12 +400,12 @@ export class CatalogService {
         isActive: product.isActive,
         isAvailable: product.isAvailable,
         isRestricted: product.isRestricted,
-        maxStock: product.maxStock,
         categoryId: product.category.id,
         category: {
           id: product.category.id,
           name: product.category.name
-        }
+        },
+        variations: product.productVariations
       }));
     } catch (error) {
       this.logger.error(`Error getting recommended products: ${error.message}`);
@@ -417,8 +433,7 @@ export class CatalogService {
             isActive: true,
             isAvailable: true,
             isRestricted: true,
-            images: true,
-            maxStock: true
+            images: true
           }
         }
       }
@@ -433,11 +448,11 @@ export class CatalogService {
       isActive: product.isActive,
       isAvailable: product.isAvailable,
       isRestricted: product.isRestricted,
-      maxStock: product.maxStock,
       category: {
         id: category.id,
         name: category.name
-      }
+      },
+      variations: []
     }));
   }
 }

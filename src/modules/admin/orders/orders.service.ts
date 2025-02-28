@@ -346,25 +346,24 @@ export class OrdersService {
           }
         }
       });
-      return ordersByClient.map((order) => {
-        return {
-          id: order.id,
-          orderStatus: order.orderStatus,
-          pickupAddress: order.pickupAddress,
-          pickupTime: order.pickupTime,
-          isActive: order.isActive,
-          someonePickup: order.someonePickup,
-          pickupCode: order.pickupCode,
-          totalAmount: order.totalAmount,
-          client: {
-            id: order.cart.client.id,
-            name: order.cart.client.name,
-            lastName: order.cart.client.lastName,
-            phone: order.cart.client.phone,
-            email: order.cart.client.email
-          }
-        };
-      });
+
+      return ordersByClient.map((order) => ({
+        id: order.id,
+        orderStatus: order.orderStatus,
+        pickupAddress: order.pickupAddress,
+        pickupTime: order.pickupTime,
+        isActive: order.isActive,
+        someonePickup: order.someonePickup,
+        pickupCode: order.pickupCode,
+        totalAmount: order.totalAmount,
+        client: {
+          id: order.cart.client.id,
+          name: order.cart.client.name,
+          lastName: order.cart.client.lastName,
+          phone: order.cart.client.phone,
+          email: order.cart.client.email
+        }
+      }));
     } catch (error) {
       this.logger.error('Error get orders by client', error.message);
       handleException(error, 'Error get orders by client');
