@@ -516,7 +516,6 @@ export class OrdersService {
   private generateDateAndDividerHtml(orderData: OrderDetails): string {
     // Mantener la hora original sin ajustes de zona horaria
     const pickupDate = new Date(orderData.pickupTime.toISOString().replace('Z', ''));
-    console.log('🚀 ~ OrdersService ~ generateDateAndDividerHtml ~ pickupDate:', pickupDate);
     const hour = pickupDate.getHours();
     const minute = pickupDate.getMinutes().toString().padStart(2, '0');
     const hour12 = hour % 12 || 12;
