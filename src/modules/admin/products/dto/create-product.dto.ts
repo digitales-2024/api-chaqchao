@@ -46,6 +46,14 @@ export class CreateProductDto {
   isRestricted?: boolean;
 
   @ApiProperty({
+    description: 'Stock máximo del producto',
+    example: 10
+  })
+  @IsNumber()
+  @Transform(({ value }) => parseInt(value))
+  maxStock: number;
+
+  @ApiProperty({
     description: 'ID de la categoría a la que pertenece el producto',
     example: '123e4567-e89b-12d3-a456-426614174000'
   })
