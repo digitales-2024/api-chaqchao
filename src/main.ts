@@ -1,8 +1,8 @@
-import { NestFactory } from '@nestjs/core';
-import { AppModule } from './app.module';
 import { ValidationPipe, VersioningType } from '@nestjs/common';
+import { NestFactory } from '@nestjs/core';
 import { DocumentBuilder, SwaggerModule } from '@nestjs/swagger';
 import * as cookieParser from 'cookie-parser';
+import { AppModule } from './app.module';
 
 async function bootstrap() {
   const app = await NestFactory.create(AppModule);
@@ -58,8 +58,7 @@ async function bootstrap() {
     { name: 'Shop Billing', description: 'Operaciones sobre la facturación de la tienda' },
     { name: 'Shop Classes', description: 'Operaciones sobre las clases de la tienda' },
     { name: 'Shop Business', description: 'Operaciones sobre la información de la tienda' },
-    { name: 'Shop Claims', description: 'Operaciones sobre los reclamos de la tienda' },
-    { name: 'Shipping to another city', description: 'Operaciones sobre los envios' }
+    { name: 'Shop Claims', description: 'Operaciones sobre los reclamos de la tienda' }
   ];
 
   SwaggerModule.setup('api', app, document);
