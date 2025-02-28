@@ -1,10 +1,10 @@
 import { forwardRef, HttpStatus, Inject, Injectable, Logger } from '@nestjs/common';
-import { OrderService } from '../order/order.service';
-import { BillingDocumentData } from 'src/interfaces/billing-document.interface';
-import { handleException } from 'src/utils';
-import { PrismaService } from 'src/prisma/prisma.service';
-import { CreateBillingDocumentDto } from './dto/create-billing-document.dto';
 import { HttpResponse } from 'src/interfaces';
+import { BillingDocumentData } from 'src/interfaces/billing-document.interface';
+import { PrismaService } from 'src/prisma/prisma.service';
+import { handleException } from 'src/utils';
+import { OrderService } from '../order/order.service';
+import { CreateBillingDocumentDto } from './dto/create-billing-document.dto';
 import { UpdateStatusBillingDocumentDto } from './dto/update-status-billing.dto';
 
 @Injectable()
@@ -72,7 +72,6 @@ export class BillingDocumentService {
       city,
       state,
       country,
-      postalCode,
       businessName
     } = createBillingDocumentDto;
     let newBillingDocument;
@@ -88,7 +87,6 @@ export class BillingDocumentService {
             city,
             state,
             country,
-            postalCode,
             totalAmount,
             paymentStatus: paymentStatus,
             issuedAt,
@@ -106,7 +104,6 @@ export class BillingDocumentService {
             city: true,
             state: true,
             country: true,
-            postalCode: true,
             businessName: true,
             order: {
               select: {
@@ -134,7 +131,6 @@ export class BillingDocumentService {
           city: newBillingDocument.city,
           state: newBillingDocument.state,
           country: newBillingDocument.country,
-          postalCode: newBillingDocument.postalCode,
           typeDocument: newBillingDocument.typeDocument,
           businessName: newBillingDocument.businessName,
           order: {
@@ -178,7 +174,6 @@ export class BillingDocumentService {
           city: true,
           state: true,
           country: true,
-          postalCode: true,
           businessName: true,
           order: {
             select: {
@@ -204,7 +199,6 @@ export class BillingDocumentService {
           state: updatedBillingStatus.state,
           country: updatedBillingStatus.country,
           typeDocument: updatedBillingStatus.typeDocument,
-          postalCode: updatedBillingStatus.postalCode,
           businessName: updatedBillingStatus.businessName,
           order: {
             id: updatedBillingStatus.order.id

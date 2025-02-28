@@ -86,7 +86,6 @@ export class OrdersService {
             }
           }
         },
-
         orderBy: {
           pickupCode: 'desc'
         }
@@ -171,7 +170,6 @@ export class OrdersService {
               state: true,
               country: true,
               city: true,
-              postalCode: true,
               typeDocument: true,
               businessName: true,
               paymentStatus: true
@@ -304,7 +302,16 @@ export class OrdersService {
             clientId: id
           }
         },
-        include: {
+        select: {
+          id: true,
+          orderStatus: true,
+          pickupAddress: true,
+          pickupTime: true,
+          comments: true,
+          isActive: true,
+          someonePickup: true,
+          pickupCode: true,
+          totalAmount: true,
           cart: {
             include: {
               client: {
@@ -446,7 +453,7 @@ export class OrdersService {
             <strong style="font-size:12px; color:#9da2ab">Cliente:</strong>
             ${orderData.client.name + ' ' + orderData.client.lastName}
           </p>
-          <p style="margin: 5px 0;">
+          <p style="margin: 5px 0; display:flex; flex-direction:column;">
             <strong style="font-size:12px; color:#9da2ab">Correo electrónico:</strong>
             ${orderData.client.email}
           </p>
@@ -474,19 +481,19 @@ export class OrdersService {
       </p>
       <p style="margin: 5px 0; display:flex; flex-direction:column;">
         <strong style="font-size:12px; color:#9da2ab">Dirección:</strong>
-        ${orderData.billingDocument.address}
+        ${orderData.billingDocument.address ?? '--'}
       </p>
       <p style="margin: 5px 0;display:flex; flex-direction:column;">
         <strong style="font-size:12px; color:#9da2ab">País:</strong>
-        ${orderData.billingDocument.country}
+        ${orderData.billingDocument.country ?? '--'}
       </p>
       <p style="margin: 5px 0;display:flex; flex-direction:column;">
         <strong style="font-size:12px; color:#9da2ab">Estado:</strong>
-        ${orderData.billingDocument.state}
+        ${orderData.billingDocument.state ?? '--'}
       </p>
       <p style="margin: 5px 0;display:flex; flex-direction:column;">
         <strong style="font-size:12px; color:#9da2ab">Ciudad:</strong>
-        ${orderData.billingDocument.city}
+        ${orderData.billingDocument.city ?? '--'}
       </p>
       ${
         orderData.billingDocument.billingDocumentType === 'INVOICE'
