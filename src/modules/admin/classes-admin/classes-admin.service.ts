@@ -254,7 +254,10 @@ export class ClassesAdminService {
       { header: 'Total Participantes', key: 'totalParticipants', width: 18 },
       { header: 'Precio Adultos', key: 'totalPriceAdults', width: 15 },
       { header: 'Precio Niños', key: 'totalPriceChildren', width: 15 },
-      { header: 'Precio Total', key: 'totalPrice', width: 12 }
+      { header: 'Precio Total', key: 'totalPrice', width: 12 },
+      { header: 'Comentarios', key: 'comments', width: 30 },
+      { header: 'Método de Pago', key: 'methodPayment', width: 15 },
+      { header: 'Tipo de Moneda', key: 'typeCurrency', width: 15 }
     ];
   }
 
