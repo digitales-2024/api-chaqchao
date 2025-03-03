@@ -283,11 +283,12 @@ export class ClassesAdminService {
 
       for (const schedule in groupedClasses[date]) {
         // Añadir horario como subencabezado
-        const scheduleRow = worksheet.addRow([`Horario: ${schedule}`]);
+        const classes = groupedClasses[date][schedule];
+        const scheduleRow = worksheet.addRow([
+          `Horario: ${schedule} - Idioma: ${classes.language || 'No especificado'}`
+        ]);
         scheduleRow.font = { bold: true, size: 12 };
         scheduleRow.height = 20;
-
-        const classes = groupedClasses[date][schedule];
 
         // Calcular totales para resumen
         let totalParticipants = 0;
