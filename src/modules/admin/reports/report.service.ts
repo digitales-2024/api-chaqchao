@@ -25,6 +25,7 @@ interface Product {
     id: string;
     name: string;
     description: string;
+    family: string;
   };
 }
 
@@ -413,6 +414,7 @@ export class ReportsService {
       { header: 'Nombre', key: 'name', width: 30 },
       { header: 'Descripción', key: 'description', width: 40 },
       { header: 'Categoría', key: 'category', width: 20 },
+      { header: 'Familia', key: 'family', width: 20 },
       { header: 'Precio', key: 'price', width: 15 }
     ];
 
@@ -470,6 +472,7 @@ export class ReportsService {
       name: 'Nombre',
       description: 'Descripción',
       category: 'Categoría',
+      family: 'Familia',
       price: 'Precio'
     });
 
@@ -500,6 +503,7 @@ export class ReportsService {
         name: product.name,
         description: product.description || '--',
         category: product.category.name,
+        family: product.category.family,
         price: Number(product.price).toLocaleString('es-PE', {
           style: 'currency',
           currency: 'PEN'
@@ -705,7 +709,14 @@ export class ReportsService {
               include: {
                 product: {
                   include: {
-                    category: true, // Incluir detalles de la categoría
+                    category: {
+                      select: {
+                        id: true,
+                        name: true,
+                        description: true,
+                        family: true
+                      }
+                    },
                     images: true // Incluir imágenes del producto
                   }
                 }
@@ -718,12 +729,12 @@ export class ReportsService {
         createdAt: 'asc' // Ordenar por la fecha de creación
       }
     });
-
     // Extraer los detalles del producto de los cartItems y eliminar duplicados
     const productMap = new Map<string, Product>();
     orders.forEach((order) => {
       order.cart.cartItems.forEach((item) => {
         const product = item.product;
+        console.log('🚀 ~ ReportsService ~ order.cart.cartItems.forEach ~ product:', product);
         // Filtrar por categoría si se especifica
         if (
           (!filter.categoryName ||
@@ -744,7 +755,8 @@ export class ReportsService {
               category: {
                 id: product.category.id,
                 name: product.category.name,
-                description: product.category.description
+                description: product.category.description,
+                family: product.category.family
               }
             });
           }
