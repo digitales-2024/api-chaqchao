@@ -1,27 +1,27 @@
 import {
-  Injectable,
-  Logger,
-  HttpStatus,
-  NotFoundException,
-  UnauthorizedException,
+  BadRequestException,
   ForbiddenException,
+  HttpStatus,
+  Injectable,
   InternalServerErrorException,
-  BadRequestException
+  Logger,
+  NotFoundException,
+  UnauthorizedException
 } from '@nestjs/common';
-import { HttpResponse } from 'src/interfaces';
-import { PrismaService } from 'src/prisma/prisma.service';
-import { JwtService } from '@nestjs/jwt';
-import { ClientGoogleData } from 'src/interfaces/client.interface';
-import { handleException } from 'src/utils';
-import { LoginAuthClientDto } from './dto/login-auth-client.dto';
-import * as bcrypt from 'bcrypt';
-import { CreateClientDto } from './dto/create-client.dto';
-import { ClientService } from '../client/client.service';
-import { ForgotPasswordClientDto } from './dto/forgot-password-client.dto';
-import { TypedEventEmitter } from 'src/event-emitter/typed-event-emitter.class';
 import { ConfigService } from '@nestjs/config';
+import { JwtService } from '@nestjs/jwt';
+import * as bcrypt from 'bcrypt';
+import { Request, Response } from 'express';
+import { TypedEventEmitter } from 'src/event-emitter/typed-event-emitter.class';
+import { HttpResponse } from 'src/interfaces';
+import { ClientGoogleData } from 'src/interfaces/client.interface';
+import { PrismaService } from 'src/prisma/prisma.service';
+import { handleException } from 'src/utils';
+import { ClientService } from '../client/client.service';
+import { CreateClientDto } from './dto/create-client.dto';
+import { ForgotPasswordClientDto } from './dto/forgot-password-client.dto';
+import { LoginAuthClientDto } from './dto/login-auth-client.dto';
 import { ResetPasswordClientDto } from './dto/reset-password-client.dto';
-import { Response, Request } from 'express';
 import { ClientJwtPayload } from './interfaces/jwt-payload.interface';
 
 @Injectable()
@@ -75,6 +75,7 @@ export class AuthService {
           isGoogleAuth: true
         }
       });
+
       // Verificamos si el email ya existe y esta inactivo
       const inactiveEmail = await this.clientService.checkEmailInactive(client.email);
 
@@ -88,10 +89,10 @@ export class AuthService {
         });
       }
 
-      let refreshToken: string;
+      let userId: string;
 
-      // Si no existe, crear un nuevo cliente
       if (!clientDB) {
+        // Crear nuevo cliente
         this.logger.log(`Creando nuevo cliente: ${client.name} (${client.email})`);
         const newClient = await this.prisma.client.create({
           data: {
@@ -101,39 +102,41 @@ export class AuthService {
             isGoogleAuth: true
           }
         });
-
-        // Genera el refresh token
-        refreshToken = this.getJwtRefreshToken({ id: newClient.id });
-        await this.clientService.updateToken(newClient.id, refreshToken);
+        userId = newClient.id;
       } else {
-        // Genera el refresh token
-        refreshToken = this.getJwtRefreshToken({ id: clientDB.id });
-        await this.clientService.updateLastLogin(clientDB.id);
-        if (clientDB.token !== client.token) {
-          await this.clientService.updateToken(clientDB.id, refreshToken);
-        }
+        // Usuario existente
+        userId = clientDB.id;
+        await this.clientService.updateLastLogin(userId);
       }
 
-      // Generar el token JWT usando el id del usuario
-      const token = this.jwtService.sign({ id: clientDB.id });
+      // Generar los tokens
+      const token = this.getJwtToken({ id: userId });
+      const refreshToken = this.getJwtRefreshToken({ id: userId });
 
-      // Configura la cookie HttpOnly
+      // Actualizar el refresh token en la base de datos
+      await this.clientService.updateToken(userId, refreshToken);
+
+      // Configurar las cookies
       res.cookie('client_access_token', token, {
         httpOnly: true,
         secure: process.env.NODE_ENV === 'production',
-        sameSite: 'strict',
+        sameSite: process.env.NODE_ENV === 'production' ? 'strict' : 'lax',
         path: '/',
         maxAge: 1000 * 60 * 60 * 24 * 30, // 30 días
-        domain: this.configService.get('WEB_DOMAIN'),
+        ...(process.env.NODE_ENV === 'production' && {
+          domain: this.configService.get('WEB_URL_SHOP')
+        }),
         expires: new Date(Date.now() + 1000 * 60 * 60 * 24 * 30) // 30 días
       });
 
       res.cookie('client_logged_in', true, {
         httpOnly: false,
         secure: process.env.NODE_ENV === 'production',
-        sameSite: 'strict',
+        sameSite: process.env.NODE_ENV === 'production' ? 'strict' : 'lax',
         maxAge: this.configService.get('COOKIE_EXPIRES_IN'),
-        domain: this.configService.get('WEB_DOMAIN'),
+        ...(process.env.NODE_ENV === 'production' && {
+          domain: this.configService.get('WEB_URL_SHOP')
+        }),
         expires: new Date(Date.now() + this.configService.get('COOKIE_EXPIRES_IN'))
       });
 
@@ -141,10 +144,12 @@ export class AuthService {
       res.cookie('client_refresh_token', refreshToken, {
         httpOnly: true,
         secure: process.env.NODE_ENV === 'production',
-        sameSite: 'strict',
+        sameSite: process.env.NODE_ENV === 'production' ? 'strict' : 'lax',
         path: '/',
-        maxAge: this.configService.get('COOKIE_REFRESH_EXPIRES_IN'), // Asegúrate de que esta configuración exista
-        domain: this.configService.get('WEB_DOMAIN'),
+        maxAge: this.configService.get('COOKIE_REFRESH_EXPIRES_IN'),
+        ...(process.env.NODE_ENV === 'production' && {
+          domain: this.configService.get('WEB_URL_SHOP')
+        }),
         expires: new Date(Date.now() + this.configService.get('COOKIE_REFRESH_EXPIRES_IN'))
       });
       const webUrlShop = this.configService.get<string>('WEB_URL_SHOP');
@@ -206,7 +211,7 @@ export class AuthService {
         secure: process.env.NODE_ENV === 'production',
         sameSite: 'strict',
         path: '/',
-        domain: this.configService.get('WEB_DOMAIN'),
+        domain: this.configService.get('WEB_URL_SHOP'),
         maxAge: 1000 * 60 * 60 * 24 * 30, // 30 días
         expires: new Date(Date.now() + 1000 * 60 * 60 * 24 * 30) // 30 días
       });
@@ -216,7 +221,7 @@ export class AuthService {
         secure: process.env.NODE_ENV === 'production',
         sameSite: 'strict',
         maxAge: this.configService.get('COOKIE_EXPIRES_IN'),
-        domain: this.configService.get('WEB_DOMAIN'),
+        domain: this.configService.get('WEB_URL_SHOP'),
         expires: new Date(Date.now() + this.configService.get('COOKIE_EXPIRES_IN'))
       });
 
@@ -229,7 +234,7 @@ export class AuthService {
         secure: process.env.NODE_ENV === 'production',
         sameSite: 'strict',
         path: '/',
-        domain: this.configService.get('WEB_DOMAIN'),
+        domain: this.configService.get('WEB_URL_SHOP'),
         maxAge: this.configService.get('COOKIE_REFRESH_EXPIRES_IN'), // Asegúrate de que esta configuración exista
         expires: new Date(Date.now() + this.configService.get('COOKIE_REFRESH_EXPIRES_IN'))
       });
