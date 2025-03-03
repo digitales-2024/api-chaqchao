@@ -974,12 +974,54 @@ export class ReportsService {
 
     const htmlInfo = `<h2>${infoBussiness.businessName.toUpperCase() || ''}</h2>
         <p>Fechas: ${filter.startDate || ''} / ${filter.endDate} </p>
-        ${filter.limit ? '<p>Límite: ' + filter.limit + ' </p>' : ''}
+        ${filter.limit ? '<p>Límite: ' + filter.limit + ' productos</p>' : ''}
+    `;
+
+    // Añadir estilos CSS adicionales para mejorar la tabla
+    const additionalStyles = `
+      <style>
+        table {
+          width: 100%;
+          border-collapse: collapse;
+          margin-top: 20px;
+        }
+        th {
+          background-color: #f2f2f2;
+          color: #333;
+          font-weight: bold;
+          text-align: left;
+          padding: 12px 8px;
+          border: 1px solid #ddd;
+        }
+        td {
+          padding: 10px 8px;
+          border: 1px solid #ddd;
+        }
+        tr:nth-child(even) {
+          background-color: #f9f9f9;
+        }
+        .top-product {
+          background-color: #fff2cc;
+          font-weight: bold;
+        }
+        .rank {
+          font-weight: bold;
+          text-align: center;
+        }
+        .price {
+          text-align: right;
+        }
+        .quantity {
+          text-align: center;
+          font-weight: bold;
+        }
+      </style>
     `;
 
     // Rellenar la plantilla con los datos de los productos mas vendidos
     const htmlContent = templateHtml.replace('{{products}}', this.generateTopProductHtml(data));
-    const htmlContentWithInfo = htmlContent.replace('{{bussiness}}', htmlInfo);
+    const htmlWithStyles = htmlContent.replace('</head>', `${additionalStyles}</head>`);
+    const htmlContentWithInfo = htmlWithStyles.replace('{{bussiness}}', htmlInfo);
     const htmlDateReport = htmlContentWithInfo.replace(
       '{{dateReport}}',
       new Date().toLocaleDateString()
@@ -994,11 +1036,11 @@ export class ReportsService {
       args: ['--no-sandbox', '--disable-setuid-sandbox']
     });
     const page = await browser.newPage();
-    await page.setContent(htmlContent);
-    await page.setContent(htmlContentWithInfo);
-    await page.setContent(htmlDateReport);
     await page.setContent(htmlFooterReport);
-    const pdfBufferUint8Array = await page.pdf({ format: 'A4' });
+    const pdfBufferUint8Array = await page.pdf({
+      format: 'A4',
+      margin: { top: '1cm', right: '1cm', bottom: '1cm', left: '1cm' }
+    });
     await browser.close();
 
     // Convertir Uint8Array a Buffer
@@ -1009,13 +1051,47 @@ export class ReportsService {
 
   // Generar el contenido HTML para los productos mas vendidos
   private generateTopProductHtml(data: ProductTop[]): string {
-    let productTopHtml = '';
-    data.forEach((productTop) => {
-      productTopHtml += `<tr>
-        <td>${productTop.name}</td>
-        <td>${productTop.totalOrdered}</td>
-      </tr>`;
+    let productTopHtml = `
+      <table>
+        <thead>
+          <tr>
+            <th style="width: 10%">Posición</th>
+            <th style="width: 35%">Nombre del Producto</th>
+            <th style="width: 25%">Categoría</th>
+            <th style="width: 15%">Precio</th>
+            <th style="width: 15%">Cantidad</th>
+          </tr>
+        </thead>
+        <tbody>
+    `;
+
+    data.forEach((productTop, index) => {
+      const isTopThree = index < 3;
+      const rowClass = isTopThree ? 'class="top-product"' : '';
+      const position = index + 1;
+
+      // Add medal emoji for top 3
+      let rankSymbol = `${position}`;
+      if (position === 1) rankSymbol = '🥇 1';
+      if (position === 2) rankSymbol = '🥈 2';
+      if (position === 3) rankSymbol = '🥉 3';
+
+      productTopHtml += `
+        <tr ${rowClass}>
+          <td class="rank">${rankSymbol}</td>
+          <td>${productTop.name}</td>
+          <td>${productTop.category.name}</td>
+          <td class="price">S/. ${productTop.price.toFixed(2)}</td>
+          <td class="quantity">${productTop.totalOrdered}</td>
+        </tr>
+      `;
     });
+
+    productTopHtml += `
+        </tbody>
+      </table>
+    `;
+
     return productTopHtml;
   }
 
