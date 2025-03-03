@@ -18,6 +18,7 @@ export type ClassRegisterData = Pick<
   | 'totalPriceAdults'
   | 'totalPriceChildren'
   | 'typeCurrency'
+  | 'methodPayment'
   | 'comments'
   | 'status'
 >;

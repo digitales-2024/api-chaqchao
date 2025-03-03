@@ -408,48 +408,79 @@ export class ClassesAdminService {
         classesHtml += `
         <thead>
           <tr>
-            <th>Nombre</th>
-            <th>Email</th>
-            <th>Teléfono</th>
-            <th>Total Adultos</th>
-            <th>Total Niños</th>
-            <th>Total Participantes</th>
+          <th>Nombre</th>
+          <th>Email</th>
+          <th>Teléfono</th>
+          <th>Total Adultos</th>
+          <th>Total Niños</th>
+          <th>Total Participantes</th>
+          <th>Método de Pago</th>
+          <th>Tipo de Moneda</th>
+          <th>Total Precio</th>
           </tr>
         </thead>
         <tbody>
-      `;
+        `;
 
         let totalParticipants = 0;
-        let totalPrice = 0;
+        // Object to track totals by currency
+        const totalsByCurrency = {};
 
         groupedClasses[date][schedule].registers.forEach((clase) => {
           classesHtml += `
           <tr>
-            <td style="text-transform: capitalize;">${clase.userName}</td>
-            <td>${clase.userEmail}</td>
-            <td>${clase.userPhone}</td>
-            <td>${clase.totalAdults}</td>
-            <td>${clase.totalChildren}</td>
-            <td>${clase.totalParticipants}</td>
+          <td style="text-transform: capitalize;">${clase.userName ?? '--'}</td>
+          <td>${clase.userEmail ?? '--'}</td>
+          <td>${clase.userPhone ?? '--'}</td>
+          <td>${clase.totalAdults ?? '--'}</td>
+          <td>${clase.totalChildren ?? '--'}</td>
+          <td>${clase.totalParticipants ?? '--'}</td>
+          <td>${clase.methodPayment ?? '--'}</td>
+          <td>${clase.typeCurrency ?? '--'}</td>
+          <td>${clase.totalPrice ?? '--'}</td>
           </tr>
         `;
 
           // Sumar totales
           totalParticipants += clase.totalParticipants;
-          totalPrice += clase.totalPrice;
+
+          // Only add to total if the price and currency are valid
+          if (clase.totalPrice && clase.typeCurrency) {
+            if (!totalsByCurrency[clase.typeCurrency]) {
+              totalsByCurrency[clase.typeCurrency] = 0;
+            }
+            totalsByCurrency[clase.typeCurrency] += clase.totalPrice;
+          }
         });
 
         classesHtml += '</tbody></table>';
-
-        // Determinar el símbolo de moneda
 
         // Agregar resumen después de la tabla
         classesHtml += `
         <div style="margin-top: 10px; text-align: right;">
           <p><strong>Total de Participantes:</strong> ${totalParticipants}</p>
-          <p><strong>Total Precio:</strong> ${totalPrice.toFixed(2)}</p>
-        </div>
-      `;
+          
+          <p><strong>Total por Moneda:</strong></p>
+        `;
+
+        // Mostrar totales por cada moneda
+        for (const currency in totalsByCurrency) {
+          classesHtml += `<p><strong>${currency}:</strong> ${totalsByCurrency[currency].toFixed(2)}</p>`;
+        }
+
+        classesHtml += `
+          <p><strong>Métodos de Pago:</strong> ${Array.from(groupedClasses[date][schedule].paymentMethods).join(', ') || 'Ninguno'}</p>
+          
+          <p><strong>Desglose por Moneda:</strong></p>
+        `;
+
+        // Añadir desglose por tipo de moneda
+        for (const currency in groupedClasses[date][schedule].currencies) {
+          const currencyData = groupedClasses[date][schedule].currencies[currency];
+          classesHtml += `
+          <p>${currency}: ${currencyData.count} transacciones, Total: ${currencyData.total.toFixed(2)}</p>
+          `;
+        }
 
         classesHtml += '</div>'; // Cerrar el contenedor
       }
@@ -463,12 +494,39 @@ export class ClassesAdminService {
    * @param data Datos de las clases
    * @returns Clases agrupadas por fecha y horario
    */
-  private groupClassesByDateAndSchedule(
-    data: ClassesDataAdmin[]
-  ): Record<string, Record<string, { language: string; registers: ClassRegisterData[] }>> {
+  private groupClassesByDateAndSchedule(data: ClassesDataAdmin[]): Record<
+    string,
+    Record<
+      string,
+      {
+        language: string;
+        registers: ClassRegisterData[];
+        paymentMethods: Set<string>;
+        currencies: {
+          [currency: string]: {
+            count: number;
+            total: number;
+          };
+        };
+      }
+    >
+  > {
     const groupedClasses: Record<
       string,
-      Record<string, { language: string; registers: ClassRegisterData[] }>
+      Record<
+        string,
+        {
+          language: string;
+          registers: ClassRegisterData[];
+          paymentMethods: Set<string>;
+          currencies: {
+            [currency: string]: {
+              count: number;
+              total: number;
+            };
+          };
+        }
+      >
     > = {};
 
     data.forEach((classData) => {
@@ -484,12 +542,34 @@ export class ClassesAdminService {
       if (!groupedClasses[dateKey][scheduleKey]) {
         groupedClasses[dateKey][scheduleKey] = {
           language: classData.languageClass,
-          registers: []
+          registers: [],
+          paymentMethods: new Set<string>(),
+          currencies: {}
         };
       }
 
       // Agregar los registros al grupo correspondiente
-      groupedClasses[dateKey][scheduleKey].registers.push(...classData.registers);
+      classData.registers.forEach((register) => {
+        groupedClasses[dateKey][scheduleKey].registers.push(register);
+
+        // Add payment method if exists
+        if (register.methodPayment) {
+          groupedClasses[dateKey][scheduleKey].paymentMethods.add(register.methodPayment);
+        }
+
+        // Add currency and update totals
+        if (register.typeCurrency) {
+          if (!groupedClasses[dateKey][scheduleKey].currencies[register.typeCurrency]) {
+            groupedClasses[dateKey][scheduleKey].currencies[register.typeCurrency] = {
+              count: 0,
+              total: 0
+            };
+          }
+          groupedClasses[dateKey][scheduleKey].currencies[register.typeCurrency].count++;
+          groupedClasses[dateKey][scheduleKey].currencies[register.typeCurrency].total +=
+            register.totalPrice || 0;
+        }
+      });
     });
 
     return groupedClasses;
