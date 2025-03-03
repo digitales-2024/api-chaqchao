@@ -283,7 +283,7 @@ export class OrdersService {
           email: order.cart.client ? order.cart.client.email : order.customerEmail,
           orderNumber: order.pickupCode,
           totalOrder: order.totalAmount.toFixed(2),
-          pickupDate: `${format(pickupDate, 'EEEE, dd MMMM', { locale: es })}, ${hour12}:${minute} ${ampm}`,
+          pickupDate: `${format(pickupDate, 'EEEE, dd MMMM')}, ${hour12}:${minute} ${ampm}`,
           products: order.cart.cartItems.map((item) => ({
             name: item.product.name,
             quantity: item.quantity,
