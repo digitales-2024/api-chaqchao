@@ -92,11 +92,11 @@ export class ReportsService {
 
     // Definir las columnas con anchos optimizados
     worksheet.columns = [
-      { header: 'Código Único', key: 'pickupCode', width: 20 },
-      { header: 'Fecha de Recojo', key: 'pickupTime', width: 25 },
-      { header: 'Total', key: 'totalAmount', width: 15 },
-      { header: 'Estado', key: 'status', width: 15 },
-      { header: 'Modo de Recojo', key: 'mode', width: 20 }
+      { header: 'Código Único', key: 'pickupCode', width: 18 },
+      { header: 'Fecha de Recojo', key: 'pickupTime', width: 20 },
+      { header: 'Total', key: 'totalAmount', width: 12 },
+      { header: 'Estado', key: 'status', width: 20 },
+      { header: 'Modo de Recojo', key: 'mode', width: 25 }
     ];
 
     // Agregar los encabezados dinámicos
@@ -158,7 +158,7 @@ export class ReportsService {
       row.fill = {
         type: 'pattern',
         pattern: 'solid',
-        fgColor: { argb: 'FFE2F0D9' }
+        fgColor: { argb: 'FFF2F2F2' }
       };
       row.alignment = {
         vertical: 'middle',
@@ -189,7 +189,7 @@ export class ReportsService {
       cell.fill = {
         type: 'pattern',
         pattern: 'solid',
-        fgColor: { argb: 'FFC6E0B4' }
+        fgColor: { argb: 'FFF2F2F2' }
       };
       cell.alignment = {
         vertical: 'middle',
@@ -238,17 +238,8 @@ export class ReportsService {
       row.height = 20;
     });
 
-    // Ajustar el ancho de las columnas automáticamente
-    worksheet.columns.forEach((column) => {
-      let maxLength = column.width || 10;
-      if (column.values) {
-        const lengths = column.values.filter(Boolean).map((v) => String(v).length);
-        if (lengths.length > 0) {
-          maxLength = Math.max(...lengths);
-        }
-      }
-      column.width = Math.min(maxLength + 2, 50);
-    });
+    // No ajustar el ancho dinámicamente para mantener el tamaño controlado
+    // Los anchos ya están definidos en la configuración inicial
 
     // Agregar pie de página con la fecha
     const footerRow = worksheet.addRow([
