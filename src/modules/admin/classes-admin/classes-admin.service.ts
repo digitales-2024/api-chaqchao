@@ -473,7 +473,7 @@ export class ClassesAdminService {
       classesHtml += `<h3 style="margin: 10px 0 5px 0;">Fecha: ${date}</h3>`;
 
       for (const schedule in groupedClasses[date]) {
-        classesHtml += `<h4 style="margin: 8px 0 5px 0;">Horario: ${schedule}</h4>`;
+        classesHtml += `<h4 style="margin: 8px 0 5px 0;">Horario: ${schedule} - Idioma: ${groupedClasses[date][schedule].language || 'No especificado'}</h4>`;
 
         // Resumen conciso antes de la tabla
         let totalParticipants = 0;
