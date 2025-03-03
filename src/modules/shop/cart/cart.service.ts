@@ -393,17 +393,28 @@ export class CartService {
       throw new BadRequestException(`The business is closed on ${dayOfWeek.toLowerCase()}s.`);
     }
 
-    // Obtener hora actual en Perú
-    const nowInPeru = new Date(new Date().toLocaleString('en-US', { timeZone: 'America/Lima' }));
-    let currentTimeStr = format(nowInPeru, 'HH:mm');
-    // Aumentar media hora, osea si el pedido esta entre los 30 minutos a partir de la hora actual
-    currentTimeStr = format(new Date(nowInPeru.setMinutes(nowInPeru.getMinutes() + 30)), 'HH:mm');
+    // Get the current time in Peru's time zone
+    const nowInUTC = new Date();
+    const timeZone = 'America/Lima';
 
-    // Validar que no sea en el pasado si es el mismo día
-    if (format(pickupDateInPeru, 'yyyy-MM-dd') === format(nowInPeru, 'yyyy-MM-dd')) {
-      if (pickupTimeStr < currentTimeStr) {
-        throw new BadRequestException('Orders cannot be placed in the past.');
+    // Format the current time in Peru's time zone
+    const currentTimeStr = formatInTimeZone(nowInUTC, timeZone, 'HH:mm');
+    // Calculate minimum pickup time (current time + 30 minutes) in the same time zone
+    const minPickupTime = new Date(nowInUTC.getTime() + 30 * 60 * 1000);
+    const minPickupTimeStr = formatInTimeZone(minPickupTime, timeZone, 'HH:mm');
+    // Get the current date in Peru for comparison
+    const currentDateInPeru = formatInTimeZone(nowInUTC, timeZone, 'yyyy-MM-dd');
+    const pickupDateString = formatInTimeZone(pickupDateInPeru, timeZone, 'yyyy-MM-dd');
+    // Validate that the pickup time isn't in the past if it's the same day
+    if (pickupDateString === currentDateInPeru) {
+      if (pickupTimeStr < minPickupTimeStr) {
+        throw new BadRequestException(
+          `Orders must be placed at least 30 minutes in advance. Current time: ${currentTimeStr}, earliest available: ${minPickupTimeStr}`
+        );
       }
+    } else if (pickupDateString < currentDateInPeru) {
+      // Handle case where pickup date is in the past
+      throw new BadRequestException('Pickup date cannot be in the past.');
     }
 
     // Validar horario de atención
@@ -507,6 +518,11 @@ export class CartService {
       });
 
       // Enviar un correo para notificar al cliente que su pedido ha sido confirmado
+      const pickupDate = new Date(order.pickupTime.toISOString().replace('Z', ''));
+      const hour = pickupDate.getHours();
+      const minute = pickupDate.getMinutes().toString().padStart(2, '0');
+      const hour12 = hour % 12 || 12;
+      const ampm = hour >= 12 ? 'PM' : 'AM';
 
       // Enviamos el usuario al correo con la contraseña temporal
       const emailResponse = await this.eventEmitter.emitAsync('order.new-order', {
@@ -516,7 +532,7 @@ export class CartService {
         email: cart.client ? cart.client.email : order.customerEmail,
         orderNumber: order.pickupCode,
         totalOrder: order.totalAmount.toFixed(2),
-        pickupDate: format(order.pickupTime, 'PPPp')
+        pickupDate: `${format(pickupDate, 'EEEE, dd MMMM')}, ${hour12}:${minute} ${ampm}`
       });
 
       if (emailResponse.every((response) => response !== true)) {
