@@ -92,7 +92,7 @@ export class ReportsService {
 
     // Definir las columnas con anchos optimizados
     worksheet.columns = [
-      { header: 'Codigo Único', key: 'pickupCode', width: 20 },
+      { header: 'Código Único', key: 'pickupCode', width: 20 },
       { header: 'Fecha de Recojo', key: 'pickupTime', width: 25 },
       { header: 'Total', key: 'totalAmount', width: 15 },
       { header: 'Estado', key: 'status', width: 15 },
@@ -108,13 +108,29 @@ export class ReportsService {
     });
     headerRows.push(titleRow);
     worksheet.mergeCells(`A${titleRow.number}:E${titleRow.number}`);
-    titleRow.height = 30; // Altura especial para el título
+    titleRow.height = 30;
 
     // Información del reporte
+    const infoBussiness = await this.prisma.businessConfig.findFirst({
+      select: {
+        businessName: true
+      }
+    });
+
+    headerRows.push(
+      worksheet.addRow({
+        pickupCode: `${infoBussiness.businessName.toUpperCase() || ''}`,
+        pickupTime: ''
+      })
+    );
+    worksheet.mergeCells(
+      `A${headerRows[headerRows.length - 1].number}:E${headerRows[headerRows.length - 1].number}`
+    );
+
     headerRows.push(
       worksheet.addRow({
         pickupCode: 'Fecha de Reporte: ',
-        pickupTime: `${filter.startDate} / ${filter.endDate}`
+        pickupTime: `${filter.startDate || ''} / ${filter.endDate}`
       })
     );
 
@@ -153,8 +169,9 @@ export class ReportsService {
     // Agregar una fila vacía como separador
     worksheet.addRow([]);
 
+    // Eliminar el contenido de las celdas de la fila 1
     for (let col = 1; col <= 9; col++) {
-      worksheet.getCell(1, col).value = null; // Limpia la celda en la fila 1, columna col
+      worksheet.getCell(1, col).value = null;
     }
 
     // Agregar y formatear los encabezados de las columnas
@@ -168,7 +185,7 @@ export class ReportsService {
 
     // Dar formato a los encabezados de columnas
     columnHeaders.eachCell((cell) => {
-      cell.font = { bold: true, size: 12 };
+      cell.font = { bold: true };
       cell.fill = {
         type: 'pattern',
         pattern: 'solid',
@@ -206,7 +223,7 @@ export class ReportsService {
       row.eachCell((cell, colNumber) => {
         cell.alignment = {
           vertical: 'middle',
-          horizontal: colNumber === 3 ? 'right' : 'center', // Total alineado a la derecha
+          horizontal: colNumber === 3 ? 'right' : 'left',
           wrapText: true
         };
         cell.border = {
@@ -215,27 +232,32 @@ export class ReportsService {
           left: { style: 'thin' },
           right: { style: 'thin' }
         };
-
-        // Altura mínima para las filas de datos
-        row.height = 20;
       });
+
+      // Altura mínima para las filas de datos
+      row.height = 20;
     });
 
     // Ajustar el ancho de las columnas automáticamente
     worksheet.columns.forEach((column) => {
       let maxLength = column.width || 10;
-
       if (column.values) {
         const lengths = column.values.filter(Boolean).map((v) => String(v).length);
-
         if (lengths.length > 0) {
           maxLength = Math.max(...lengths);
         }
       }
-
-      // Añadir un poco de padding y limitar el ancho máximo
       column.width = Math.min(maxLength + 2, 50);
     });
+
+    // Agregar pie de página con la fecha
+    const footerRow = worksheet.addRow([
+      `© ${new Date().getFullYear()} ${infoBussiness.businessName.toUpperCase()}`
+    ]);
+    worksheet.mergeCells(`A${footerRow.number}:E${footerRow.number}`);
+    footerRow.font = { bold: true, size: 10 };
+    footerRow.alignment = { horizontal: 'center' };
+
     const buffer = await workbook.xlsx.writeBuffer();
     return buffer;
   }
