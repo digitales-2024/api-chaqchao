@@ -796,44 +796,62 @@ export class ReportsService {
   async generateExcelTopProduct(data: ProductTop[], filter: GetTopProductsDto) {
     const workbook = new ExcelJS.Workbook();
     const worksheet = workbook.addWorksheet('Top Products Report');
+
+    // Definir las columnas con anchos optimizados
     worksheet.columns = [
       { header: 'Nombre', key: 'name', width: 30 },
-      { header: 'Cantidad', key: 'quantity', width: 10 }
+      { header: 'Cantidad', key: 'quantity', width: 15 }
     ];
 
     const headerRows = [];
 
+    // Título del reporte con merge de celdas
     const titleRow = worksheet.addRow({
-      name: 'Productos más vendidos'
+      name: '⭐ TOP PRODUCTOS MÁS VENDIDOS ⭐'
     });
     headerRows.push(titleRow);
     worksheet.mergeCells(`A${titleRow.number}:B${titleRow.number}`);
     titleRow.height = 30;
 
     // Información del reporte
+    const infoBussiness = await this.prisma.businessConfig.findFirst({
+      select: {
+        businessName: true
+      }
+    });
+
+    headerRows.push(
+      worksheet.addRow({
+        name: `${infoBussiness.businessName.toUpperCase() || ''}`
+      })
+    );
+    worksheet.mergeCells(
+      `A${headerRows[headerRows.length - 1].number}:B${headerRows[headerRows.length - 1].number}`
+    );
+
     headerRows.push(
       worksheet.addRow({
         name: 'Fecha de Reporte: ',
-        quantity: filter.startDate + ' / ' + filter.endDate
+        quantity: `${filter.startDate || ''} / ${filter.endDate}`
       })
     );
 
     if (filter.limit) {
       headerRows.push(
         worksheet.addRow({
-          name: 'Límite: ',
+          name: 'Top Productos: ',
           quantity: filter.limit
         })
       );
     }
 
-    //Aplicar estilos a los encabezados
+    // Aplicar estilos a los encabezados
     headerRows.forEach((row) => {
       row.font = { bold: true, size: row === titleRow ? 14 : 12 };
       row.fill = {
         type: 'pattern',
         pattern: 'solid',
-        fgColor: { argb: 'FFE2F0D9' }
+        fgColor: { argb: 'FFF2F2F2' }
       };
       row.alignment = {
         vertical: 'middle',
@@ -841,23 +859,27 @@ export class ReportsService {
       };
     });
 
+    // Agregar una fila vacía como separador
     worksheet.addRow([]);
 
+    // Eliminar el contenido de las celdas de la fila 1
     for (let col = 1; col <= 9; col++) {
-      worksheet.getCell(1, col).value = null; // Limpia la celda en la fila 1, columna col
+      worksheet.getCell(1, col).value = null;
     }
 
+    // Agregar y formatear los encabezados de las columnas
     const columnHeaders = worksheet.addRow({
       name: 'Nombre',
       quantity: 'Cantidad'
     });
 
+    // Dar formato a los encabezados de columnas
     columnHeaders.eachCell((cell) => {
       cell.font = { bold: true };
       cell.fill = {
         type: 'pattern',
         pattern: 'solid',
-        fgColor: { argb: 'FFC6E0B4' }
+        fgColor: { argb: 'FFF2F2F2' }
       };
       cell.alignment = {
         vertical: 'middle',
@@ -873,17 +895,18 @@ export class ReportsService {
     });
     columnHeaders.height = 25;
 
-    data.forEach((topProducts) => {
+    // Agregar y formatear los datos
+    data.forEach((topProduct, index) => {
       const row = worksheet.addRow({
-        name: topProducts.name,
-        quantity: topProducts.totalOrdered
+        name: topProduct.name,
+        quantity: topProduct.totalOrdered
       });
 
       // Formatear las celdas de datos
       row.eachCell((cell, colNumber) => {
         cell.alignment = {
           vertical: 'middle',
-          horizontal: colNumber === 2 ? 'right' : 'center', // Cantidad alineada a la derecha
+          horizontal: colNumber === 2 ? 'right' : 'left',
           wrapText: true
         };
         cell.border = {
@@ -892,21 +915,30 @@ export class ReportsService {
           left: { style: 'thin' },
           right: { style: 'thin' }
         };
+
+        // Resaltar los primeros 3 productos del top
+        if (index < 3) {
+          cell.fill = {
+            type: 'pattern',
+            pattern: 'solid',
+            fgColor: { argb: 'FFFFD700' } // Color dorado para destacar top 3
+          };
+          cell.font = { bold: true };
+        }
       });
+
       // Altura mínima para las filas de datos
       row.height = 20;
     });
-    // Ajustar el ancho de las columnas automáticamente
-    worksheet.columns.forEach((column) => {
-      let maxLength = column.width || 10;
-      if (column.values) {
-        const lengths = column.values.filter(Boolean).map((v) => String(v).length);
-        if (lengths.length > 0) {
-          maxLength = Math.max(...lengths);
-        }
-      }
-      column.width = Math.min(maxLength + 2, 50);
-    });
+
+    // Agregar pie de página con la fecha
+    const footerRow = worksheet.addRow([
+      `© ${new Date().getFullYear()} ${infoBussiness.businessName.toUpperCase()}`
+    ]);
+    worksheet.mergeCells(`A${footerRow.number}:B${footerRow.number}`);
+    footerRow.font = { bold: true, size: 10 };
+    footerRow.alignment = { horizontal: 'center' };
+
     const buffer = await workbook.xlsx.writeBuffer();
     return buffer;
   }
