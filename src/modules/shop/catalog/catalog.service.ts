@@ -120,7 +120,8 @@ export class CatalogService {
         category: {
           select: {
             id: true,
-            name: true
+            name: true,
+            family: true
           }
         },
         images: true
@@ -139,7 +140,8 @@ export class CatalogService {
       isRestricted: product.isRestricted,
       category: {
         id: product.category.id,
-        name: product.category.name
+        name: product.category.name,
+        family: product.category.family
       }
     }));
   }
@@ -159,7 +161,8 @@ export class CatalogService {
         category: {
           select: {
             id: true,
-            name: true
+            name: true,
+            family: true
           }
         },
         images: true
@@ -178,7 +181,8 @@ export class CatalogService {
       maxStock: product.maxStock,
       category: {
         id: product.category.id,
-        name: product.category.name
+        name: product.category.name,
+        family: product.category.family
       }
     }));
   }
@@ -292,7 +296,8 @@ export class CatalogService {
           category: {
             select: {
               id: true,
-              name: true
+              name: true,
+              family: true
             }
           },
           productVariations: {
@@ -320,7 +325,8 @@ export class CatalogService {
         maxStock: product.maxStock,
         category: {
           id: product.category.id,
-          name: product.category.name
+          name: product.category.name,
+          family: product.category.family
         }
       }));
     } catch (error) {
@@ -349,7 +355,8 @@ export class CatalogService {
           category: {
             select: {
               id: true,
-              name: true
+              name: true,
+              family: true
             }
           },
           productVariations: {
@@ -388,7 +395,8 @@ export class CatalogService {
         categoryId: product.category.id,
         category: {
           id: product.category.id,
-          name: product.category.name
+          name: product.category.name,
+          family: product.category.family
         }
       }));
     } catch (error) {
@@ -420,7 +428,8 @@ export class CatalogService {
             images: true,
             maxStock: true
           }
-        }
+        },
+        family: true
       }
     });
 
@@ -436,7 +445,8 @@ export class CatalogService {
       maxStock: product.maxStock,
       category: {
         id: category.id,
-        name: category.name
+        name: category.name,
+        family: category.family
       }
     }));
   }

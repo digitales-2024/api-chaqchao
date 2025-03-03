@@ -8,6 +8,7 @@ import {
   NotFoundException
 } from '@nestjs/common';
 import { AuditActionType } from '@prisma/client';
+import * as ExcelJS from 'exceljs';
 import { HttpResponse, ProductData, UserData, UserPayload } from 'src/interfaces';
 import { CloudflareService } from 'src/modules/cloudflare/cloudflare.service';
 import { PrismaService } from 'src/prisma/prisma.service';
@@ -1060,5 +1061,91 @@ export class ProductsService {
       }
       handleException(error, 'Error reactivating products');
     }
+  }
+
+  /**
+   * Descargar todos los productos en formato CSV
+   * @returns Archivo CSV con todos los productos
+   */
+  async generateCsv() {
+    try {
+      // Obtener todos los productos con sus variaciones
+      const products = await this.prisma.product.findMany({
+        include: {
+          category: {
+            select: {
+              id: true,
+              name: true,
+              family: true
+            }
+          },
+          productVariations: {
+            select: {
+              id: true,
+              name: true,
+              description: true,
+              additionalPrice: true
+            }
+          }
+        }
+      });
+
+      const workbook = new ExcelJS.Workbook();
+      const worksheet = workbook.addWorksheet('Productos');
+
+      this.configureWorksheet(worksheet);
+
+      // Agregar los datos de productos
+      products.forEach((product) => {
+        const row = worksheet.addRow({
+          id: product.id,
+          name: product.name,
+          description: product.description,
+          price: product.price.toFixed(2),
+          maxStock: product.maxStock || 'No definido',
+          category: product.category.name,
+          family: product.category.family,
+          isAvailable: product.isAvailable ? 'Disponible' : 'No disponible',
+          isActive: product.isActive ? 'Activo' : 'Inactivo'
+        });
+
+        // Alinear las columnas numéricas a la derecha
+        row.getCell('price').alignment = { horizontal: 'right' };
+        row.getCell('maxStock').alignment = { horizontal: 'right' };
+      });
+
+      // Ajustar automáticamente el ancho de las columnas
+      worksheet.columns.forEach((column) => {
+        column.width = Math.max(column.width || 10, 15);
+      });
+
+      return await workbook.xlsx.writeBuffer();
+    } catch (error) {
+      this.logger.error('Error downloading all products', error.stack);
+      handleException(error, 'Error downloading all products');
+    }
+  }
+
+  private configureWorksheet(worksheet: ExcelJS.Worksheet) {
+    // Configurar columnas
+    worksheet.columns = [
+      { header: 'ID', key: 'id', width: 10 },
+      { header: 'Nombre', key: 'name', width: 30 },
+      { header: 'Descripción', key: 'description', width: 50 },
+      { header: 'Precio', key: 'price', width: 15 },
+      { header: 'Stock Máximo', key: 'maxStock', width: 15 },
+      { header: 'Categoría', key: 'category', width: 20 },
+      { header: 'Familia', key: 'family', width: 20 },
+      { header: 'Disponibilidad', key: 'isAvailable', width: 15 },
+      { header: 'Estado', key: 'isActive', width: 15 }
+    ];
+
+    // Estilo para el encabezado
+    worksheet.getRow(1).font = { bold: true };
+    worksheet.getRow(1).fill = {
+      type: 'pattern',
+      pattern: 'solid',
+      fgColor: { argb: 'FFE2F0D9' }
+    };
   }
 }
