@@ -508,8 +508,7 @@ export class ClassesService {
 
     const classConfirm = await this.prisma.classes.findFirst({
       where: {
-        dateClass: classData.dateClass,
-        scheduleClass: classData.scheduleClass
+        id: registerConfirm.classesId
       }
     });
 
