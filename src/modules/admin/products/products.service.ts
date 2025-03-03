@@ -239,7 +239,8 @@ export class ProductsService {
             category: {
               select: {
                 id: true,
-                name: true
+                name: true,
+                family: true
               }
             },
             images: true
@@ -289,7 +290,8 @@ export class ProductsService {
           maxStock: newProduct.maxStock,
           category: {
             id: newProduct.category.id,
-            name: newProduct.category.name
+            name: newProduct.category.name,
+            family: newProduct.category.family
           }
         }
       };
@@ -318,7 +320,8 @@ export class ProductsService {
           category: {
             select: {
               id: true,
-              name: true
+              name: true,
+              family: true
             }
           },
           productVariations: {
@@ -349,7 +352,8 @@ export class ProductsService {
         maxStock: product.maxStock,
         category: {
           id: product.category.id,
-          name: product.category.name
+          name: product.category.name,
+          family: product.category.family
         },
         variations: product.productVariations,
         createdAt: product.createdAt,
@@ -484,7 +488,7 @@ export class ProductsService {
             })
           },
           include: {
-            category: { select: { id: true, name: true } },
+            category: { select: { id: true, name: true, family: true } },
             productVariations: true,
             images: true
           }
@@ -519,7 +523,8 @@ export class ProductsService {
           maxStock: updatedProduct.maxStock,
           category: {
             id: updatedProduct.category.id,
-            name: updatedProduct.category.name
+            name: updatedProduct.category.name,
+            family: updatedProduct.category.family
           }
         }
       };
@@ -593,7 +598,8 @@ export class ProductsService {
           maxStock: productDB.maxStock,
           category: {
             id: productDB.category.id,
-            name: productDB.category.name
+            name: productDB.category.name,
+            family: productDB.category.family
           }
         };
       });
@@ -751,7 +757,8 @@ export class ProductsService {
         category: {
           select: {
             id: true,
-            name: true
+            name: true,
+            family: true
           }
         },
         productVariations: {
@@ -805,7 +812,8 @@ export class ProductsService {
             category: {
               select: {
                 id: true,
-                name: true
+                name: true,
+                family: true
               }
             },
             productVariations: {
@@ -862,7 +870,8 @@ export class ProductsService {
           maxStock: productDB.maxStock,
           category: {
             id: productDB.category.id,
-            name: productDB.category.name
+            name: productDB.category.name,
+            family: productDB.category.family
           }
         };
 
@@ -895,7 +904,8 @@ export class ProductsService {
             category: {
               select: {
                 id: true,
-                name: true
+                name: true,
+                family: true
               }
             },
             productVariations: {
@@ -947,7 +957,8 @@ export class ProductsService {
           maxStock: productDB.maxStock,
           category: {
             id: productDB.category.id,
-            name: productDB.category.name
+            name: productDB.category.name,
+            family: productDB.category.family
           },
           variations: productDB.productVariations
         };

@@ -17,6 +17,7 @@ export interface ProductData {
   category: {
     id: string;
     name: string;
+    family: string;
   };
   images: ProductImageData[];
 }
