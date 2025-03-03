@@ -439,14 +439,29 @@ export class ReportsService {
       name: 'Reporte de Productos'
     });
     headerRows.push(titleRow);
-    worksheet.mergeCells(`A${titleRow.number}:D${titleRow.number}`);
+    worksheet.mergeCells(`A${titleRow.number}:E${titleRow.number}`);
     titleRow.height = 30;
 
     // Información del reporte
+    const infoBussiness = await this.prisma.businessConfig.findFirst({
+      select: {
+        businessName: true
+      }
+    });
+
+    headerRows.push(
+      worksheet.addRow({
+        name: `${infoBussiness.businessName.toUpperCase() || ''}`
+      })
+    );
+    worksheet.mergeCells(
+      `A${headerRows[headerRows.length - 1].number}:E${headerRows[headerRows.length - 1].number}`
+    );
+
     headerRows.push(
       worksheet.addRow({
         name: 'Fecha de Reporte: ',
-        description: `${filter.startDate} / ${filter.endDate}`
+        description: `${filter.startDate || ''} / ${filter.endDate}`
       })
     );
 
@@ -465,7 +480,7 @@ export class ReportsService {
       row.fill = {
         type: 'pattern',
         pattern: 'solid',
-        fgColor: { argb: 'FFE2F0D9' }
+        fgColor: { argb: 'FFF2F2F2' }
       };
       row.alignment = {
         vertical: 'middle',
@@ -475,9 +490,9 @@ export class ReportsService {
 
     // Agregar una fila vacía como separador
     worksheet.addRow([]);
-    // Eliminar el contenido de las celdas de la fila 1 (A1 a I1)
+    // Eliminar el contenido de las celdas de la fila 1
     for (let col = 1; col <= 9; col++) {
-      worksheet.getCell(1, col).value = null; // Limpia la celda en la fila 1, columna col
+      worksheet.getCell(1, col).value = null;
     }
 
     // Agregar y formatear los encabezados de las columnas
@@ -495,7 +510,7 @@ export class ReportsService {
       cell.fill = {
         type: 'pattern',
         pattern: 'solid',
-        fgColor: { argb: 'FFC6E0B4' }
+        fgColor: { argb: 'FFF2F2F2' }
       };
       cell.alignment = {
         vertical: 'middle',
@@ -527,7 +542,7 @@ export class ReportsService {
       row.eachCell((cell, colNumber) => {
         cell.alignment = {
           vertical: 'middle',
-          horizontal: colNumber === 4 ? 'right' : 'left', // Precio alineado a la derecha
+          horizontal: colNumber === 5 ? 'right' : 'left', // Precio alineado a la derecha
           wrapText: true
         };
         cell.border = {
@@ -542,17 +557,14 @@ export class ReportsService {
       row.height = 20;
     });
 
-    // Ajustar el ancho de las columnas automáticamente
-    worksheet.columns.forEach((column) => {
-      let maxLength = column.width || 10;
-      if (column.values) {
-        const lengths = column.values.filter(Boolean).map((v) => String(v).length);
-        if (lengths.length > 0) {
-          maxLength = Math.max(...lengths);
-        }
-      }
-      column.width = Math.min(maxLength + 2, 50);
-    });
+    // Agregar pie de página con la fecha
+    const footerRow = worksheet.addRow([
+      `© ${new Date().getFullYear()} ${infoBussiness.businessName.toUpperCase()}`
+    ]);
+    worksheet.mergeCells(`A${footerRow.number}:E${footerRow.number}`);
+    footerRow.font = { bold: true, size: 10 };
+    footerRow.alignment = { horizontal: 'center' };
+
     const buffer = await workbook.xlsx.writeBuffer();
     return buffer;
   }
