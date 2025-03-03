@@ -88,58 +88,152 @@ export class ReportsService {
   async generateExcelOrder(data: Order[], filter: OrderFilterDto) {
     const workbook = new ExcelJS.Workbook();
     const worksheet = workbook.addWorksheet('Orders Report');
+
+    // Definir las columnas con anchos optimizados
     worksheet.columns = [
       { header: 'Codigo Único', key: 'pickupCode', width: 20 },
-      { header: 'Fecha de Recojo', key: 'pickupTime', width: 20 },
-      { header: 'Total', key: 'totalAmount', width: 7 },
-      { header: 'Estado', key: 'status', width: 12 },
-      { header: 'Modo de Recojo', key: 'mode', width: 12 }
+      { header: 'Fecha de Recojo', key: 'pickupTime', width: 25 },
+      { header: 'Total', key: 'totalAmount', width: 15 },
+      { header: 'Estado', key: 'status', width: 15 },
+      { header: 'Modo de Recojo', key: 'mode', width: 20 }
     ];
 
-    worksheet.addRow({
+    // Agregar los encabezados dinámicos
+    const headerRows = [];
+
+    // Título del reporte con merge de celdas
+    const titleRow = worksheet.addRow({
       pickupCode: 'Reporte de Pedidos'
     });
+    headerRows.push(titleRow);
+    worksheet.mergeCells(`A${titleRow.number}:E${titleRow.number}`);
+    titleRow.height = 30; // Altura especial para el título
 
-    worksheet.addRow({
-      pickupCode: 'Fecha de Reporte: ',
-      pickupTime: filter.startDate + ' / ' + filter.endDate
-    });
+    // Información del reporte
+    headerRows.push(
+      worksheet.addRow({
+        pickupCode: 'Fecha de Reporte: ',
+        pickupTime: `${filter.startDate} / ${filter.endDate}`
+      })
+    );
 
     if (filter.orderStatus) {
-      worksheet.addRow({
-        pickupCode: 'Estado: ',
-        pickupTime: translateStatus[filter.orderStatus]
-      });
+      headerRows.push(
+        worksheet.addRow({
+          pickupCode: 'Estado: ',
+          pickupTime: translateStatus[filter.orderStatus]
+        })
+      );
     }
 
     if (filter.priceMin !== undefined && filter.priceMax !== undefined) {
-      worksheet.addRow({
-        pickupCode: 'Rango de Precios: ',
-        pickupTime: filter.priceMin + ' - ' + filter.priceMax
-      });
+      headerRows.push(
+        worksheet.addRow({
+          pickupCode: 'Rango de Precios: ',
+          pickupTime: `S/. ${filter.priceMin} - S/. ${filter.priceMax}`
+        })
+      );
     }
 
-    // Eliminar el contenido de las celdas de la fila 1 (A1 a I1)
+    // Aplicar estilos a los encabezados
+    headerRows.forEach((row) => {
+      row.font = { bold: true, size: row === titleRow ? 14 : 12 };
+      row.fill = {
+        type: 'pattern',
+        pattern: 'solid',
+        fgColor: { argb: 'FFE2F0D9' }
+      };
+      row.alignment = {
+        vertical: 'middle',
+        horizontal: row === titleRow ? 'center' : 'left'
+      };
+    });
+
+    // Agregar una fila vacía como separador
+    worksheet.addRow([]);
+
     for (let col = 1; col <= 9; col++) {
       worksheet.getCell(1, col).value = null; // Limpia la celda en la fila 1, columna col
     }
 
-    worksheet.addRow({
-      pickupCode: 'Codigo Único',
+    // Agregar y formatear los encabezados de las columnas
+    const columnHeaders = worksheet.addRow({
+      pickupCode: 'Código Único',
       pickupTime: 'Fecha de Recojo',
       totalAmount: 'Total',
       status: 'Estado',
       mode: 'Modo de Recojo'
     });
 
+    // Dar formato a los encabezados de columnas
+    columnHeaders.eachCell((cell) => {
+      cell.font = { bold: true, size: 12 };
+      cell.fill = {
+        type: 'pattern',
+        pattern: 'solid',
+        fgColor: { argb: 'FFC6E0B4' }
+      };
+      cell.alignment = {
+        vertical: 'middle',
+        horizontal: 'center',
+        wrapText: true
+      };
+      cell.border = {
+        top: { style: 'medium' },
+        bottom: { style: 'medium' },
+        left: { style: 'thin' },
+        right: { style: 'thin' }
+      };
+    });
+    columnHeaders.height = 25;
+
+    // Agregar y formatear los datos
     data.forEach((order) => {
-      worksheet.addRow({
+      const pickupDate = new Date(order.pickupTime);
+      const row = worksheet.addRow({
         pickupCode: order.pickupCode,
-        pickupTime: order.pickupTime,
-        totalAmount: order.totalAmount,
+        pickupTime: format(pickupDate, 'dd/MM/yyyy HH:mm', { locale: es }),
+        totalAmount: Number(order.totalAmount).toLocaleString('es-PE', {
+          style: 'currency',
+          currency: 'PEN'
+        }),
         status: translateStatus[order.orderStatus],
         mode: order.someonePickup ? 'Recoge otra persona' : 'Recoge el cliente'
       });
+
+      // Formatear las celdas de datos
+      row.eachCell((cell, colNumber) => {
+        cell.alignment = {
+          vertical: 'middle',
+          horizontal: colNumber === 3 ? 'right' : 'center', // Total alineado a la derecha
+          wrapText: true
+        };
+        cell.border = {
+          top: { style: 'thin' },
+          bottom: { style: 'thin' },
+          left: { style: 'thin' },
+          right: { style: 'thin' }
+        };
+
+        // Altura mínima para las filas de datos
+        row.height = 20;
+      });
+    });
+
+    // Ajustar el ancho de las columnas automáticamente
+    worksheet.columns.forEach((column) => {
+      let maxLength = column.width || 10;
+
+      if (column.values) {
+        const lengths = column.values.filter(Boolean).map((v) => String(v).length);
+
+        if (lengths.length > 0) {
+          maxLength = Math.max(...lengths);
+        }
+      }
+
+      // Añadir un poco de padding y limitar el ancho máximo
+      column.width = Math.min(maxLength + 2, 50);
     });
     const buffer = await workbook.xlsx.writeBuffer();
     return buffer;
