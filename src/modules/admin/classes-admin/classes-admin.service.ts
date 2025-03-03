@@ -399,52 +399,17 @@ export class ClassesAdminService {
 
     // Iterar sobre cada grupo de clases
     for (const date in groupedClasses) {
-      classesHtml += `<h2 style="text-align: center;">Fecha: ${date}</h2>`;
+      classesHtml += `<h3 style="margin: 10px 0 5px 0;">Fecha: ${date}</h3>`;
 
       for (const schedule in groupedClasses[date]) {
-        classesHtml += `<h3 style="text-align: center;">Horario: ${schedule}</h3>`;
-        classesHtml += '<div style="overflow-x:auto; margin: 0 20px;">';
-        classesHtml += '<table border="1" style="width: 100%; border-collapse: collapse;">';
-        classesHtml += `
-        <thead>
-          <tr>
-          <th>Nombre</th>
-          <th>Email</th>
-          <th>Teléfono</th>
-          <th>Total Adultos</th>
-          <th>Total Niños</th>
-          <th>Total Participantes</th>
-          <th>Método de Pago</th>
-          <th>Tipo de Moneda</th>
-          <th>Total Precio</th>
-          </tr>
-        </thead>
-        <tbody>
-        `;
+        classesHtml += `<h4 style="margin: 8px 0 5px 0;">Horario: ${schedule}</h4>`;
 
+        // Resumen conciso antes de la tabla
         let totalParticipants = 0;
-        // Object to track totals by currency
         const totalsByCurrency = {};
 
         groupedClasses[date][schedule].registers.forEach((clase) => {
-          classesHtml += `
-          <tr>
-          <td style="text-transform: capitalize;">${clase.userName ?? '--'}</td>
-          <td>${clase.userEmail ?? '--'}</td>
-          <td>${clase.userPhone ?? '--'}</td>
-          <td>${clase.totalAdults ?? '--'}</td>
-          <td>${clase.totalChildren ?? '--'}</td>
-          <td>${clase.totalParticipants ?? '--'}</td>
-          <td>${clase.methodPayment ?? '--'}</td>
-          <td>${clase.typeCurrency ?? '--'}</td>
-          <td>${clase.totalPrice ?? '--'}</td>
-          </tr>
-        `;
-
-          // Sumar totales
-          totalParticipants += clase.totalParticipants;
-
-          // Only add to total if the price and currency are valid
+          totalParticipants += clase.totalParticipants || 0;
           if (clase.totalPrice && clase.typeCurrency) {
             if (!totalsByCurrency[clase.typeCurrency]) {
               totalsByCurrency[clase.typeCurrency] = 0;
@@ -453,36 +418,62 @@ export class ClassesAdminService {
           }
         });
 
-        classesHtml += '</tbody></table>';
+        // Resumen compacto
+        classesHtml += '<div style="font-size: 12px; margin-bottom: 5px;">';
+        classesHtml += `<strong>Total Participantes:</strong> ${totalParticipants} | `;
+        classesHtml += `<strong>Métodos Pago:</strong> ${Array.from(groupedClasses[date][schedule].paymentMethods).join(', ') || 'Ninguno'} | `;
 
-        // Agregar resumen después de la tabla
-        classesHtml += `
-        <div style="margin-top: 10px; text-align: right;">
-          <p><strong>Total de Participantes:</strong> ${totalParticipants}</p>
-          
-          <p><strong>Total por Moneda:</strong></p>
-        `;
-
-        // Mostrar totales por cada moneda
+        // Totales por moneda en línea
+        classesHtml += '<strong>Totales:</strong> ';
+        const currencySummaries = [];
         for (const currency in totalsByCurrency) {
-          classesHtml += `<p><strong>${currency}:</strong> ${totalsByCurrency[currency].toFixed(2)}</p>`;
+          currencySummaries.push(`${currency}: ${totalsByCurrency[currency].toFixed(2)}`);
         }
+        classesHtml += currencySummaries.join(', ');
+        classesHtml += '</div>';
 
+        // Tabla más compacta
+        classesHtml += '<div style="overflow-x:auto; margin: 0;">';
+        classesHtml +=
+          '<table border="1" style="width: 100%; border-collapse: collapse; font-size: 10px;">';
         classesHtml += `
-          <p><strong>Métodos de Pago:</strong> ${Array.from(groupedClasses[date][schedule].paymentMethods).join(', ') || 'Ninguno'}</p>
-          
-          <p><strong>Desglose por Moneda:</strong></p>
-        `;
+      <thead>
+        <tr style="background-color: #f2f2f2;">
+        <th style="padding: 4px;">Nombre</th>
+        <th style="padding: 4px;">Email</th>
+        <th style="padding: 4px;">Teléfono</th>
+        <th style="padding: 4px;">Adultos</th>
+        <th style="padding: 4px;">Niños</th>
+        <th style="padding: 4px;">Total</th>
+        <th style="padding: 4px;">Método</th>
+        <th style="padding: 4px;">Moneda</th>
+        <th style="padding: 4px;">Precio</th>
+        </tr>
+      </thead>
+      <tbody>
+      `;
 
-        // Añadir desglose por tipo de moneda
-        for (const currency in groupedClasses[date][schedule].currencies) {
-          const currencyData = groupedClasses[date][schedule].currencies[currency];
+        groupedClasses[date][schedule].registers.forEach((clase) => {
           classesHtml += `
-          <p>${currency}: ${currencyData.count} transacciones, Total: ${currencyData.total.toFixed(2)}</p>
-          `;
-        }
+        <tr>
+        <td style="padding: 3px; text-transform: capitalize;">${clase.userName ?? '--'}</td>
+        <td style="padding: 3px; font-size: 9px;">${clase.userEmail ?? '--'}</td>
+        <td style="padding: 3px;">${clase.userPhone ?? '--'}</td>
+        <td style="padding: 3px; text-align: center;">${clase.totalAdults ?? '--'}</td>
+        <td style="padding: 3px; text-align: center;">${clase.totalChildren ?? '--'}</td>
+        <td style="padding: 3px; text-align: center;">${clase.totalParticipants ?? '--'}</td>
+        <td style="padding: 3px;">${clase.methodPayment ?? '--'}</td>
+        <td style="padding: 3px; text-align: center;">${clase.typeCurrency ?? '--'}</td>
+        <td style="padding: 3px; text-align: right;">${clase.totalPrice ?? '--'}</td>
+        </tr>
+      `;
+        });
 
-        classesHtml += '</div>'; // Cerrar el contenedor
+        classesHtml += '</tbody></table>';
+        classesHtml += '</div>';
+
+        // Agregar espacio entre horarios
+        classesHtml += '<hr style="margin: 10px 0; border: 0.5px solid #ddd;">';
       }
     }
 
