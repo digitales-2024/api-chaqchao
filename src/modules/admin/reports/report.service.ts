@@ -25,6 +25,7 @@ interface Product {
     id: string;
     name: string;
     description: string;
+    family: string;
   };
 }
 
@@ -88,59 +89,166 @@ export class ReportsService {
   async generateExcelOrder(data: Order[], filter: OrderFilterDto) {
     const workbook = new ExcelJS.Workbook();
     const worksheet = workbook.addWorksheet('Orders Report');
+
+    // Definir las columnas con anchos optimizados
     worksheet.columns = [
-      { header: 'Codigo Único', key: 'pickupCode', width: 20 },
+      { header: 'Código Único', key: 'pickupCode', width: 18 },
       { header: 'Fecha de Recojo', key: 'pickupTime', width: 20 },
-      { header: 'Total', key: 'totalAmount', width: 7 },
-      { header: 'Estado', key: 'status', width: 12 },
-      { header: 'Modo de Recojo', key: 'mode', width: 12 }
+      { header: 'Total', key: 'totalAmount', width: 12 },
+      { header: 'Estado', key: 'status', width: 20 },
+      { header: 'Modo de Recojo', key: 'mode', width: 25 }
     ];
 
-    worksheet.addRow({
+    // Agregar los encabezados dinámicos
+    const headerRows = [];
+
+    // Título del reporte con merge de celdas
+    const titleRow = worksheet.addRow({
       pickupCode: 'Reporte de Pedidos'
     });
+    headerRows.push(titleRow);
+    worksheet.mergeCells(`A${titleRow.number}:E${titleRow.number}`);
+    titleRow.height = 30;
 
-    worksheet.addRow({
-      pickupCode: 'Fecha de Reporte: ',
-      pickupTime: filter.startDate + ' / ' + filter.endDate
+    // Información del reporte
+    const infoBussiness = await this.prisma.businessConfig.findFirst({
+      select: {
+        businessName: true
+      }
     });
 
-    if (filter.orderStatus) {
+    headerRows.push(
       worksheet.addRow({
-        pickupCode: 'Estado: ',
-        pickupTime: translateStatus[filter.orderStatus]
-      });
+        pickupCode: `${infoBussiness.businessName.toUpperCase() || ''}`,
+        pickupTime: ''
+      })
+    );
+    worksheet.mergeCells(
+      `A${headerRows[headerRows.length - 1].number}:E${headerRows[headerRows.length - 1].number}`
+    );
+
+    headerRows.push(
+      worksheet.addRow({
+        pickupCode: 'Fecha de Reporte: ',
+        pickupTime: `${filter.startDate || ''} / ${filter.endDate}`
+      })
+    );
+
+    if (filter.orderStatus) {
+      headerRows.push(
+        worksheet.addRow({
+          pickupCode: 'Estado: ',
+          pickupTime: translateStatus[filter.orderStatus]
+        })
+      );
     }
 
     if (filter.priceMin !== undefined && filter.priceMax !== undefined) {
-      worksheet.addRow({
-        pickupCode: 'Rango de Precios: ',
-        pickupTime: filter.priceMin + ' - ' + filter.priceMax
-      });
+      headerRows.push(
+        worksheet.addRow({
+          pickupCode: 'Rango de Precios: ',
+          pickupTime: `S/. ${filter.priceMin} - S/. ${filter.priceMax}`
+        })
+      );
     }
 
-    // Eliminar el contenido de las celdas de la fila 1 (A1 a I1)
+    // Aplicar estilos a los encabezados
+    headerRows.forEach((row) => {
+      row.font = { bold: true, size: row === titleRow ? 14 : 12 };
+      row.fill = {
+        type: 'pattern',
+        pattern: 'solid',
+        fgColor: { argb: 'FFF2F2F2' }
+      };
+      row.alignment = {
+        vertical: 'middle',
+        horizontal: row === titleRow ? 'center' : 'left'
+      };
+    });
+
+    // Agregar una fila vacía como separador
+    worksheet.addRow([]);
+
+    // Eliminar el contenido de las celdas de la fila 1
     for (let col = 1; col <= 9; col++) {
-      worksheet.getCell(1, col).value = null; // Limpia la celda en la fila 1, columna col
+      worksheet.getCell(1, col).value = null;
     }
 
-    worksheet.addRow({
-      pickupCode: 'Codigo Único',
+    // Agregar y formatear los encabezados de las columnas
+    const columnHeaders = worksheet.addRow({
+      pickupCode: 'Código Único',
       pickupTime: 'Fecha de Recojo',
       totalAmount: 'Total',
       status: 'Estado',
       mode: 'Modo de Recojo'
     });
 
+    // Dar formato a los encabezados de columnas
+    columnHeaders.eachCell((cell) => {
+      cell.font = { bold: true };
+      cell.fill = {
+        type: 'pattern',
+        pattern: 'solid',
+        fgColor: { argb: 'FFF2F2F2' }
+      };
+      cell.alignment = {
+        vertical: 'middle',
+        horizontal: 'center',
+        wrapText: true
+      };
+      cell.border = {
+        top: { style: 'medium' },
+        bottom: { style: 'medium' },
+        left: { style: 'thin' },
+        right: { style: 'thin' }
+      };
+    });
+    columnHeaders.height = 25;
+
+    // Agregar y formatear los datos
     data.forEach((order) => {
-      worksheet.addRow({
+      const pickupDate = new Date(order.pickupTime);
+      const row = worksheet.addRow({
         pickupCode: order.pickupCode,
-        pickupTime: order.pickupTime,
-        totalAmount: order.totalAmount,
+        pickupTime: format(pickupDate, 'dd/MM/yyyy HH:mm', { locale: es }),
+        totalAmount: Number(order.totalAmount).toLocaleString('es-PE', {
+          style: 'currency',
+          currency: 'PEN'
+        }),
         status: translateStatus[order.orderStatus],
         mode: order.someonePickup ? 'Recoge otra persona' : 'Recoge el cliente'
       });
+
+      // Formatear las celdas de datos
+      row.eachCell((cell, colNumber) => {
+        cell.alignment = {
+          vertical: 'middle',
+          horizontal: colNumber === 3 ? 'right' : 'left',
+          wrapText: true
+        };
+        cell.border = {
+          top: { style: 'thin' },
+          bottom: { style: 'thin' },
+          left: { style: 'thin' },
+          right: { style: 'thin' }
+        };
+      });
+
+      // Altura mínima para las filas de datos
+      row.height = 20;
     });
+
+    // No ajustar el ancho dinámicamente para mantener el tamaño controlado
+    // Los anchos ya están definidos en la configuración inicial
+
+    // Agregar pie de página con la fecha
+    const footerRow = worksheet.addRow([
+      `© ${new Date().getFullYear()} ${infoBussiness.businessName.toUpperCase()}`
+    ]);
+    worksheet.mergeCells(`A${footerRow.number}:E${footerRow.number}`);
+    footerRow.font = { bold: true, size: 10 };
+    footerRow.alignment = { horizontal: 'center' };
+
     const buffer = await workbook.xlsx.writeBuffer();
     return buffer;
   }
@@ -313,48 +421,150 @@ export class ReportsService {
   async generateExcelProduct(data: Product[], filter: ProductFilterDto) {
     const workbook = new ExcelJS.Workbook();
     const worksheet = workbook.addWorksheet('Products Report');
+
+    // Definir las columnas con anchos optimizados
     worksheet.columns = [
-      { header: 'Nombre', key: 'name', width: 20 },
-      { header: 'Descripción', key: 'description', width: 20 },
-      { header: 'Categoría', key: 'category', width: 10 },
-      { header: 'Precio', key: 'price', width: 7 }
+      { header: 'Nombre', key: 'name', width: 30 },
+      { header: 'Descripción', key: 'description', width: 40 },
+      { header: 'Categoría', key: 'category', width: 20 },
+      { header: 'Familia', key: 'family', width: 20 },
+      { header: 'Precio', key: 'price', width: 15 }
     ];
 
-    worksheet.addRow({
+    // Agregar los encabezados dinámicos
+    const headerRows = [];
+
+    // Título del reporte con merge de celdas
+    const titleRow = worksheet.addRow({
       name: 'Reporte de Productos'
     });
+    headerRows.push(titleRow);
+    worksheet.mergeCells(`A${titleRow.number}:E${titleRow.number}`);
+    titleRow.height = 30;
 
-    worksheet.addRow({
-      name: 'Fecha de Reporte: ',
-      description: filter.startDate + ' / ' + filter.endDate
+    // Información del reporte
+    const infoBussiness = await this.prisma.businessConfig.findFirst({
+      select: {
+        businessName: true
+      }
     });
-    if (filter.categoryName) {
+
+    headerRows.push(
       worksheet.addRow({
-        name: 'Categoría: ',
-        description: filter.categoryName
-      });
+        name: `${infoBussiness.businessName.toUpperCase() || ''}`
+      })
+    );
+    worksheet.mergeCells(
+      `A${headerRows[headerRows.length - 1].number}:E${headerRows[headerRows.length - 1].number}`
+    );
+
+    headerRows.push(
+      worksheet.addRow({
+        name: 'Fecha de Reporte: ',
+        description: `${filter.startDate || ''} / ${filter.endDate}`
+      })
+    );
+
+    if (filter.categoryName) {
+      headerRows.push(
+        worksheet.addRow({
+          name: 'Categoría: ',
+          description: filter.categoryName
+        })
+      );
     }
 
-    // Eliminar el contenido de las celdas de la fila 1 (A1 a I1)
+    // Aplicar estilos a los encabezados
+    headerRows.forEach((row) => {
+      row.font = { bold: true, size: row === titleRow ? 14 : 12 };
+      row.fill = {
+        type: 'pattern',
+        pattern: 'solid',
+        fgColor: { argb: 'FFF2F2F2' }
+      };
+      row.alignment = {
+        vertical: 'middle',
+        horizontal: row === titleRow ? 'center' : 'left'
+      };
+    });
+
+    // Agregar una fila vacía como separador
+    worksheet.addRow([]);
+    // Eliminar el contenido de las celdas de la fila 1
     for (let col = 1; col <= 9; col++) {
-      worksheet.getCell(1, col).value = null; // Limpia la celda en la fila 1, columna col
+      worksheet.getCell(1, col).value = null;
     }
 
-    worksheet.addRow({
+    // Agregar y formatear los encabezados de las columnas
+    const columnHeaders = worksheet.addRow({
       name: 'Nombre',
       description: 'Descripción',
       category: 'Categoría',
+      family: 'Familia',
       price: 'Precio'
     });
 
-    data.forEach((product) => {
-      worksheet.addRow({
-        name: product.name,
-        description: product.description,
-        price: product.price,
-        category: product.category.name
-      });
+    // Dar formato a los encabezados de columnas
+    columnHeaders.eachCell((cell) => {
+      cell.font = { bold: true };
+      cell.fill = {
+        type: 'pattern',
+        pattern: 'solid',
+        fgColor: { argb: 'FFF2F2F2' }
+      };
+      cell.alignment = {
+        vertical: 'middle',
+        horizontal: 'center',
+        wrapText: true
+      };
+      cell.border = {
+        top: { style: 'medium' },
+        bottom: { style: 'medium' },
+        left: { style: 'thin' },
+        right: { style: 'thin' }
+      };
     });
+    columnHeaders.height = 25;
+
+    data.forEach((product) => {
+      const row = worksheet.addRow({
+        name: product.name,
+        description: product.description || '--',
+        category: product.category.name,
+        family: product.category.family,
+        price: Number(product.price).toLocaleString('es-PE', {
+          style: 'currency',
+          currency: 'PEN'
+        })
+      });
+
+      // Formatear las celdas de datos
+      row.eachCell((cell, colNumber) => {
+        cell.alignment = {
+          vertical: 'middle',
+          horizontal: colNumber === 5 ? 'right' : 'left', // Precio alineado a la derecha
+          wrapText: true
+        };
+        cell.border = {
+          top: { style: 'thin' },
+          bottom: { style: 'thin' },
+          left: { style: 'thin' },
+          right: { style: 'thin' }
+        };
+      });
+
+      // Altura mínima para las filas de datos
+      row.height = 20;
+    });
+
+    // Agregar pie de página con la fecha
+    const footerRow = worksheet.addRow([
+      `© ${new Date().getFullYear()} ${infoBussiness.businessName.toUpperCase()}`
+    ]);
+    worksheet.mergeCells(`A${footerRow.number}:E${footerRow.number}`);
+    footerRow.font = { bold: true, size: 10 };
+    footerRow.alignment = { horizontal: 'center' };
+
     const buffer = await workbook.xlsx.writeBuffer();
     return buffer;
   }
@@ -524,7 +734,14 @@ export class ReportsService {
               include: {
                 product: {
                   include: {
-                    category: true, // Incluir detalles de la categoría
+                    category: {
+                      select: {
+                        id: true,
+                        name: true,
+                        description: true,
+                        family: true
+                      }
+                    },
                     images: true // Incluir imágenes del producto
                   }
                 }
@@ -537,12 +754,12 @@ export class ReportsService {
         createdAt: 'asc' // Ordenar por la fecha de creación
       }
     });
-
     // Extraer los detalles del producto de los cartItems y eliminar duplicados
     const productMap = new Map<string, Product>();
     orders.forEach((order) => {
       order.cart.cartItems.forEach((item) => {
         const product = item.product;
+        console.log('🚀 ~ ReportsService ~ order.cart.cartItems.forEach ~ product:', product);
         // Filtrar por categoría si se especifica
         if (
           (!filter.categoryName ||
@@ -563,7 +780,8 @@ export class ReportsService {
               category: {
                 id: product.category.id,
                 name: product.category.name,
-                description: product.category.description
+                description: product.category.description,
+                family: product.category.family
               }
             });
           }
@@ -578,42 +796,149 @@ export class ReportsService {
   async generateExcelTopProduct(data: ProductTop[], filter: GetTopProductsDto) {
     const workbook = new ExcelJS.Workbook();
     const worksheet = workbook.addWorksheet('Top Products Report');
+
+    // Definir las columnas con anchos optimizados
     worksheet.columns = [
       { header: 'Nombre', key: 'name', width: 30 },
-      { header: 'Cantidad', key: 'quantity', width: 10 }
+      { header: 'Cantidad', key: 'quantity', width: 15 }
     ];
 
-    worksheet.addRow({
-      name: 'Productos más vendidos'
+    const headerRows = [];
+
+    // Título del reporte con merge de celdas
+    const titleRow = worksheet.addRow({
+      name: '⭐ TOP PRODUCTOS MÁS VENDIDOS ⭐'
+    });
+    headerRows.push(titleRow);
+    worksheet.mergeCells(`A${titleRow.number}:B${titleRow.number}`);
+    titleRow.height = 30;
+
+    // Información del reporte
+    const infoBussiness = await this.prisma.businessConfig.findFirst({
+      select: {
+        businessName: true
+      }
     });
 
-    worksheet.addRow({
-      name: 'Fecha de Reporte: ',
-      quantity: filter.startDate + ' / ' + filter.endDate
-    });
+    headerRows.push(
+      worksheet.addRow({
+        name: `${infoBussiness.businessName.toUpperCase() || ''}`
+      })
+    );
+    worksheet.mergeCells(
+      `A${headerRows[headerRows.length - 1].number}:B${headerRows[headerRows.length - 1].number}`
+    );
+
+    headerRows.push(
+      worksheet.addRow({
+        name: 'Fecha de Reporte: ',
+        quantity: `${filter.startDate || ''} / ${filter.endDate}`
+      })
+    );
 
     if (filter.limit) {
-      worksheet.addRow({
-        name: 'Límite: ',
-        quantity: filter.limit
-      });
+      headerRows.push(
+        worksheet.addRow({
+          name: 'Top Productos: ',
+          quantity: filter.limit
+        })
+      );
     }
 
+    // Aplicar estilos a los encabezados
+    headerRows.forEach((row) => {
+      row.font = { bold: true, size: row === titleRow ? 14 : 12 };
+      row.fill = {
+        type: 'pattern',
+        pattern: 'solid',
+        fgColor: { argb: 'FFF2F2F2' }
+      };
+      row.alignment = {
+        vertical: 'middle',
+        horizontal: row === titleRow ? 'center' : 'left'
+      };
+    });
+
+    // Agregar una fila vacía como separador
+    worksheet.addRow([]);
+
+    // Eliminar el contenido de las celdas de la fila 1
     for (let col = 1; col <= 9; col++) {
-      worksheet.getCell(1, col).value = null; // Limpia la celda en la fila 1, columna col
+      worksheet.getCell(1, col).value = null;
     }
 
-    worksheet.addRow({
+    // Agregar y formatear los encabezados de las columnas
+    const columnHeaders = worksheet.addRow({
       name: 'Nombre',
       quantity: 'Cantidad'
     });
 
-    data.forEach((topProducts) => {
-      worksheet.addRow({
-        name: topProducts.name,
-        quantity: topProducts.totalOrdered
-      });
+    // Dar formato a los encabezados de columnas
+    columnHeaders.eachCell((cell) => {
+      cell.font = { bold: true };
+      cell.fill = {
+        type: 'pattern',
+        pattern: 'solid',
+        fgColor: { argb: 'FFF2F2F2' }
+      };
+      cell.alignment = {
+        vertical: 'middle',
+        horizontal: 'center',
+        wrapText: true
+      };
+      cell.border = {
+        top: { style: 'medium' },
+        bottom: { style: 'medium' },
+        left: { style: 'thin' },
+        right: { style: 'thin' }
+      };
     });
+    columnHeaders.height = 25;
+
+    // Agregar y formatear los datos
+    data.forEach((topProduct, index) => {
+      const row = worksheet.addRow({
+        name: topProduct.name,
+        quantity: topProduct.totalOrdered
+      });
+
+      // Formatear las celdas de datos
+      row.eachCell((cell, colNumber) => {
+        cell.alignment = {
+          vertical: 'middle',
+          horizontal: colNumber === 2 ? 'right' : 'left',
+          wrapText: true
+        };
+        cell.border = {
+          top: { style: 'thin' },
+          bottom: { style: 'thin' },
+          left: { style: 'thin' },
+          right: { style: 'thin' }
+        };
+
+        // Resaltar los primeros 3 productos del top
+        if (index < 3) {
+          cell.fill = {
+            type: 'pattern',
+            pattern: 'solid',
+            fgColor: { argb: 'FFFFD700' } // Color dorado para destacar top 3
+          };
+          cell.font = { bold: true };
+        }
+      });
+
+      // Altura mínima para las filas de datos
+      row.height = 20;
+    });
+
+    // Agregar pie de página con la fecha
+    const footerRow = worksheet.addRow([
+      `© ${new Date().getFullYear()} ${infoBussiness.businessName.toUpperCase()}`
+    ]);
+    worksheet.mergeCells(`A${footerRow.number}:B${footerRow.number}`);
+    footerRow.font = { bold: true, size: 10 };
+    footerRow.alignment = { horizontal: 'center' };
+
     const buffer = await workbook.xlsx.writeBuffer();
     return buffer;
   }
@@ -649,12 +974,54 @@ export class ReportsService {
 
     const htmlInfo = `<h2>${infoBussiness.businessName.toUpperCase() || ''}</h2>
         <p>Fechas: ${filter.startDate || ''} / ${filter.endDate} </p>
-        ${filter.limit ? '<p>Límite: ' + filter.limit + ' </p>' : ''}
+        ${filter.limit ? '<p>Límite: ' + filter.limit + ' productos</p>' : ''}
+    `;
+
+    // Añadir estilos CSS adicionales para mejorar la tabla
+    const additionalStyles = `
+      <style>
+        table {
+          width: 100%;
+          border-collapse: collapse;
+          margin-top: 20px;
+        }
+        th {
+          background-color: #f2f2f2;
+          color: #333;
+          font-weight: bold;
+          text-align: left;
+          padding: 12px 8px;
+          border: 1px solid #ddd;
+        }
+        td {
+          padding: 10px 8px;
+          border: 1px solid #ddd;
+        }
+        tr:nth-child(even) {
+          background-color: #f9f9f9;
+        }
+        .top-product {
+          background-color: #fff2cc;
+          font-weight: bold;
+        }
+        .rank {
+          font-weight: bold;
+          text-align: center;
+        }
+        .price {
+          text-align: right;
+        }
+        .quantity {
+          text-align: center;
+          font-weight: bold;
+        }
+      </style>
     `;
 
     // Rellenar la plantilla con los datos de los productos mas vendidos
     const htmlContent = templateHtml.replace('{{products}}', this.generateTopProductHtml(data));
-    const htmlContentWithInfo = htmlContent.replace('{{bussiness}}', htmlInfo);
+    const htmlWithStyles = htmlContent.replace('</head>', `${additionalStyles}</head>`);
+    const htmlContentWithInfo = htmlWithStyles.replace('{{bussiness}}', htmlInfo);
     const htmlDateReport = htmlContentWithInfo.replace(
       '{{dateReport}}',
       new Date().toLocaleDateString()
@@ -669,11 +1036,11 @@ export class ReportsService {
       args: ['--no-sandbox', '--disable-setuid-sandbox']
     });
     const page = await browser.newPage();
-    await page.setContent(htmlContent);
-    await page.setContent(htmlContentWithInfo);
-    await page.setContent(htmlDateReport);
     await page.setContent(htmlFooterReport);
-    const pdfBufferUint8Array = await page.pdf({ format: 'A4' });
+    const pdfBufferUint8Array = await page.pdf({
+      format: 'A4',
+      margin: { top: '1cm', right: '1cm', bottom: '1cm', left: '1cm' }
+    });
     await browser.close();
 
     // Convertir Uint8Array a Buffer
@@ -684,13 +1051,47 @@ export class ReportsService {
 
   // Generar el contenido HTML para los productos mas vendidos
   private generateTopProductHtml(data: ProductTop[]): string {
-    let productTopHtml = '';
-    data.forEach((productTop) => {
-      productTopHtml += `<tr>
-        <td>${productTop.name}</td>
-        <td>${productTop.totalOrdered}</td>
-      </tr>`;
+    let productTopHtml = `
+      <table>
+        <thead>
+          <tr>
+            <th style="width: 10%">Posición</th>
+            <th style="width: 35%">Nombre del Producto</th>
+            <th style="width: 25%">Categoría</th>
+            <th style="width: 15%">Precio</th>
+            <th style="width: 15%">Cantidad</th>
+          </tr>
+        </thead>
+        <tbody>
+    `;
+
+    data.forEach((productTop, index) => {
+      const isTopThree = index < 3;
+      const rowClass = isTopThree ? 'class="top-product"' : '';
+      const position = index + 1;
+
+      // Add medal emoji for top 3
+      let rankSymbol = `${position}`;
+      if (position === 1) rankSymbol = '🥇 1';
+      if (position === 2) rankSymbol = '🥈 2';
+      if (position === 3) rankSymbol = '🥉 3';
+
+      productTopHtml += `
+        <tr ${rowClass}>
+          <td class="rank">${rankSymbol}</td>
+          <td>${productTop.name}</td>
+          <td>${productTop.category.name}</td>
+          <td class="price">S/. ${productTop.price.toFixed(2)}</td>
+          <td class="quantity">${productTop.totalOrdered}</td>
+        </tr>
+      `;
     });
+
+    productTopHtml += `
+        </tbody>
+      </table>
+    `;
+
     return productTopHtml;
   }
 

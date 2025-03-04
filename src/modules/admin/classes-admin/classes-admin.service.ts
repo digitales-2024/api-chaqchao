@@ -228,8 +228,19 @@ export class ClassesAdminService {
     const workbook = new ExcelJS.Workbook();
     const worksheet = workbook.addWorksheet('Registro de Clases');
 
-    // Configurar las columnas de la hoja de trabajo
-    this.configureWorksheetColumns(worksheet);
+    // Obtener información de negocio
+    const infoBusiness = await this.getBusinessInfo();
+
+    // Añadir título
+    const titleRow = worksheet.addRow([infoBusiness.businessName.toUpperCase()]);
+    titleRow.font = { bold: true, size: 16 };
+    worksheet.addRow([]);
+
+    if (data.length > 0) {
+      const dateStr = format(data[0].dateClass, 'PPP', { locale: es });
+      worksheet.addRow([`Fecha de las clases: ${dateStr}`]);
+    }
+    worksheet.addRow([]);
 
     // Agrupar las clases por fecha y horario
     const groupedClasses = this.groupClassesByDateAndSchedule(data);
@@ -237,93 +248,156 @@ export class ClassesAdminService {
     // Agregar los datos agrupados al Excel
     this.populateWorksheetWithGroupedClasses(worksheet, groupedClasses);
 
-    // Eliminar contenido de la fila 1
-    this.clearFirstRow(worksheet);
+    // Aplicar estilos generales
+    worksheet.properties.defaultRowHeight = 18;
 
     // Escribir el archivo en un buffer y devolverlo
     return await workbook.xlsx.writeBuffer();
-  }
-
-  private configureWorksheetColumns(worksheet: ExcelJS.Worksheet) {
-    worksheet.columns = [
-      { header: 'Nombre de Usuario', key: 'userName', width: 20 },
-      { header: 'Email de Usuario', key: 'userEmail', width: 30 },
-      { header: 'Teléfono de Usuario', key: 'userPhone', width: 20 },
-      { header: 'Total Adultos', key: 'totalAdults', width: 12 },
-      { header: 'Total Niños', key: 'totalChildren', width: 12 },
-      { header: 'Total Participantes', key: 'totalParticipants', width: 18 },
-      { header: 'Precio Adultos', key: 'totalPriceAdults', width: 15 },
-      { header: 'Precio Niños', key: 'totalPriceChildren', width: 15 },
-      { header: 'Precio Total', key: 'totalPrice', width: 12 }
-    ];
   }
 
   private populateWorksheetWithGroupedClasses(
     worksheet: ExcelJS.Worksheet,
     groupedClasses: Record<
       string,
-      Record<string, { language: string; registers: ClassRegisterData[] }>
+      Record<
+        string,
+        {
+          language: string;
+          registers: ClassRegisterData[];
+          paymentMethods: Set<string>;
+          currencies: {
+            [currency: string]: {
+              count: number;
+              total: number;
+            };
+          };
+        }
+      >
     >
   ) {
     for (const date in groupedClasses) {
+      // Añadir fecha como encabezado de sección
+      const dateRow = worksheet.addRow([`Fecha: ${date}`]);
+      dateRow.font = { bold: true, size: 14 };
+      dateRow.height = 22;
+
       for (const schedule in groupedClasses[date]) {
+        // Añadir horario como subencabezado
         const classes = groupedClasses[date][schedule];
+        const scheduleRow = worksheet.addRow([
+          `Horario: ${schedule} - Idioma: ${classes.language || 'No especificado'}`
+        ]);
+        scheduleRow.font = { bold: true, size: 12 };
+        scheduleRow.height = 20;
 
-        // Calcular totales
-        const { totalParticipants, totalPrice } = classes.registers.reduce(
-          (totals, clase) => {
-            totals.totalParticipants += clase.totalParticipants;
-            totals.totalPrice += clase.totalPrice;
-            return totals;
-          },
-          { totalParticipants: 0, totalPrice: 0 }
-        );
+        // Calcular totales para resumen
+        let totalParticipants = 0;
+        const totalsByCurrency = {};
 
-        // Agregar resumen de clase
-        worksheet.addRow(['Fecha de Clase', date]);
-        worksheet.addRow(['Horario de Clase', schedule]);
-        worksheet.addRow(['Idioma de Clase', classes.language]);
-        worksheet.addRow(['Total Participantes', totalParticipants]);
-        worksheet.addRow(['Total Precio', totalPrice.toFixed(2)]);
-        worksheet.addRow([]); // Espacio entre grupos
-
-        // Agregar encabezados de la tabla de detalles
-        worksheet.addRow({
-          userName: 'Nombre de Usuario',
-          userEmail: 'Email de Usuario',
-          userPhone: 'Teléfono de Usuario',
-          totalAdults: 'Total Adultos',
-          totalChildren: 'Total Niños',
-          totalParticipants: 'Total Participantes',
-          totalPriceAdults: 'Precio Adultos',
-          totalPriceChildren: 'Precio Niños',
-          totalPrice: 'Precio Total'
+        classes.registers.forEach((clase) => {
+          totalParticipants += clase.totalParticipants || 0;
+          if (clase.totalPrice && clase.typeCurrency) {
+            if (!totalsByCurrency[clase.typeCurrency]) {
+              totalsByCurrency[clase.typeCurrency] = 0;
+            }
+            totalsByCurrency[clase.typeCurrency] += clase.totalPrice;
+          }
         });
 
-        // Agregar los detalles de cada clase
+        // Añadir resumen
+        const summaryRow = worksheet.addRow(['Resumen:']);
+        summaryRow.font = { bold: true, italic: true };
+
+        worksheet.addRow([
+          'Total Participantes:',
+          totalParticipants,
+          'Métodos de Pago:',
+          Array.from(classes.paymentMethods).join(', ') || 'Ninguno'
+        ]);
+
+        // Añadir totales por moneda
+        const currencyTotals = [];
+        for (const currency in totalsByCurrency) {
+          currencyTotals.push(`${currency}: ${totalsByCurrency[currency].toFixed(2)}`);
+        }
+
+        worksheet.addRow(['Totales:', currencyTotals.join(', ')]);
+        worksheet.addRow([]);
+
+        // Añadir encabezados de tabla
+        const headerRow = worksheet.addRow([
+          'Nombre',
+          'Email',
+          'Teléfono',
+          'Adultos',
+          'Niños',
+          'Total',
+          'Método',
+          'Moneda',
+          'Precio'
+        ]);
+
+        // Estilo para encabezados
+        headerRow.eachCell((cell) => {
+          cell.font = { bold: true };
+          cell.fill = {
+            type: 'pattern',
+            pattern: 'solid',
+            fgColor: { argb: 'FFF2F2F2' }
+          };
+          cell.border = {
+            top: { style: 'thin' },
+            left: { style: 'thin' },
+            bottom: { style: 'thin' },
+            right: { style: 'thin' }
+          };
+        });
+
+        // Añadir los detalles de cada registro
         classes.registers.forEach((clase) => {
-          worksheet.addRow({
-            userName: clase.userName,
-            userEmail: clase.userEmail,
-            userPhone: clase.userPhone,
-            totalAdults: clase.totalAdults,
-            totalChildren: clase.totalChildren,
-            totalParticipants: clase.totalParticipants,
-            totalPriceAdults: clase.totalPriceAdults,
-            totalPriceChildren: clase.totalPriceChildren,
-            totalPrice: clase.totalPrice
+          const row = worksheet.addRow([
+            clase.userName || '--',
+            clase.userEmail || '--',
+            clase.userPhone || '--',
+            clase.totalAdults || '--',
+            clase.totalChildren || '--',
+            clase.totalParticipants || '--',
+            clase.methodPayment || '--',
+            clase.typeCurrency || '--',
+            clase.totalPrice || '--'
+          ]);
+
+          // Aplicar bordes a las celdas
+          row.eachCell((cell) => {
+            cell.border = {
+              top: { style: 'thin' },
+              left: { style: 'thin' },
+              bottom: { style: 'thin' },
+              right: { style: 'thin' }
+            };
           });
         });
 
-        worksheet.addRow([]); // Fila vacía entre tablas
+        // Añadir separador entre horarios
+        worksheet.addRow([]);
+        const separatorRow = worksheet.addRow(['']);
+        separatorRow.height = 10;
       }
     }
-  }
 
-  private clearFirstRow(worksheet: ExcelJS.Worksheet) {
-    for (let col = 1; col <= 9; col++) {
-      worksheet.getCell(1, col).value = null;
-    }
+    // Ajustar ancho de columnas automáticamente
+    worksheet.columns.forEach((column) => {
+      let maxLength = 0;
+      column['eachCell']({ includeEmpty: true }, function (cell) {
+        if (cell.value) {
+          const cellLength = cell.value.toString().length;
+          if (cellLength > maxLength) {
+            maxLength = cellLength;
+          }
+        }
+      });
+      column.width = Math.min(maxLength + 2, 40);
+    });
   }
 
   async generatePDFClassReport(data: ClassesDataAdmin[]): Promise<Buffer> {
@@ -396,59 +470,81 @@ export class ClassesAdminService {
 
     // Iterar sobre cada grupo de clases
     for (const date in groupedClasses) {
-      classesHtml += `<h2 style="text-align: center;">Fecha: ${date}</h2>`;
+      classesHtml += `<h3 style="margin: 10px 0 5px 0;">Fecha: ${date}</h3>`;
 
       for (const schedule in groupedClasses[date]) {
-        classesHtml += `<h3 style="text-align: center;">Horario: ${schedule}</h3>`;
-        classesHtml += '<div style="overflow-x:auto; margin: 0 20px;">';
-        classesHtml += '<table border="1" style="width: 100%; border-collapse: collapse;">';
-        classesHtml += `
-        <thead>
-          <tr>
-            <th>Nombre</th>
-            <th>Email</th>
-            <th>Teléfono</th>
-            <th>Total Adultos</th>
-            <th>Total Niños</th>
-            <th>Total Participantes</th>
-          </tr>
-        </thead>
-        <tbody>
-      `;
+        classesHtml += `<h4 style="margin: 8px 0 5px 0;">Horario: ${schedule} - Idioma: ${groupedClasses[date][schedule].language || 'No especificado'}</h4>`;
 
+        // Resumen conciso antes de la tabla
         let totalParticipants = 0;
-        let totalPrice = 0;
+        const totalsByCurrency = {};
+
+        groupedClasses[date][schedule].registers.forEach((clase) => {
+          totalParticipants += clase.totalParticipants || 0;
+          if (clase.totalPrice && clase.typeCurrency) {
+            if (!totalsByCurrency[clase.typeCurrency]) {
+              totalsByCurrency[clase.typeCurrency] = 0;
+            }
+            totalsByCurrency[clase.typeCurrency] += clase.totalPrice;
+          }
+        });
+
+        // Resumen compacto
+        classesHtml += '<div style="font-size: 12px; margin-bottom: 5px;">';
+        classesHtml += `<strong>Total Participantes:</strong> ${totalParticipants} | `;
+        classesHtml += `<strong>Métodos Pago:</strong> ${Array.from(groupedClasses[date][schedule].paymentMethods).join(', ') || 'Ninguno'} | `;
+
+        // Totales por moneda en línea
+        classesHtml += '<strong>Totales:</strong> ';
+        const currencySummaries = [];
+        for (const currency in totalsByCurrency) {
+          currencySummaries.push(`${currency}: ${totalsByCurrency[currency].toFixed(2)}`);
+        }
+        classesHtml += currencySummaries.join(', ');
+        classesHtml += '</div>';
+
+        // Tabla más compacta
+        classesHtml += '<div style="overflow-x:auto; margin: 0;">';
+        classesHtml +=
+          '<table border="1" style="width: 100%; border-collapse: collapse; font-size: 10px;">';
+        classesHtml += `
+      <thead>
+        <tr style="background-color: #f2f2f2;">
+        <th style="padding: 4px;">Nombre</th>
+        <th style="padding: 4px;">Email</th>
+        <th style="padding: 4px;">Teléfono</th>
+        <th style="padding: 4px;">Adultos</th>
+        <th style="padding: 4px;">Niños</th>
+        <th style="padding: 4px;">Total</th>
+        <th style="padding: 4px;">Método</th>
+        <th style="padding: 4px;">Moneda</th>
+        <th style="padding: 4px;">Precio</th>
+        </tr>
+      </thead>
+      <tbody>
+      `;
 
         groupedClasses[date][schedule].registers.forEach((clase) => {
           classesHtml += `
-          <tr>
-            <td style="text-transform: capitalize;">${clase.userName}</td>
-            <td>${clase.userEmail}</td>
-            <td>${clase.userPhone}</td>
-            <td>${clase.totalAdults}</td>
-            <td>${clase.totalChildren}</td>
-            <td>${clase.totalParticipants}</td>
-          </tr>
-        `;
-
-          // Sumar totales
-          totalParticipants += clase.totalParticipants;
-          totalPrice += clase.totalPrice;
+        <tr>
+        <td style="padding: 3px; text-transform: capitalize;">${clase.userName ?? '--'}</td>
+        <td style="padding: 3px; font-size: 9px;">${clase.userEmail ?? '--'}</td>
+        <td style="padding: 3px;">${clase.userPhone ?? '--'}</td>
+        <td style="padding: 3px; text-align: center;">${clase.totalAdults ?? '--'}</td>
+        <td style="padding: 3px; text-align: center;">${clase.totalChildren ?? '--'}</td>
+        <td style="padding: 3px; text-align: center;">${clase.totalParticipants ?? '--'}</td>
+        <td style="padding: 3px;">${clase.methodPayment ?? '--'}</td>
+        <td style="padding: 3px; text-align: center;">${clase.typeCurrency ?? '--'}</td>
+        <td style="padding: 3px; text-align: right;">${clase.totalPrice ?? '--'}</td>
+        </tr>
+      `;
         });
 
         classesHtml += '</tbody></table>';
+        classesHtml += '</div>';
 
-        // Determinar el símbolo de moneda
-
-        // Agregar resumen después de la tabla
-        classesHtml += `
-        <div style="margin-top: 10px; text-align: right;">
-          <p><strong>Total de Participantes:</strong> ${totalParticipants}</p>
-          <p><strong>Total Precio:</strong> ${totalPrice.toFixed(2)}</p>
-        </div>
-      `;
-
-        classesHtml += '</div>'; // Cerrar el contenedor
+        // Agregar espacio entre horarios
+        classesHtml += '<hr style="margin: 10px 0; border: 0.5px solid #ddd;">';
       }
     }
 
@@ -460,12 +556,39 @@ export class ClassesAdminService {
    * @param data Datos de las clases
    * @returns Clases agrupadas por fecha y horario
    */
-  private groupClassesByDateAndSchedule(
-    data: ClassesDataAdmin[]
-  ): Record<string, Record<string, { language: string; registers: ClassRegisterData[] }>> {
+  private groupClassesByDateAndSchedule(data: ClassesDataAdmin[]): Record<
+    string,
+    Record<
+      string,
+      {
+        language: string;
+        registers: ClassRegisterData[];
+        paymentMethods: Set<string>;
+        currencies: {
+          [currency: string]: {
+            count: number;
+            total: number;
+          };
+        };
+      }
+    >
+  > {
     const groupedClasses: Record<
       string,
-      Record<string, { language: string; registers: ClassRegisterData[] }>
+      Record<
+        string,
+        {
+          language: string;
+          registers: ClassRegisterData[];
+          paymentMethods: Set<string>;
+          currencies: {
+            [currency: string]: {
+              count: number;
+              total: number;
+            };
+          };
+        }
+      >
     > = {};
 
     data.forEach((classData) => {
@@ -481,12 +604,34 @@ export class ClassesAdminService {
       if (!groupedClasses[dateKey][scheduleKey]) {
         groupedClasses[dateKey][scheduleKey] = {
           language: classData.languageClass,
-          registers: []
+          registers: [],
+          paymentMethods: new Set<string>(),
+          currencies: {}
         };
       }
 
       // Agregar los registros al grupo correspondiente
-      groupedClasses[dateKey][scheduleKey].registers.push(...classData.registers);
+      classData.registers.forEach((register) => {
+        groupedClasses[dateKey][scheduleKey].registers.push(register);
+
+        // Add payment method if exists
+        if (register.methodPayment) {
+          groupedClasses[dateKey][scheduleKey].paymentMethods.add(register.methodPayment);
+        }
+
+        // Add currency and update totals
+        if (register.typeCurrency) {
+          if (!groupedClasses[dateKey][scheduleKey].currencies[register.typeCurrency]) {
+            groupedClasses[dateKey][scheduleKey].currencies[register.typeCurrency] = {
+              count: 0,
+              total: 0
+            };
+          }
+          groupedClasses[dateKey][scheduleKey].currencies[register.typeCurrency].count++;
+          groupedClasses[dateKey][scheduleKey].currencies[register.typeCurrency].total +=
+            register.totalPrice || 0;
+        }
+      });
     });
 
     return groupedClasses;

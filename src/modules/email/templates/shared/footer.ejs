@@ -1,10 +1,44 @@
-<tr style="color: #034a5b">
-  <td align="center">
-    <p style="font-size: 12px">
-      © <%= new Date().getFullYear() %> <%= locals.business %>. Todos los derechos reservados.
-    </p>
-    <p style="font-size: 12px">
-      <%= locals.address %> | <%= locals.phone %> | <%= locals.contact %>
-    </p>
-  </td>
-</tr>
+<hr
+  style="
+    width: 100%;
+    border: none;
+    border-top: 1px solid #eaeaea;
+    margin-top: 32px;
+    margin-bottom: 32px;
+  "
+/>
+<p
+  style="
+    font-size: 15px;
+    line-height: 26.25px;
+    margin: 0 0 20px 0;
+    text-align: center;
+    -webkit-font-smoothing: antialiased;
+    -moz-osx-font-smoothing: grayscale;
+    color: #374151;
+  "
+>
+  <span style="color: #aaaaaa"
+    >© <%= new Date().getFullYear() %> <%= locals.business %>. Todos los derechos reservados.</span
+  >
+</p>
+<p
+  style="
+    font-size: 15px;
+    line-height: 26.25px;
+    margin: 0 0 20px 0;
+    text-align: center;
+    -webkit-font-smoothing: antialiased;
+    -moz-osx-font-smoothing: grayscale;
+    color: #374151;
+  "
+>
+  <span style="color: #aaaaaa"><%= locals.address %> | <%= locals.phone %> | </span
+  ><a
+    href="mailto:<%= locals.contact %>"
+    rel="noopener noreferrer nofollow"
+    style="color: #111827; text-decoration: none; font-weight: 500"
+    target="_blank"
+    ><span style="color: #aaaaaa"><%= locals.contact %></span></a
+  >
+</p>

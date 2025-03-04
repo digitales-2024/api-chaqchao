@@ -1,60 +1,202 @@
 <!DOCTYPE html PUBLIC "-//W3C//DTD XHTML 1.0 Transitional//EN" "http://www.w3.org/TR/xhtml1/DTD/xhtml1-transitional.dtd">
 <html xmlns="http://www.w3.org/1999/xhtml">
   <%- include("./shared/head.ejs") %>
-  <table width="100%" border="0" cellspacing="0" cellpadding="0">
-    <tr>
-      <td align="center">
-        <table width="600" border="0" cellspacing="0" cellpadding="0">
-          <tr>
-            <td align="center">
-              <h2>Hello, <strong><%= locals.name %>!</strong></h2>
-              <p>
-                We are pleased to inform you that you have successfully registered for a class at
-                <%= locals.business %>.
-              </p>
-              <p>Below are the details of the class you will be participating in:</p>
-            </td>
-          </tr>
-          <tr>
-            <td align="left">
-              <table
-                style="padding-left: 20px"
-                width="100%"
-                border="0"
-                cellspacing="0"
-                cellpadding="0"
+  <body style="margin: 0">
+    <table
+      align="center"
+      width="100%"
+      border="0"
+      cellPadding="0"
+      cellSpacing="0"
+      role="presentation"
+      style="
+        max-width: 600px;
+        min-width: 300px;
+        width: 100%;
+        margin-left: auto;
+        margin-right: auto;
+        padding: 0.5rem;
+      "
+    >
+      <tbody>
+        <tr style="width: 100%">
+          <td>
+            <table
+              align="center"
+              width="100%"
+              border="0"
+              cellPadding="0"
+              cellSpacing="0"
+              role="presentation"
+              style="margin-top: 0px; margin-bottom: 0px"
+            >
+              <tbody style="width: 100%">
+                <tr style="width: 100%">
+                  <td align="center" data-id="__react-email-column">
+                    <a
+                      href="https://static.wixstatic.com/media/d4968a_f8a02bb7438e49b583835ea220a8a650~mv2_d_7429_7037_s_4_2.png/v1/fill/w_269,h_270,al_c,q_85,usm_0.66_1.00_0.01,enc_avif,quality_auto/chaqchao_logo_transparent_blue_with_circ.png"
+                      rel="noopener noreferrer"
+                      style="display: block; max-width: 100%; text-decoration: none"
+                      target="_blank"
+                      ><img
+                        title="Image"
+                        alt="Image"
+                        src="https://static.wixstatic.com/media/d4968a_f8a02bb7438e49b583835ea220a8a650~mv2_d_7429_7037_s_4_2.png/v1/fill/w_269,h_270,al_c,q_85,usm_0.66_1.00_0.01,enc_avif,quality_auto/chaqchao_logo_transparent_blue_with_circ.png"
+                        style="
+                          display: block;
+                          outline: none;
+                          border: none;
+                          text-decoration: none;
+                          width: 145px;
+                          max-width: 100%;
+                        "
+                    /></a>
+                  </td>
+                </tr>
+              </tbody>
+            </table>
+            <table
+              align="center"
+              width="100%"
+              border="0"
+              cellPadding="0"
+              cellSpacing="0"
+              role="presentation"
+              style="max-width: 37.5em; height: 64px"
+            >
+              <tbody>
+                <tr style="width: 100%">
+                  <td></td>
+                </tr>
+              </tbody>
+            </table>
+            <h2
+              style="
+                margin-left: 0px;
+                margin-right: 0px;
+                margin-top: 0px;
+                margin-bottom: 12px;
+                text-align: left;
+                color: #111827;
+                font-size: 30px;
+                line-height: 36px;
+                font-weight: 700;
+              "
+            >
+              <strong>Hola, <%= locals.name %></strong>
+            </h2>
+
+            <p
+              style="
+                font-size: 15px;
+                line-height: 26.25px;
+                margin: 0 0 20px 0;
+                -webkit-font-smoothing: antialiased;
+                -moz-osx-font-smoothing: grayscale;
+                color: #374151;
+              "
+            >
+              We are pleased to inform you that you have successfully registered for a class at <%=
+              locals.business %>.
+            </p>
+            <p
+              style="
+                font-size: 15px;
+                line-height: 26.25px;
+                margin: 0 0 20px 0;
+                -webkit-font-smoothing: antialiased;
+                -moz-osx-font-smoothing: grayscale;
+                color: #374151;
+              "
+            >
+              Below are the details of the class you will be participating in:
+            </p>
+            <table
+              align="center"
+              width="100%"
+              border="0"
+              cellPadding="0"
+              cellSpacing="0"
+              role="presentation"
+              style="margin-top: 4px; margin-right: 4px; margin-bottom: 4px; margin-left: 4px"
+            >
+              <tbody style="width: 100%">
+                <tr style="width: 100%">
+                  <td
+                    align="left"
+                    data-id="__react-email-column"
+                    style="
+                      border-color: #bef4fa;
+                      border-width: 1px;
+                      border-style: solid;
+                      background-color: #ebfafc;
+                      border-radius: 6px;
+                      padding-top: 16px;
+                      padding-right: 16px;
+                      padding-bottom: 16px;
+                      padding-left: 16px;
+                    "
+                  >
+                    <p
+                      style="
+                        font-size: 15px;
+                        line-height: 26.25px;
+                        margin: 0 0 0px 0;
+                        -webkit-font-smoothing: antialiased;
+                        -moz-osx-font-smoothing: grayscale;
+                        color: #374151;
+                      "
+                    >
+                      <span style="color: #1d4e59"><strong>Date:</strong></span
+                      ><span style="color: #1d4e59"> <%= locals.dateClass %></span><br />
+                      <span style="color: #1d4e59"><strong>Schedule:</strong></span
+                      ><span style="color: #1d4e59"> <%= locals.scheduleClass %></span><br />
+                      <span style="color: #1d4e59"><strong>Class Language:</strong></span
+                      ><span style="color: #1d4e59"> <%= locals.languageClass %> </span><br /><span
+                        style="color: #1d4e59"
+                        ><strong>Total Participants:</strong></span
+                      ><span style="color: #1d4e59"> <%= locals.totalParticipants %> </span
+                      ><br /><span style="color: #1d4e59"><strong>Total Price:</strong></span
+                      ><span style="color: #1d4e59">
+                        <%= locals.totalPrice %> <%= locals.typeCurrency %></span
+                      >
+                    </p>
+                  </td>
+                </tr>
+              </tbody>
+            </table>
+            <p
+              style="
+                font-size: 15px;
+                line-height: 26.25px;
+                margin: 0 0 20px 0;
+                -webkit-font-smoothing: antialiased;
+                -moz-osx-font-smoothing: grayscale;
+                color: #374151;
+              "
+            >
+              We look forward to seeing you soon and hope you enjoy this unique experience to the
+              fullest!
+            </p>
+            <p
+              style="
+                font-size: 15px;
+                line-height: 26.25px;
+                margin: 0 0 20px 0;
+                -webkit-font-smoothing: antialiased;
+                -moz-osx-font-smoothing: grayscale;
+                color: #374151;
+              "
+            >
+              <span style="color: #374151">Saludos,</span><br /><span style="color: #374151"
+                >El equipo de <%= locals.business %></span
               >
-                <tr>
-                  <td>
-                    <strong>Date and Time:</strong> <%= locals.dateClass %> at <%=
-                    locals.scheduleClass %>
-                  </td>
-                </tr>
-                <tr>
-                  <td><strong>Class Language:</strong> <%= locals.languageClass %></td>
-                </tr>
-                <tr>
-                  <td>
-                    <strong>Total Participants:</strong> <%= locals.totalParticipants %> people
-                  </td>
-                </tr>
-                <tr>
-                  <td>
-                    <strong>Total Price:</strong> <%= locals.totalPrice %> <%= locals.typeCurrency
-                    %>
-                  </td>
-                </tr>
-              </table>
-              <p>
-                We look forward to seeing you soon and hope you enjoy this unique experience to the
-                fullest!
-              </p>
-              <p>Best regards,<br />The <%= locals.business %> Team</p>
-            </td>
-          </tr>
-          <%- include("./shared/footer.ejs") %>
-        </table>
-      </td>
-    </tr>
-  </table>
+            </p>
+            <%- include("./shared/footer.ejs") %>
+          </td>
+        </tr>
+      </tbody>
+    </table>
+    <!--/$-->
+  </body>
 </html>

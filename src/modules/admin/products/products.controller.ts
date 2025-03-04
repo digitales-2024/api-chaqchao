@@ -6,6 +6,7 @@ import {
   Param,
   Patch,
   Post,
+  Res,
   UploadedFiles,
   UseInterceptors
 } from '@nestjs/common';
@@ -21,6 +22,7 @@ import {
   ApiTags,
   ApiUnauthorizedResponse
 } from '@nestjs/swagger';
+import { Response } from 'express';
 import { HttpResponse, ProductData, UserData, UserPayload } from 'src/interfaces';
 import { Auth, GetUser, Module, Permission } from '../auth/decorators';
 import { CreateProductDto } from './dto/create-product.dto';
@@ -216,5 +218,28 @@ export class ProductsController {
     @GetUser() user: UserData
   ): Promise<HttpResponse<ProductData>> {
     return this.productsService.reactivate(id, user);
+  }
+
+  /**
+   * Descargar todos los productos en formato Excel
+   * @param res Respuesta de la petición
+   * @returns Archivo Excel con todos los productos
+   */
+  @Post('export/excel')
+  @Permission(['READ'])
+  @ApiOperation({ summary: 'Descargar todos los productos en formato Excel' })
+  @ApiOkResponse({ description: 'Archivo Excel con todos los productos' })
+  async downloadExcel(@Res() res: Response) {
+    const excelBuffer = await this.productsService.generateCsv();
+
+    const currentDate = new Date().toISOString().split('T')[0];
+    const filename = `productos_${currentDate}.xlsx`;
+
+    res.setHeader(
+      'Content-Type',
+      'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet'
+    );
+    res.setHeader('Content-Disposition', `attachment; filename=${filename}`);
+    res.send(excelBuffer);
   }
 }

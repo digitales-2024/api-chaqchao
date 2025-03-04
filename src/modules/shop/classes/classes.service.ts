@@ -317,6 +317,7 @@ export class ClassesService {
           totalPriceAdults: true,
           totalPriceChildren: true,
           typeCurrency: true,
+          methodPayment: true,
           comments: true,
           status: true,
           expiresAt: true
@@ -385,6 +386,7 @@ export class ClassesService {
               totalPriceAdults: true,
               totalPriceChildren: true,
               typeCurrency: true,
+              methodPayment: true,
               comments: true,
               status: true
             }
@@ -421,6 +423,7 @@ export class ClassesService {
           totalPriceAdults: registro.totalPriceAdults,
           totalPriceChildren: registro.totalPriceChildren,
           typeCurrency: registro.typeCurrency,
+          methodPayment: registro.methodPayment,
           comments: registro.comments,
           status: registro.status
         }))
@@ -508,8 +511,7 @@ export class ClassesService {
 
     const classConfirm = await this.prisma.classes.findFirst({
       where: {
-        dateClass: classData.dateClass,
-        scheduleClass: classData.scheduleClass
+        id: registerConfirm.classesId
       }
     });
 

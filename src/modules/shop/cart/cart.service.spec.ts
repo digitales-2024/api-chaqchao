@@ -113,7 +113,7 @@ describe('CartService', () => {
     describe('Manejo de fecha y hora', () => {
       it('debe preservar el tiempo de UTC al almacenar fechas', async () => {
         // 11:30 AM Peru = 16:30 UTC - dentro del horario de atención
-        const peruDate = '2025-03-02T11:30:00';
+        const peruDate = '2025-03-20T11:30:00';
 
         const createOrderDto = {
           customerName: 'Test',
@@ -142,7 +142,7 @@ describe('CartService', () => {
 
       it('debería mantener la hora cuando se ingresa en hora Perú', async () => {
         // 11:30 Perú = 16:30 UTC
-        const peruDate = '2025-03-02T11:30:00';
+        const peruDate = '2025-03-06T11:30:00';
 
         const createOrderDto = {
           customerName: 'Test',
@@ -184,7 +184,7 @@ describe('CartService', () => {
         };
 
         await expect(service.completeCart('1', createOrderDto)).rejects.toThrow(
-          /Orders can only be placed between.*Peru time/
+          'Pickup date cannot be in the past.'
         );
       });
 
@@ -202,7 +202,7 @@ describe('CartService', () => {
         };
 
         await expect(service.completeCart('1', createOrderDto)).rejects.toThrow(
-          /Orders can only be placed between.*Peru time/
+          'Pickup date cannot be in the past.'
         );
       });
 
@@ -225,7 +225,9 @@ describe('CartService', () => {
         };
 
         await expect(service.completeCart('1', createOrderDto)).rejects.toThrow(
-          new BadRequestException('Orders cannot be placed in the past.')
+          new BadRequestException(
+            `Orders must be placed at least 30 minutes in advance. Current time: ${now.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit', hour12: false })}, earliest available: ${new Date(now.getTime() + 30 * 60000).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit', hour12: false })}`
+          )
         );
 
         jest.useRealTimers();

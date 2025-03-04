@@ -1,12 +1,13 @@
-import { Module } from '@nestjs/common';
-import { EmailService } from './email.service';
-import { ConfigModule, ConfigService } from '@nestjs/config';
 import { MailerModule } from '@nestjs-modules/mailer';
-import { join } from 'path';
 import { EjsAdapter } from '@nestjs-modules/mailer/dist/adapters/ejs.adapter';
+import { Module } from '@nestjs/common';
+import { ConfigModule, ConfigService } from '@nestjs/config';
+import { join } from 'path';
+import { PrismaService } from 'src/prisma/prisma.service';
+import { EmailService } from './email.service';
 
 @Module({
-  providers: [EmailService],
+  providers: [EmailService, PrismaService],
   imports: [
     ConfigModule,
     MailerModule.forRootAsync({

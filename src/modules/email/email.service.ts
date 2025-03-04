@@ -2,25 +2,22 @@ import { MailerService } from '@nestjs-modules/mailer';
 import { Injectable, Logger } from '@nestjs/common';
 import { OnEvent } from '@nestjs/event-emitter';
 import { EventPayloads } from 'src/interfaces/event-types.interface';
+import { PrismaService } from 'src/prisma/prisma.service';
 import { getFirstWord } from 'src/utils';
-
-const infoBusiness = {
-  business: 'Chaqchao',
-  url: 'https://chaqchao.com',
-  phone: '+51 999 999 998',
-  address: '1234 Street',
-  contact: 'contacto@gmail.com'
-};
 
 @Injectable()
 export class EmailService {
   private readonly logger = new Logger(EmailService.name);
-  constructor(private readonly mailerService: MailerService) {}
+  constructor(
+    private readonly mailerService: MailerService,
+    private readonly prismaService: PrismaService
+  ) {}
 
   @OnEvent('user.welcome-admin-first')
   async welcomeEmail(data: EventPayloads['user.welcome-admin-first']): Promise<boolean> {
+    const infoBusiness = await this.prismaService.businessConfig.findFirst();
     const { name, email, password, webAdmin } = data;
-    const subject = `Bienvenido a ${infoBusiness.business}: ${getFirstWord(name)}`;
+    const subject = `Bienvenido a ${infoBusiness.businessName}: ${getFirstWord(name)}`;
 
     try {
       const sendingEmail = await this.mailerService.sendMail({
@@ -32,11 +29,11 @@ export class EmailService {
           email,
           password,
           webAdmin,
-          business: infoBusiness.business,
-          url: infoBusiness.url,
-          phone: infoBusiness.phone,
+          business: infoBusiness.businessName,
+          url: process.env.WEB_URL,
+          phone: infoBusiness.contactNumber,
           address: infoBusiness.address,
-          contact: infoBusiness.contact
+          contact: infoBusiness.email
         }
       });
 
@@ -53,8 +50,9 @@ export class EmailService {
 
   @OnEvent('client.forgot-password')
   async forgotPassword(data: EventPayloads['client.forgot-password']): Promise<boolean> {
+    const infoBusiness = await this.prismaService.businessConfig.findFirst();
     const { name, email, link } = data;
-    const subject = `Recuperar contraseña de ${infoBusiness.business}`;
+    const subject = `Recuperar contraseña de ${infoBusiness.businessName}`;
 
     try {
       const sendingEmail = await this.mailerService.sendMail({
@@ -65,11 +63,11 @@ export class EmailService {
           name,
           email,
           link,
-          business: infoBusiness.business,
-          url: infoBusiness.url,
-          phone: infoBusiness.phone,
+          business: infoBusiness.businessName,
+          url: process.env.WEB_URL,
+          phone: infoBusiness.contactNumber,
           address: infoBusiness.address,
-          contact: infoBusiness.contact
+          contact: infoBusiness.email
         }
       });
 
@@ -86,6 +84,7 @@ export class EmailService {
 
   @OnEvent('user.new-password')
   async newPassword(data: EventPayloads['user.new-password']): Promise<boolean> {
+    const infoBusiness = await this.prismaService.businessConfig.findFirst();
     const { name, email, password, webAdmin } = data;
     const subject = `Hola de nuevo: ${getFirstWord(name)}`;
 
@@ -99,11 +98,11 @@ export class EmailService {
           email,
           password,
           webAdmin,
-          business: infoBusiness.business,
-          url: infoBusiness.url,
-          phone: infoBusiness.phone,
+          business: infoBusiness.businessName,
+          url: process.env.WEB_URL,
+          phone: infoBusiness.contactNumber,
           address: infoBusiness.address,
-          contact: infoBusiness.contact
+          contact: infoBusiness.email
         }
       });
 
@@ -120,6 +119,7 @@ export class EmailService {
 
   @OnEvent('class.new-class')
   async newClass(data: EventPayloads['class.new-class']): Promise<boolean> {
+    const infoBusiness = await this.prismaService.businessConfig.findFirst();
     const {
       name,
       email,
@@ -130,7 +130,7 @@ export class EmailService {
       totalPrice,
       typeCurrency
     } = data;
-    const subject = `Clase programada: ${infoBusiness.business}`;
+    const subject = `Workshop scheduled: ${infoBusiness.businessName}`;
 
     try {
       const sendingEmail = await this.mailerService.sendMail({
@@ -146,11 +146,11 @@ export class EmailService {
           totalParticipants,
           totalPrice,
           typeCurrency,
-          business: infoBusiness.business,
-          url: infoBusiness.url,
-          phone: infoBusiness.phone,
+          business: infoBusiness.businessName,
+          url: process.env.WEB_URL,
+          phone: infoBusiness.contactNumber,
           address: infoBusiness.address,
-          contact: infoBusiness.contact
+          contact: infoBusiness.email
         }
       });
 
@@ -167,8 +167,9 @@ export class EmailService {
 
   @OnEvent('order.new-order')
   async newOrder(data: EventPayloads['order.new-order']): Promise<boolean> {
+    const infoBusiness = await this.prismaService.businessConfig.findFirst();
     const { name, email, orderNumber, totalOrder, pickupDate } = data;
-    const subject = `Pedido realizado: ${infoBusiness.business}`;
+    const subject = `Order placed: ${infoBusiness.businessName}`;
 
     try {
       const sendingEmail = await this.mailerService.sendMail({
@@ -181,11 +182,11 @@ export class EmailService {
           orderNumber,
           totalOrder,
           pickupDate,
-          business: infoBusiness.business,
-          url: infoBusiness.url,
-          phone: infoBusiness.phone,
+          business: infoBusiness.businessName,
+          url: process.env.WEB_URL,
+          phone: infoBusiness.contactNumber,
           address: infoBusiness.address,
-          contact: infoBusiness.contact
+          contact: infoBusiness.email
         }
       });
 
@@ -202,8 +203,9 @@ export class EmailService {
 
   @OnEvent('order.order-completed')
   async orderCompleted(data: EventPayloads['order.order-completed']): Promise<boolean> {
+    const infoBusiness = await this.prismaService.businessConfig.findFirst();
     const { name, email, orderNumber, totalOrder, products, pickupDate } = data;
-    const subject = `Pedido completado: ${infoBusiness.business}`;
+    const subject = `Order completed: ${infoBusiness.businessName}`;
 
     try {
       const sendingEmail = await this.mailerService.sendMail({
@@ -217,11 +219,11 @@ export class EmailService {
           totalOrder,
           products,
           pickupDate,
-          business: infoBusiness.business,
-          url: infoBusiness.url,
-          phone: infoBusiness.phone,
+          business: infoBusiness.businessName,
+          url: process.env.WEB_URL,
+          phone: infoBusiness.contactNumber,
           address: infoBusiness.address,
-          contact: infoBusiness.contact
+          contact: infoBusiness.email
         }
       });
 
