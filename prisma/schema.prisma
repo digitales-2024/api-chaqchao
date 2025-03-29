@@ -301,10 +301,9 @@ model ProductImage {
 }
 
 model Category {
-  id String @id @unique @default(uuid())
-
+  id          String  @id @unique @default(uuid())
   name        String  @unique
-  family      Family  @default(CHOCOLAT)
+  family      String  @default("OTHER")
   description String?
   isActive    Boolean @default(true)
 
@@ -313,15 +312,6 @@ model Category {
 
   // Relación con Product
   products Product[] @relation("categoryId")
-}
-
-enum Family {
-  CHOCOLAT // Chocolate
-  DRINK // Drink
-  SPICES // Spices
-  PERSONAL_CARE // Personal Care
-  MERCH // Merchandise
-  OTHER // Other
 }
 
 model ProductVariation {
