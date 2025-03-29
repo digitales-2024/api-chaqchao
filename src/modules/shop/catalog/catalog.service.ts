@@ -1,5 +1,4 @@
 import { Injectable, Logger } from '@nestjs/common';
-import { Family } from '@prisma/client';
 import { CategoryData, ProductData } from 'src/interfaces';
 import { PrismaService } from 'src/prisma/prisma.service';
 import { handleException } from 'src/utils';
@@ -154,7 +153,7 @@ export class CatalogService {
     const merchProducts = await this.prisma.product.findMany({
       where: {
         category: {
-          family: Family.MERCH
+          family: 'OTHER'
         }
       },
       include: {
@@ -288,7 +287,7 @@ export class CatalogService {
           },
           category: {
             family: {
-              not: Family.MERCH
+              not: 'OTHER'
             }
           }
         },
@@ -347,7 +346,7 @@ export class CatalogService {
           isActive: true,
           category: {
             family: {
-              not: Family.MERCH
+              not: 'OTHER'
             }
           }
         },

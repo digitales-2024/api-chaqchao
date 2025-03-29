@@ -1,5 +1,4 @@
 import { ApiProperty } from '@nestjs/swagger';
-import { Family } from '@prisma/client';
 import { Transform } from 'class-transformer';
 import { IsNotEmpty, IsString } from 'class-validator';
 
@@ -23,9 +22,8 @@ export class CreateCategoryDto {
 
   @ApiProperty({
     description: 'Familia de la categoría',
-    example: 'CHOCOLAT',
-    enum: Family
+    example: 'CHOCOLAT'
   })
   @IsString()
-  family: Family;
+  family: string;
 }

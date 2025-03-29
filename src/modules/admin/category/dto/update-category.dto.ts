@@ -1,8 +1,7 @@
 import { ApiProperty, PartialType } from '@nestjs/swagger';
-import { CreateCategoryDto } from './create-category.dto';
-import { IsNotEmpty, IsString } from 'class-validator';
 import { Transform } from 'class-transformer';
-import { Family } from '@prisma/client';
+import { IsNotEmpty, IsString } from 'class-validator';
+import { CreateCategoryDto } from './create-category.dto';
 
 export class UpdateCategoryDto extends PartialType(CreateCategoryDto) {
   @ApiProperty({
@@ -27,9 +26,8 @@ export class UpdateCategoryDto extends PartialType(CreateCategoryDto) {
   @ApiProperty({
     description: 'Familia de la categoría',
     example: 'CHOCOLAT',
-    enum: Family,
     required: false
   })
   @IsString()
-  family?: Family;
+  family?: string;
 }
