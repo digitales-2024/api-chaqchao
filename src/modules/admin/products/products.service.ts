@@ -568,7 +568,6 @@ export class ProductsService {
     try {
       const productDesactivate = await this.prisma.$transaction(async (prisma) => {
         const productDB = await this.findById(id);
-
         await prisma.product.update({
           where: { id },
           data: {
@@ -735,6 +734,8 @@ export class ProductsService {
 
         return Promise.all(deactivatePromises);
       });
+
+      this.adminGateway.sendProductAvailabilityUpdated('', false);
 
       return {
         statusCode: HttpStatus.OK,
@@ -1053,6 +1054,7 @@ export class ProductsService {
         return Promise.all(reactivatePromises);
       });
 
+      this.adminGateway.sendProductAvailabilityUpdated('', true);
       return {
         statusCode: HttpStatus.OK,
         message: 'Products reactivated successfully'

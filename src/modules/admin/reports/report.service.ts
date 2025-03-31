@@ -759,7 +759,6 @@ export class ReportsService {
     orders.forEach((order) => {
       order.cart.cartItems.forEach((item) => {
         const product = item.product;
-        console.log('🚀 ~ ReportsService ~ order.cart.cartItems.forEach ~ product:', product);
         // Filtrar por categoría si se especifica
         if (
           (!filter.categoryName ||
