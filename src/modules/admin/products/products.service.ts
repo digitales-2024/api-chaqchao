@@ -569,7 +569,7 @@ export class ProductsService {
       const productDesactivate = await this.prisma.$transaction(async (prisma) => {
         const productDB = await this.findById(id);
 
-        const toggleProduct = await prisma.product.update({
+        await prisma.product.update({
           where: { id },
           data: {
             isActive: false
@@ -587,7 +587,7 @@ export class ProductsService {
         });
 
         // Avisar mediante websockets
-        this.adminGateway.sendProductAvailabilityUpdated(id, toggleProduct.isActive);
+        this.adminGateway.sendProductAvailabilityUpdated(id, !productDB.isActive);
 
         // Retornar la estructura deseada, incluyendo variaciones e imágenes
         return {
