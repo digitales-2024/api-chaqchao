@@ -2,9 +2,9 @@ import { ValidRols } from 'src/modules/admin/auth/interfaces';
 
 export const superAdminSeed = {
   name: 'Super Admin',
-  email: 'admin@admin.com',
-  password: 'admin',
-  phone: '1234567890',
+  email: 'factory.chaqchao@gmail.com',
+  password: '$$factorychaqchao$$',
+  phone: '+51 54 234572',
   mustChangePassword: false
 };
 
