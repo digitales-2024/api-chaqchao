@@ -524,7 +524,7 @@ export class CartService {
       const hour12 = hour % 12 || 12;
       const ampm = hour >= 12 ? 'PM' : 'AM';
 
-      // Enviamos el usuario al correo con la contraseña temporal
+      // Enviamos el usuario al correo para notificarle que su pedido ha sido confirmado
       const emailResponse = await this.eventEmitter.emitAsync('order.new-order', {
         name: cart.client
           ? (cart.client.name + ' ' + cart.client.lastName).toUpperCase()

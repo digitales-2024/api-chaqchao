@@ -269,14 +269,13 @@ export class OrdersService {
 
       this.adminGateway.sendOrderStatusUpdated(order.id, order.orderStatus);
 
-      const pickupDate = new Date(order.pickupTime.toString().replace('Z', ''));
+      const pickupDate = new Date(order.pickupTime.toISOString().replace('Z', ''));
       const hour = pickupDate.getHours();
       const minute = pickupDate.getMinutes().toString().padStart(2, '0');
       const hour12 = hour % 12 || 12;
       const ampm = hour >= 12 ? 'PM' : 'AM';
-
       if (order.orderStatus === OrderStatus.COMPLETED) {
-        await this.eventEmitter.emitAsync('order.order-completed', {
+        const emailResponse = await this.eventEmitter.emitAsync('order.order-completed', {
           name: order.cart.client
             ? (order.cart.client.name + ' ' + order.cart.client.lastName).toUpperCase()
             : (order.customerName + ' ' + order.customerLastName).toUpperCase(),
@@ -291,6 +290,9 @@ export class OrdersService {
             image: item.product.images[0]?.url || ''
           }))
         });
+        if (emailResponse.every((response) => response !== true)) {
+          throw new BadRequestException('Failed to send email');
+        }
       }
 
       return order;

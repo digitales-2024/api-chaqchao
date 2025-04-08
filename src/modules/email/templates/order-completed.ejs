@@ -153,14 +153,15 @@
                         </tr>
                      </tbody>
                   </table>
-                  <table align="center" width="100%" border="0" cellPadding="0" cellSpacing="0" role="presentation" style="margin-top:4px;margin-right:4px;margin-bottom:4px;margin-left:4px">
-                     <tbody style="width:100%">
-                        <tr style="width:100%">
-                           <td align="left" data-id="__react-email-column" style="border-color:#e2e2e2;border-width:0;border-style:solid;background-color:#f7f7f7;border-radius:6px;padding-top:16px;padding-right:16px;padding-bottom:16px;padding-left:16px">
-                              <table
+                  <table
+                class="responsive-table"
                 style="
-                  padding-left: 20px;
-                  background-color: #ffffff;
+                  padding: 10px;
+                  background-color: #F7F7F7;
+                  width: 100%;
+                  max-width: 600px;
+                  border-radius: 6px;
+                  border-collapse: collapse;
                 "
                 width="100%"
                 border="0"
@@ -168,43 +169,68 @@
                 cellpadding="0"
               >
                 <tr>
-                  <td>
-                    <strong style="color: #07a180">Products:</strong>
+                  <td colspan="4">
+                    <strong style="color: #07a180; padding: 10px;">Products:</strong>
                   </td>
                 </tr>
                 <tr>
-                  <td></td>
-                  <td>
-                    <p style="color: #2b8579">Name</p>
+                  <td style="width: 60px;"></td>
+                  <td style="width: 40%;">
+                    <p style="color: #2b8579; margin: 0;">Name</p> 
                   </td>
-                  <td>
-                    <p style="color: #2b8579">Quantity</p>
+                  <td style="width: 20%; text-align: center;">
+                    <p style="color: #2b8579; margin: 0;">Quantity</p>
                   </td>
-                  <td>
-                    <p style="color: #2b8579">Price</p>
+                  <td style="width: 20%; text-align: center;">
+                    <p style="color: #2b8579; margin: 0;">Price</p>
                   </td>
                 </tr>
                 <% locals.products.forEach((product) => { %>
                 <tr>
-                  <td>
+                  <td style="vertical-align: top; padding-top: 10px;">
                     <img src="<%= product.image %>" alt="<%= product.name %>" style="width: 60px; height: 60px; object-fit: cover;">
                   </td>
-                  <td>
-                    <p><%= product.name %></p>
+                  <td style="vertical-align: top; padding-top: 10px; word-break: break-word;">
+                    <p style="margin: 0;"><%= product.name %></p>
                   </td>
-                  <td>
-                    <p><%= product.quantity %></p>
+                  <td style="vertical-align: top; padding-top: 10px; text-align: center;">
+                    <p style="margin: 0;"><%= product.quantity %></p>
                   </td>
-                  <td>
-                    <p>S/. <%= product.price %></p>
+                  <td style="vertical-align: top; padding-top: 10px; text-align: center;">
+                    <p style="margin: 0;">S/. <%= product.price %></p>
                   </td>
                 </tr>
                 <% }); %>
               </table>
-                           </td>
-                        </tr>
-                     </tbody>
-                  </table>
+              
+              <!-- Versión móvil para clientes que no soportan tablas -->
+              <div class="mobile-version" style="display: none; max-width: 600px; padding-left: 20px; background-color: #ffffff;">
+                <p style="color: #07a180; font-weight: bold; margin-bottom: 10px;">Products:</p>
+                <% locals.products.forEach((product) => { %>
+                <div style="margin-bottom: 15px; border-bottom: 1px solid #eee; padding-bottom: 10px;">
+                  <div style="display: flex; align-items: center; margin-bottom: 5px;">
+                    <img src="<%= product.image %>" alt="<%= product.name %>" style="width: 60px; height: 60px; object-fit: cover; margin-right: 10px;">
+                    <div>
+                      <p style="margin: 0; font-weight: bold;"><%= product.name %></p>
+                      <p style="margin: 5px 0 0 0;">Quantity: <%= product.quantity %></p>
+                      <p style="margin: 5px 0 0 0;">Price: S/. <%= product.price %></p>
+                    </div>
+                  </div>
+                </div>
+                <% }); %>
+              </div>
+              
+              <!-- Media query para mostrar la versión móvil en pantallas pequeñas -->
+              <style type="text/css">
+                @media screen and (max-width: 600px) {
+                  table[class="responsive-table"] {
+                    display: none !important;
+                  }
+                  div[class="mobile-version"] {
+                    display: block !important;
+                  }
+                }
+              </style>
                   <table align="center" width="100%" border="0" cellPadding="0" cellSpacing="0" role="presentation" style="max-width:37.5em;height:32px">
                      <tbody>
                         <tr style="width:100%">
