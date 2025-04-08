@@ -5,6 +5,12 @@ WORKDIR /app
 COPY package*.json ./
 COPY prisma ./prisma/
 
+ENV TZ=America/Lima
+RUN apk add --no-cache tzdata && \
+    ln -snf /usr/share/zoneinfo/$TZ /etc/localtime && \
+    echo $TZ > /etc/timezone
+
+
 RUN npm ci
 
 COPY . .
