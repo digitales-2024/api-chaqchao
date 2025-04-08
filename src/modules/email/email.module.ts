@@ -17,14 +17,14 @@ import { EmailService } from './email.service';
         transport: {
           host: configService.get<string>('MAIL_HOST'),
           port: configService.get<number>('MAIL_PORT'),
-          secure: false,
+          secure: true,
           auth: {
             user: configService.get<string>('MAIL_USER'),
             pass: configService.get<string>('MAIL_PASS')
           }
         },
         defaults: {
-          from: 'Chaqchao'
+          from: 'Chaqchao Factory <factory@chaqchao-chocolates.com>'
         },
         template: {
           dir: join(__dirname, 'templates'),
